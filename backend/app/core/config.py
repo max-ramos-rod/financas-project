@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30
     DATABASE_URL: str = "postgresql://financas_user:financas_pass@localhost:5432/financas_db"
-    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:5173"]
+    BACKEND_CORS_ORIGINS: List[str] = ["*"]
     ENVIRONMENT: str = "development"
     FRONTEND_URL: str = "http://localhost:5173"
     SMTP_HOST: str | None = None
