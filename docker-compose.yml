@@ -6,7 +6,7 @@ services:
     image: postgres:16
     container_name: financas_ibf_db
     env_file:
-      - ./backend/.env
+      - ./backend/.env.confdb
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: always
