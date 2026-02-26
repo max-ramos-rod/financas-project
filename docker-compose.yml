@@ -1,32 +1,47 @@
 version: "3.9"
 
 services:
-  backend:
-    build: ./backend
-    env_file:
-      - .env
-    depends_on:
-      - db
-    restart: always
 
   db:
     image: postgres:16
+    container_name: financas_ibf_db
     env_file:
       - .env
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: financas_backend
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+    restart: always
 
   nginx:
     image: nginx:latest
+    container_name: financas_nginx
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./frontend/dist:/usr/share/nginx/html
       - ./nginx:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
     depends_on:
       - backend
+    restart: always
 
 volumes:
   pgdata:
