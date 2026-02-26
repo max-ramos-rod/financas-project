@@ -6,7 +6,7 @@ services:
     image: postgres:16
     container_name: financas_ibf_db
     env_file:
-      - .env
+      - ./backend/.env
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: always
@@ -15,18 +15,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - financas_network
 
   backend:
     build: ./backend
     container_name: financas_backend
     env_file:
-      - .env
+      - ./backend/.env
     depends_on:
       db:
         condition: service_healthy
     expose:
       - "8000"
     restart: always
+    networks:
+      - financas_network
 
   nginx:
     image: nginx:latest
@@ -42,6 +46,12 @@ services:
     depends_on:
       - backend
     restart: always
+    networks:
+      - financas_network
 
 volumes:
   pgdata:
+
+networks:
+  financas_network:
+    driver: bridge
