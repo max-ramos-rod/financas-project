@@ -4,10 +4,15 @@ from app.core.config import settings
 from app.api.v1.api import api_router
 
 app = FastAPI(
-    title="Finanças Cristãs API",
-    version="0.1.0",
-    root_path="/api"
+    title=settings.PROJECT_NAME,
+    version="0.1.0"
 )
+#app = FastAPI(
+#    title="Finanças Cristãs API",
+#    version="0.1.0",
+#    root_path="/"
+#)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
