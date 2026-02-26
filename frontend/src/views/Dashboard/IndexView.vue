@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 import type { Conta, Transacao, Meta, Categoria } from '@/types'
-import { parseDate, formatDateBR } from '@/utils/date'
+import { parseDate } from '@/utils/date'
 
 import FluxoFinanceiroChart from '@/components/charts/FluxoFinanceiroChart.vue'
 import DespesasCategoriaChart from '@/components/charts/DespesasCategoriaChart.vue'
@@ -167,9 +167,6 @@ const formatarMoeda = (valor: number): string =>
     style: 'currency',
     currency: 'BRL'
   }).format(valor)
-
-const formatarData = (data: string): string =>
-  formatDateBR(data)
 
 // =========================
 // 🌐 FETCH

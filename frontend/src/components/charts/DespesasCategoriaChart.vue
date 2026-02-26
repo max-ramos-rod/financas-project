@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
+
+const ApexChart = defineAsyncComponent(() =>
+  import('vue3-apexcharts')
+)
 
 const props = defineProps<{
   dados: { nome: string; valor: number }[]
@@ -56,7 +60,7 @@ const chartOptions = computed(() => ({
 </script>
 
 <template>
-  <apexchart
+  <ApexChart
     height="300"
     type="bar"
     :options="chartOptions"
