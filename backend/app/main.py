@@ -3,8 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.api import api_router
 
-app = FastAPI(title=settings.PROJECT_NAME)
-print(f"Running in {settings.BACKEND_CORS_ORIGINS} environment")
+app = FastAPI(
+    title="Finanças Cristãs API",
+    version="0.1.0",
+    root_path="/api"
+)
 # CORS
 app.add_middleware(
     CORSMiddleware,
