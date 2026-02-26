@@ -32,7 +32,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ./frontend/Dockerfile
     container_name: financas_frontend
     ports:
       - "80:80"
