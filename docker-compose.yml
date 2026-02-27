@@ -21,7 +21,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend
+      dockerfile: frontend/Dockerfile
     container_name: financas_backend
     env_file:
       - ./backend/.env
