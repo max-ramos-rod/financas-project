@@ -12,6 +12,9 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    allowedHosts: [
+      "terms-wonder-sectors-puzzle.trycloudflare.com"
+    ]    
   },
   build: {
     rollupOptions: {
