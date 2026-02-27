@@ -5,7 +5,10 @@ from app.api.v1.api import api_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    version="0.1.0"
+    description="API para registro de despesas pessoais, permitindo aos usuários acompanhar seus gastos e analisar suas finanças de forma eficiente.",
+    version="1.0.0",
+    docs_url="/docs",
+    openapi_url="/openapi.json",
 )
 #app = FastAPI(
 #    title="Finanças Cristãs API",

@@ -1,13 +1,15 @@
 services:
 
   db:
-    image: postgres:17
+    image: postgres:17-alpine
     container_name: financas_ibf_db
+    restart: always
     env_file:
       - ./backend/.env.confdb
     volumes:
       - pgdata:/var/lib/postgresql/data
-    restart: always
+    ports:
+      - "5432:5432"      
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 5s
@@ -17,15 +19,17 @@ services:
       - financas_network
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend
     container_name: financas_backend
     env_file:
       - ./backend/.env
     depends_on:
       db:
         condition: service_healthy
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     restart: always
     networks:
       - financas_network
@@ -35,12 +39,26 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     container_name: financas_frontend
+    env_file:
+      - ./backend/.env    
     ports:
-      - "80:80"
+      - "5173:5173"
     depends_on:
       - backend
     networks:
       - financas_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
 
 volumes:
   pgdata:
