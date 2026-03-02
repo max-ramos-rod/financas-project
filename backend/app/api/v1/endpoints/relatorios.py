@@ -77,6 +77,22 @@ def _build_simple_pdf(lines: list[str]) -> bytes:
     return bytes(pdf)
 
 
+def _fmt_money(value: float) -> str:
+    signal = "-" if value < 0 else ""
+    abs_value = abs(value)
+    integer = int(abs_value)
+    decimal = int(round((abs_value - integer) * 100))
+    int_part = f"{integer:,}".replace(",", ".")
+    return f"{signal}R$ {int_part},{decimal:02d}"
+
+
+def _pad_row(label: str, value: str, total_width: int = 90) -> str:
+    label = (label or "")[:60]
+    value = value or ""
+    spaces = max(2, total_width - len(label) - len(value))
+    return f"{label}{' ' * spaces}{value}"
+
+
 def _calcular_dre_mensal(db: Session, user_id: int, mes: int, ano: int) -> DREMensalResponse:
     inicio = date(ano, mes, 1)
     fim = date(ano, mes, monthrange(ano, mes)[1])
@@ -219,28 +235,52 @@ def exportar_dre_mensal_pdf(
     if not dre:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Relatorio nao encontrado")
 
+    now = date.today().isoformat()
+    separator = "-" * 90
+
     lines = [
-        "DRE Mensal",
-        f"Mes: {dre.mes:02d}/{dre.ano}",
+        "FINANCAS CRISTAIS - RELATORIO GERENCIAL",
+        "DRE MENSAL",
+        separator,
+        f"Periodo: {dre.mes:02d}/{dre.ano}    Gerado em: {now}",
+        separator,
         "",
-        f"Entradas liquidadas: {dre.entradas_liquidadas:.2f}",
-        f"Entradas previstas: {dre.entradas_previstas:.2f}",
-        f"Entradas total: {dre.entradas_total:.2f}",
-        f"Saidas liquidadas: {dre.saidas_liquidadas:.2f}",
-        f"Saidas previstas: {dre.saidas_previstas:.2f}",
-        f"Saidas total: {dre.saidas_total:.2f}",
-        f"Resultado liquidado: {dre.resultado_liquidado:.2f}",
-        f"Resultado previsto: {dre.resultado_previsto:.2f}",
-        f"Resultado total: {dre.resultado_total:.2f}",
+        "RESUMO FINANCEIRO",
+        _pad_row("Entradas liquidadas", _fmt_money(dre.entradas_liquidadas)),
+        _pad_row("Entradas previstas", _fmt_money(dre.entradas_previstas)),
+        _pad_row("Entradas total", _fmt_money(dre.entradas_total)),
+        _pad_row("Saidas liquidadas", _fmt_money(dre.saidas_liquidadas)),
+        _pad_row("Saidas previstas", _fmt_money(dre.saidas_previstas)),
+        _pad_row("Saidas total", _fmt_money(dre.saidas_total)),
+        _pad_row("Resultado liquidado", _fmt_money(dre.resultado_liquidado)),
+        _pad_row("Resultado previsto", _fmt_money(dre.resultado_previsto)),
+        _pad_row("Resultado total", _fmt_money(dre.resultado_total)),
         "",
-        "Entradas por categoria:",
+        "ANALISE POR CATEGORIA - ENTRADAS",
+        separator,
+        _pad_row("Categoria", "Valor"),
+        separator,
     ]
-    for item in dre.entradas_por_categoria:
-        lines.append(f"- {item.categoria_nome}: {item.valor:.2f}")
-    lines.append("")
-    lines.append("Saidas por categoria:")
-    for item in dre.saidas_por_categoria:
-        lines.append(f"- {item.categoria_nome}: {item.valor:.2f}")
+    if dre.entradas_por_categoria:
+        for item in dre.entradas_por_categoria:
+            lines.append(_pad_row(item.categoria_nome, _fmt_money(item.valor)))
+    else:
+        lines.append("Sem entradas no periodo.")
+
+    lines.extend(
+        [
+            "",
+            "ANALISE POR CATEGORIA - SAIDAS",
+            separator,
+            _pad_row("Categoria", "Valor"),
+            separator,
+        ]
+    )
+    if dre.saidas_por_categoria:
+        for item in dre.saidas_por_categoria:
+            lines.append(_pad_row(item.categoria_nome, _fmt_money(item.valor)))
+    else:
+        lines.append("Sem saidas no periodo.")
 
     pdf_content = _build_simple_pdf(lines)
     filename = f"dre_mensal_{ano}_{mes:02d}.pdf"
