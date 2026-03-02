@@ -16,6 +16,7 @@ const metas = ref<Meta[]>([])
 const modoCristao = ref(import.meta.env.VITE_MODO_CRISTAO === 'true')
 const editando = ref(false)
 const transacaoId = ref<number | null>(null)
+const editandoDizimo = ref(false)
 const showCategoriaModal = ref(false)
 const criandoCategoria = ref(false)
 const erroCategoria = ref('')
@@ -53,11 +54,17 @@ const formCategoria = ref({
   cor: '#6B7280',
 })
 
+const roundTo2 = (value: number | null | undefined): number => {
+  if (value == null || Number.isNaN(Number(value))) return 0
+  return Math.round(Number(value) * 100) / 100
+}
+
 const categoriasFiltradas = computed(() => categorias.value.filter((c) => c.tipo === form.value.tipo || c.tipo === null))
 
 const formValido = computed(() => {
   const base = form.value.conta_id && form.value.descricao && form.value.valor && form.value.valor > 0 && form.value.data
   if (!base) return false
+  if (editando.value && form.value.status_liquidacao === 'liquidado' && !form.value.data_liquidacao) return false
   if (form.value.parcelado) {
     return !!form.value.total_parcelas && form.value.total_parcelas >= 2
   }
@@ -128,12 +135,13 @@ const carregarTransacao = async () => {
   if (!transacaoId.value) return
   const res = await api.get(`/transacoes/${transacaoId.value}`)
   const t = res.data
+  editandoDizimo.value = !!t.e_dizimo
 
   form.value = {
     conta_id: t.conta_id,
     categoria_id: t.categoria_id,
     descricao: t.descricao,
-    valor: t.valor,
+    valor: roundTo2(t.valor),
     tipo: t.tipo,
     data: t.data,
     data_vencimento: t.data_vencimento || t.data,
@@ -150,9 +158,9 @@ const carregarTransacao = async () => {
     pessoa_emprestimo: t.pessoa_emprestimo || '',
     observacoes: t.observacoes || '',
     tags: t.tags || '',
-    valor_multa: t.valor_multa || 0,
-    valor_juros: t.valor_juros || 0,
-    valor_desconto: t.valor_desconto || 0,
+    valor_multa: roundTo2(t.valor_multa),
+    valor_juros: roundTo2(t.valor_juros),
+    valor_desconto: roundTo2(t.valor_desconto),
     meta_id: t.meta_id || null,
   }
 }
@@ -206,7 +214,7 @@ const salvar = async () => {
       tipo: form.value.tipo,
       data: form.value.data,
       data_vencimento: form.value.data_vencimento || undefined,
-      data_liquidacao: form.value.status_liquidacao === 'liquidado' ? (form.value.data_liquidacao || form.value.data) : undefined,
+      data_liquidacao: form.value.status_liquidacao === 'liquidado' ? form.value.data_liquidacao : undefined,
       status_liquidacao: form.value.status_liquidacao,
       fixa: form.value.fixa,
       recorrente: form.value.recorrente,
@@ -226,12 +234,23 @@ const salvar = async () => {
     }
 
     if (editando.value && transacaoId.value) {
-      await api.put(`/transacoes/${transacaoId.value}`, dados)
+      if (editandoDizimo.value) {
+        const baixaDizimo = {
+          status_liquidacao: form.value.status_liquidacao,
+          data_liquidacao:
+            form.value.status_liquidacao === 'liquidado'
+              ? form.value.data_liquidacao
+              : undefined,
+        }
+        await api.put(`/transacoes/${transacaoId.value}`, baixaDizimo)
+      } else {
+        await api.put(`/transacoes/${transacaoId.value}`, dados)
+      }
     } else {
       await api.post('/transacoes', dados)
     }
 
-    router.push('/transacoes')
+    router.push({ path: '/transacoes', query: route.query })
   } catch (error: any) {
     alert(error?.response?.data?.detail || 'Erro ao salvar transacao')
   } finally {
@@ -318,7 +337,7 @@ onMounted(() => {
             </div>
             <div v-if="form.status_liquidacao === 'liquidado'">
               <label class="label"><span class="label-text font-semibold">Data liquidacao</span></label>
-              <input v-model="form.data_liquidacao" type="date" class="input input-bordered w-full" />
+              <input v-model="form.data_liquidacao" type="date" class="input input-bordered w-full" :required="editando" />
             </div>
             <div>
               <label class="label"><span class="label-text font-semibold">Categoria</span></label>

@@ -55,3 +55,10 @@ Docs: http://localhost:8000/docs
 pip install -r requirements.txt
 pytest -q
 ```
+
+## Documentacao de testes
+
+Consulte `backend/README_TESTES.md` para:
+- comandos de execucao
+- escopo da suite por arquivo
+- observacoes da infraestrutura de testes

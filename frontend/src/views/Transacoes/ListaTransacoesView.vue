@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
 import type { Categoria, Conta, Transacao } from '@/types'
 import { parseDate, formatDateBR, formatDateForInput } from '@/utils/date'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(true)
 const transacoes = ref<Transacao[]>([])
 const contas = ref<Conta[]>([])
 const categorias = ref<Categoria[]>([])
 
-const filtros = ref({
+const filtrosPadrao = () => ({
   tipo: 'todas' as 'todas' | 'entrada' | 'saida',
   status_liquidacao: 'todos' as 'todos' | 'previsto' | 'liquidado' | 'atrasado' | 'cancelado',
   conta_id: null as number | null,
@@ -19,6 +20,44 @@ const filtros = ref({
   mes: null as number | null,
   ano: new Date().getFullYear(),
   busca: '',
+})
+
+const filtros = ref(filtrosPadrao())
+
+const parseNumberQuery = (value: unknown): number | null => {
+  if (typeof value !== 'string' || value.trim() === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const aplicarFiltrosDaQuery = () => {
+  const q = route.query
+  const anoAtual = new Date().getFullYear()
+  filtros.value = {
+    tipo: q.tipo === 'entrada' || q.tipo === 'saida' ? q.tipo : 'todas',
+    status_liquidacao:
+      q.status_liquidacao === 'previsto' ||
+      q.status_liquidacao === 'liquidado' ||
+      q.status_liquidacao === 'atrasado' ||
+      q.status_liquidacao === 'cancelado'
+        ? q.status_liquidacao
+        : 'todos',
+    conta_id: parseNumberQuery(q.conta_id),
+    categoria_id: parseNumberQuery(q.categoria_id),
+    mes: parseNumberQuery(q.mes),
+    ano: parseNumberQuery(q.ano) ?? anoAtual,
+    busca: typeof q.busca === 'string' ? q.busca : '',
+  }
+}
+
+const queryAtualDosFiltros = () => ({
+  tipo: filtros.value.tipo,
+  status_liquidacao: filtros.value.status_liquidacao,
+  conta_id: filtros.value.conta_id != null ? String(filtros.value.conta_id) : undefined,
+  categoria_id: filtros.value.categoria_id != null ? String(filtros.value.categoria_id) : undefined,
+  mes: filtros.value.mes != null ? String(filtros.value.mes) : undefined,
+  ano: filtros.value.ano ? String(filtros.value.ano) : undefined,
+  busca: filtros.value.busca || undefined,
 })
 
 const fetchDados = async () => {
@@ -115,6 +154,16 @@ const formatarData = (data: string) => formatDateBR(data)
 const getContaNome = (id: number) => contas.value.find((c) => c.id === id)?.nome || 'Conta'
 const getCategoriaNome = (id: number | null) => categorias.value.find((c) => c.id === id)?.nome || 'Sem categoria'
 const isContaCartaoCredito = (contaId: number) => contas.value.find((c) => c.id === contaId)?.tipo === 'cartao_credito'
+const estaAtrasada = (t: Transacao) => {
+  const status = t.status_liquidacao || 'liquidado'
+  if (status === 'atrasado') return true
+  if (!t.data_vencimento) return false
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const vencimento = parseDate(t.data_vencimento)
+  vencimento.setHours(0, 0, 0, 0)
+  return vencimento < hoje
+}
 
 const statusLabel = (t: Transacao) => {
   const s = t.status_liquidacao || 'liquidado'
@@ -141,8 +190,8 @@ const statusClass = (t: Transacao) => {
 }
 
 
-const novaTransacao = () => router.push('/transacoes/nova')
-const editarTransacao = (id: number) => router.push(`/transacoes/${id}/editar`)
+const novaTransacao = () => router.push({ path: '/transacoes/nova', query: queryAtualDosFiltros() })
+const editarTransacao = (id: number) => router.push({ path: `/transacoes/${id}/editar`, query: queryAtualDosFiltros() })
 
 const deletarTransacao = async (id: number) => {
   await api.delete(`/transacoes/${id}`)
@@ -151,6 +200,10 @@ const deletarTransacao = async (id: number) => {
 
 const marcarComoLiquidado = async (t: Transacao) => {
   if (isContaCartaoCredito(t.conta_id)) return
+  if (estaAtrasada(t)) {
+    await router.push({ path: `/transacoes/${t.id}/editar`, query: queryAtualDosFiltros() })
+    return
+  }
   await api.put(`/transacoes/${t.id}`, {
     status_liquidacao: 'liquidado',
     data_liquidacao: formatDateForInput(new Date()),
@@ -159,18 +212,21 @@ const marcarComoLiquidado = async (t: Transacao) => {
 }
 
 const limparFiltros = () => {
-  filtros.value = {
-    tipo: 'todas',
-    status_liquidacao: 'todos',
-    conta_id: null,
-    categoria_id: null,
-    mes: null,
-    ano: new Date().getFullYear(),
-    busca: '',
-  }
+  filtros.value = filtrosPadrao()
 }
 
-onMounted(fetchDados)
+watch(
+  filtros,
+  () => {
+    void router.replace({ query: queryAtualDosFiltros() })
+  },
+  { deep: true }
+)
+
+onMounted(async () => {
+  aplicarFiltrosDaQuery()
+  await fetchDados()
+})
 </script>
 
 <template>

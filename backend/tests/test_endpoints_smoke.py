@@ -85,6 +85,56 @@ def test_categorias_crud_usuario_e_bloqueio_padrao(client):
     assert bloqueio_response.status_code == 404
 
 
+def test_categoria_em_uso_nao_pode_excluir(client):
+    headers = _auth_headers(client)
+
+    categoria_response = client.post(
+        "/api/v1/categorias",
+        headers=headers,
+        json={
+            "nome": "Categoria Em Uso",
+            "icone": "tag",
+            "cor": "#111111",
+            "tipo": "saida",
+        },
+    )
+    assert categoria_response.status_code == 201
+    categoria_id = categoria_response.json()["id"]
+
+    conta_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Conta Teste",
+            "tipo": "conta_corrente",
+            "saldo": 1000.0,
+            "cor": "#10B981",
+            "ativa": True,
+        },
+    )
+    assert conta_response.status_code == 201
+    conta_id = conta_response.json()["id"]
+
+    transacao_response = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_id,
+            "categoria_id": categoria_id,
+            "descricao": "Transacao usando categoria",
+            "valor": 50.0,
+            "tipo": "saida",
+            "data": "2026-02-10",
+            "status_liquidacao": "previsto",
+        },
+    )
+    assert transacao_response.status_code == 201
+
+    delete_response = client.delete(f"/api/v1/categorias/{categoria_id}", headers=headers)
+    assert delete_response.status_code == 400
+    assert "Categoria em uso" in delete_response.json()["detail"]
+
+
 def test_metas_crud_smoke(client):
     headers = _auth_headers(client)
     hoje = date.today().isoformat()

@@ -182,6 +182,9 @@ def criar_transacao(
         transacao.status_liquidacao = StatusLiquidacao.PREVISTO
         transacao.data_liquidacao = None
 
+    if transacao.status_liquidacao == StatusLiquidacao.LIQUIDADO and not transacao.data_liquidacao:
+        transacao.data_liquidacao = transacao.data
+
     is_parcelado = bool(transacao.parcelado or (transacao.total_parcelas and transacao.total_parcelas > 1))
 
     if is_parcelado and (not transacao.total_parcelas or transacao.total_parcelas < 2):
@@ -337,7 +340,33 @@ def atualizar_transacao(
         return None
 
     if db_transacao.e_dizimo:
-        raise ValueError("Transacoes de dizimo nao podem ser editadas diretamente. Edite a entrada original.")
+        update_data = transacao_update.model_dump(exclude_unset=True)
+        allowed_fields = {"status_liquidacao", "data_liquidacao"}
+        invalid_fields = [field for field in update_data.keys() if field not in allowed_fields]
+        if invalid_fields:
+            raise ValueError("Transacoes de dizimo so permitem baixa (status/data_liquidacao).")
+        if (
+            update_data.get("status_liquidacao") == StatusLiquidacao.LIQUIDADO
+            and not update_data.get("data_liquidacao")
+        ):
+            raise ValueError("Informe data_liquidacao quando o status for liquidado.")
+
+        conta = db.query(Conta).filter(Conta.id == db_transacao.conta_id, Conta.user_id == user_id).first()
+        if not conta:
+            raise ValueError("Conta da transacao nao encontrada")
+
+        impacto_antigo = _impacto_no_saldo(db_transacao)
+        for field, value in update_data.items():
+            setattr(db_transacao, field, value)
+
+        impacto_novo = _impacto_no_saldo(db_transacao)
+        conta.saldo += impacto_novo - impacto_antigo
+
+        db.add(db_transacao)
+        db.add(conta)
+        db.commit()
+        db.refresh(db_transacao)
+        return db_transacao
 
     conta_antiga = db.query(Conta).filter(Conta.id == db_transacao.conta_id, Conta.user_id == user_id).first()
     if not conta_antiga:
@@ -369,6 +398,12 @@ def atualizar_transacao(
 
     for field, value in update_data.items():
         setattr(db_transacao, field, value)
+
+    if (
+        update_data.get("status_liquidacao") == StatusLiquidacao.LIQUIDADO
+        and not update_data.get("data_liquidacao")
+    ):
+        raise ValueError("Informe data_liquidacao quando o status for liquidado.")
 
     conta_final = db.query(Conta).filter(Conta.id == db_transacao.conta_id, Conta.user_id == user_id).first()
     if conta_final and conta_final.tipo == TipoConta.CARTAO_CREDITO and db_transacao.tipo == TipoTransacao.SAIDA:

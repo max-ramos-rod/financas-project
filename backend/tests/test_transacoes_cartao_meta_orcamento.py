@@ -241,3 +241,63 @@ def test_editar_entrada_ativando_dizimo_cria_saida(client):
     ]
     assert len(dizimos_da_entrada) == 1
     assert dizimos_da_entrada[0]["valor"] == 50.0
+
+
+def test_editar_entrada_desligando_dizimo_remove_saida(client):
+    headers = _auth_headers(client)
+
+    conta_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Conta Principal",
+            "tipo": "conta_corrente",
+            "saldo": 0.0,
+            "cor": "#3B82F6",
+            "ativa": True,
+        },
+    )
+    assert conta_response.status_code == 201
+    conta_id = conta_response.json()["id"]
+
+    create_response = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_id,
+            "descricao": "Receita com dizimo",
+            "valor": 700.0,
+            "tipo": "entrada",
+            "data": date.today().isoformat(),
+            "tem_dizimo": True,
+            "percentual_dizimo": 10.0,
+        },
+    )
+    assert create_response.status_code == 201
+    transacao_id = create_response.json()["id"]
+
+    lista_antes = client.get("/api/v1/transacoes", headers=headers)
+    assert lista_antes.status_code == 200
+    dizimos_antes = [
+        t for t in lista_antes.json()
+        if t.get("e_dizimo") is True and t.get("entrada_origem_id") == transacao_id
+    ]
+    assert len(dizimos_antes) == 1
+
+    update_response = client.put(
+        f"/api/v1/transacoes/{transacao_id}",
+        headers=headers,
+        json={
+            "tem_dizimo": False,
+        },
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["tem_dizimo"] is False
+
+    lista_depois = client.get("/api/v1/transacoes", headers=headers)
+    assert lista_depois.status_code == 200
+    dizimos_depois = [
+        t for t in lista_depois.json()
+        if t.get("e_dizimo") is True and t.get("entrada_origem_id") == transacao_id
+    ]
+    assert len(dizimos_depois) == 0

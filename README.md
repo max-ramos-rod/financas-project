@@ -94,3 +94,8 @@ financas-cristaos/
 ## 📄 Licença
 
 MIT
+
+## Documentacao complementar
+
+- Backend: `backend/README.md`
+- Testes da API: `backend/README_TESTES.md`
