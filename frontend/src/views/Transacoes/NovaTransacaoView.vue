@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
 import type { Conta, Categoria, Meta } from '@/types'
+import { formatDateForInput } from '@/utils/date'
 
 const router = useRouter()
 const route = useRoute()
@@ -18,13 +19,6 @@ const transacaoId = ref<number | null>(null)
 const showCategoriaModal = ref(false)
 const criandoCategoria = ref(false)
 const erroCategoria = ref('')
-
-const formatDateForInput = (date: Date): string => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 const form = ref({
   conta_id: null as number | null,

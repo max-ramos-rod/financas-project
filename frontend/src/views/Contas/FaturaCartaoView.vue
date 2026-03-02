@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Conta, FaturaResumo } from '@/types'
+import { formatDateForInput } from '@/utils/date'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,7 +16,7 @@ const success = ref('')
 const fatura = ref<FaturaResumo | null>(null)
 const contas = ref<Conta[]>([])
 const contaPagamentoId = ref<number | null>(null)
-const dataPagamento = ref(new Date().toISOString().split('T')[0])
+const dataPagamento = ref(formatDateForInput(new Date()))
 
 const contasPagamento = computed(() =>
   contas.value.filter((c) => c.ativa && c.tipo !== 'cartao_credito' && c.id !== contaId)

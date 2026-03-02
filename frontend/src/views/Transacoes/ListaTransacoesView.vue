@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Categoria, Conta, Transacao } from '@/types'
-import { parseDate, formatDateBR } from '@/utils/date'
+import { parseDate, formatDateBR, formatDateForInput } from '@/utils/date'
 
 const router = useRouter()
 const loading = ref(true)
@@ -153,7 +153,7 @@ const marcarComoLiquidado = async (t: Transacao) => {
   if (isContaCartaoCredito(t.conta_id)) return
   await api.put(`/transacoes/${t.id}`, {
     status_liquidacao: 'liquidado',
-    data_liquidacao: new Date().toISOString().split('T')[0],
+    data_liquidacao: formatDateForInput(new Date()),
   })
   await fetchDados()
 }
@@ -461,4 +461,3 @@ onMounted(fetchDados)
     </div>
   </div>
 </template>
-
