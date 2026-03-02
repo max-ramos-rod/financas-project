@@ -17,7 +17,7 @@ const filtrosPadrao = () => ({
   status_liquidacao: 'todos' as 'todos' | 'previsto' | 'liquidado' | 'atrasado' | 'cancelado',
   conta_id: null as number | null,
   categoria_id: null as number | null,
-  mes: null as number | null,
+  mes: new Date().getMonth() + 1,
   ano: new Date().getFullYear(),
   busca: '',
 })
@@ -33,6 +33,7 @@ const parseNumberQuery = (value: unknown): number | null => {
 const aplicarFiltrosDaQuery = () => {
   const q = route.query
   const anoAtual = new Date().getFullYear()
+  const mesAtual = new Date().getMonth() + 1
   filtros.value = {
     tipo: q.tipo === 'entrada' || q.tipo === 'saida' ? q.tipo : 'todas',
     status_liquidacao:
@@ -44,7 +45,7 @@ const aplicarFiltrosDaQuery = () => {
         : 'todos',
     conta_id: parseNumberQuery(q.conta_id),
     categoria_id: parseNumberQuery(q.categoria_id),
-    mes: parseNumberQuery(q.mes),
+    mes: parseNumberQuery(q.mes) ?? mesAtual,
     ano: parseNumberQuery(q.ano) ?? anoAtual,
     busca: typeof q.busca === 'string' ? q.busca : '',
   }
@@ -106,7 +107,11 @@ const transacoesFiltradas = computed(() => {
     resultado = resultado.filter((t) => t.descricao.toLowerCase().includes(busca))
   }
 
-  return resultado.sort((a, b) => parseDate(b.data).getTime() - parseDate(a.data).getTime())
+  return resultado.sort((a, b) => {
+    const byDate = parseDate(b.data).getTime() - parseDate(a.data).getTime()
+    if (byDate !== 0) return byDate
+    return b.id - a.id
+  })
 })
 
 const totais = computed(() => {
