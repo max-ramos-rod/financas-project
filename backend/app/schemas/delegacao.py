@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class DelegacaoInviteRequest(BaseModel):
@@ -19,8 +19,7 @@ class UserResumo(BaseModel):
     nome: str
     email: EmailStr
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DelegacaoResponse(BaseModel):
@@ -37,8 +36,7 @@ class DelegacaoResponse(BaseModel):
     owner: UserResumo
     delegate: Optional[UserResumo] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DelegacaoInviteResponse(BaseModel):
