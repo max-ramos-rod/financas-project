@@ -13,6 +13,19 @@ from app.db.session import get_db
 from app.models import Categoria, StatusLiquidacao, TipoTransacao, Transacao
 from app.schemas.relatorio import DRECategoriaResumo, DREMensalResponse
 
+# ReportLab opcional: usa layout moderno quando disponivel.
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    REPORTLAB_AVAILABLE = True
+except Exception:
+    REPORTLAB_AVAILABLE = False
+
 router = APIRouter()
 
 
@@ -86,11 +99,217 @@ def _fmt_money(value: float) -> str:
     return f"{signal}R$ {int_part},{decimal:02d}"
 
 
+def _fmt_pct(part: float, total: float) -> str:
+    if total == 0:
+        return "0,0%"
+    return f"{part / total * 100:.1f}%".replace(".", ",")
+
+
 def _pad_row(label: str, value: str, total_width: int = 90) -> str:
     label = (label or "")[:60]
     value = value or ""
     spaces = max(2, total_width - len(label) - len(value))
     return f"{label}{' ' * spaces}{value}"
+
+
+def _build_reportlab_pdf(dre: DREMensalResponse) -> bytes:
+    if not REPORTLAB_AVAILABLE:
+        raise RuntimeError("ReportLab indisponivel")
+
+    dark_blue = colors.HexColor("#1A2B4A")
+    medium_blue = colors.HexColor("#2D5086")
+    green = colors.HexColor("#1A7A4A")
+    red = colors.HexColor("#C0392B")
+    light_green = colors.HexColor("#E8F5EE")
+    light_red = colors.HexColor("#FDF0EE")
+    gray = colors.HexColor("#6C757D")
+    light_gray = colors.HexColor("#F5F6FA")
+    border = colors.HexColor("#DEE2E6")
+    white = colors.white
+
+    def cat_table(data: list[list], header_color, total_color, total_bg) -> Table:
+        tbl = Table(data, colWidths=[9 * cm, 5 * cm, 3 * cm])
+        tbl.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), header_color),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+                    ("ALIGN", (0, 0), (0, -1), "LEFT"),
+                    ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                    ("BACKGROUND", (0, -1), (-1, -1), total_bg),
+                    ("TEXTCOLOR", (0, -1), (-1, -1), total_color),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -2), [white, light_gray]),
+                    ("GRID", (0, 0), (-1, -1), 0.5, border),
+                    ("PADDING", (0, 0), (-1, -1), 7),
+                ]
+            )
+        )
+        return tbl
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=2 * cm,
+        leftMargin=2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+    )
+
+    title_style = ParagraphStyle(
+        "DRETitle",
+        fontSize=20,
+        leading=24,
+        fontName="Helvetica-Bold",
+        textColor=white,
+        alignment=TA_CENTER,
+        spaceAfter=10,
+    )
+    subtitle_style = ParagraphStyle(
+        "DRESubtitle",
+        fontSize=10,
+        leading=14,
+        fontName="Helvetica",
+        textColor=colors.HexColor("#B0C4DE"),
+        alignment=TA_CENTER,
+        spaceBefore=4,
+    )
+    section_style = ParagraphStyle(
+        "DRESection", fontSize=11, fontName="Helvetica-Bold", textColor=dark_blue, spaceBefore=12, spaceAfter=6
+    )
+    meta_style_l = ParagraphStyle("DREMetaL", fontSize=9, fontName="Helvetica", textColor=gray)
+    meta_style_r = ParagraphStyle("DREMetaR", fontSize=9, fontName="Helvetica", textColor=gray, alignment=TA_RIGHT)
+    footer_style = ParagraphStyle("DREFooter", fontSize=8, fontName="Helvetica", textColor=gray, alignment=TA_CENTER)
+
+    meses = ["", "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    mes_nome = meses[dre.mes]
+    periodo = f"{dre.mes:02d}/{dre.ano}"
+    gerado_em = date.today().strftime("%d/%m/%Y")
+    resultado_positivo = dre.resultado_total >= 0
+    resultado_bg = light_green if resultado_positivo else light_red
+    resultado_color = green if resultado_positivo else red
+
+    story = []
+
+    header_data = [
+        [Paragraph("FINANCAS CRISTAS", title_style)],
+        [Paragraph(f"DEMONSTRATIVO DO RESULTADO DO EXERCICIO - {mes_nome.upper()} {dre.ano}", subtitle_style)],
+    ]
+    header_table = Table(header_data, colWidths=[17 * cm])
+    header_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), dark_blue),
+                ("PADDING", (0, 0), (-1, -1), 10),
+                ("TOPPADDING", (0, 0), (-1, 0), 18),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
+                ("TOPPADDING", (0, 1), (-1, 1), 8),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 18),
+            ]
+        )
+    )
+    story.append(header_table)
+    story.append(Spacer(1, 8))
+
+    meta_table = Table(
+        [[Paragraph(f"Periodo: <b>{periodo}</b>", meta_style_l), Paragraph(f"Gerado em: <b>{gerado_em}</b>", meta_style_r)]],
+        colWidths=[8.5 * cm, 8.5 * cm],
+    )
+    meta_table.setStyle(TableStyle([("PADDING", (0, 0), (-1, -1), 2)]))
+    story.append(meta_table)
+    story.append(Spacer(1, 14))
+
+    story.append(Paragraph("RESUMO FINANCEIRO", section_style))
+    resumo_data = [
+        ["", "Liquidado", "Previsto", "Total"],
+        ["Entradas", _fmt_money(dre.entradas_liquidadas), _fmt_money(dre.entradas_previstas), _fmt_money(dre.entradas_total)],
+        ["Saidas", _fmt_money(dre.saidas_liquidadas), _fmt_money(dre.saidas_previstas), _fmt_money(dre.saidas_total)],
+        ["Resultado", _fmt_money(dre.resultado_liquidado), _fmt_money(dre.resultado_previsto), _fmt_money(dre.resultado_total)],
+    ]
+    resumo_table = Table(resumo_data, colWidths=[5 * cm, 4 * cm, 4 * cm, 4 * cm])
+    resumo_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), medium_blue),
+                ("TEXTCOLOR", (0, 0), (-1, 0), white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+                ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                ("BACKGROUND", (0, 1), (-1, 1), light_green),
+                ("TEXTCOLOR", (1, 1), (-1, 1), green),
+                ("BACKGROUND", (0, 2), (-1, 2), light_red),
+                ("TEXTCOLOR", (1, 2), (-1, 2), red),
+                ("BACKGROUND", (0, 3), (-1, 3), resultado_bg),
+                ("TEXTCOLOR", (1, 3), (-1, 3), resultado_color),
+                ("FONTNAME", (0, 3), (-1, 3), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 0.5, border),
+                ("PADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
+    story.append(resumo_table)
+    story.append(Spacer(1, 20))
+
+    story.append(Paragraph("ANALISE POR CATEGORIA - ENTRADAS", section_style))
+    entradas_data = [["Categoria", "Valor", "% do Total"]]
+    for item in dre.entradas_por_categoria:
+        entradas_data.append([item.categoria_nome, _fmt_money(item.valor), _fmt_pct(item.valor, dre.entradas_total)])
+    if not dre.entradas_por_categoria:
+        entradas_data.append(["Sem entradas no periodo.", "", ""])
+    entradas_data.append(["TOTAL ENTRADAS", _fmt_money(dre.entradas_total), "100,0%"])
+    story.append(cat_table(entradas_data, green, green, light_green))
+    story.append(Spacer(1, 20))
+
+    story.append(Paragraph("ANALISE POR CATEGORIA - SAIDAS", section_style))
+    saidas_data = [["Categoria", "Valor", "% do Total"]]
+    for item in dre.saidas_por_categoria:
+        saidas_data.append([item.categoria_nome, _fmt_money(item.valor), _fmt_pct(item.valor, dre.saidas_total)])
+    if not dre.saidas_por_categoria:
+        saidas_data.append(["Sem saidas no periodo.", "", ""])
+    saidas_data.append(["TOTAL SAIDAS", _fmt_money(dre.saidas_total), "100,0%"])
+    story.append(cat_table(saidas_data, red, red, light_red))
+    story.append(Spacer(1, 20))
+
+    result_data = [
+        ["Total de Entradas", _fmt_money(dre.entradas_total)],
+        ["Total de Saidas", _fmt_money(dre.saidas_total)],
+        ["RESULTADO LIQUIDO", _fmt_money(dre.resultado_total)],
+    ]
+    res_table = Table(result_data, colWidths=[11 * cm, 6 * cm])
+    res_table.setStyle(
+        TableStyle(
+            [
+                ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                ("TEXTCOLOR", (1, 0), (1, 0), green),
+                ("TEXTCOLOR", (1, 1), (1, 1), red),
+                ("FONTNAME", (0, 2), (-1, 2), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 2), (-1, 2), 12),
+                ("BACKGROUND", (0, 2), (-1, 2), resultado_bg),
+                ("TEXTCOLOR", (0, 2), (-1, 2), resultado_color),
+                ("BACKGROUND", (0, 0), (-1, 0), light_green),
+                ("BACKGROUND", (0, 1), (-1, 1), light_red),
+                ("GRID", (0, 0), (-1, -1), 0.5, border),
+                ("PADDING", (0, 0), (-1, -1), 10),
+            ]
+        )
+    )
+    story.append(res_table)
+    story.append(Spacer(1, 24))
+
+    footer_table = Table(
+        [[Paragraph(f"Relatorio gerado automaticamente pelo sistema Financas Cristas - {mes_nome} {dre.ano}", footer_style)]],
+        colWidths=[17 * cm],
+    )
+    footer_table.setStyle(TableStyle([("TOPPADDING", (0, 0), (-1, -1), 10), ("LINEABOVE", (0, 0), (-1, 0), 0.5, border)]))
+    story.append(footer_table)
+
+    doc.build(story)
+    return buffer.getvalue()
 
 
 def _calcular_dre_mensal(db: Session, user_id: int, mes: int, ano: int) -> DREMensalResponse:
@@ -235,54 +454,56 @@ def exportar_dre_mensal_pdf(
     if not dre:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Relatorio nao encontrado")
 
-    now = date.today().isoformat()
-    separator = "-" * 90
-
-    lines = [
-        "FINANCAS CRISTAIS - RELATORIO GERENCIAL",
-        "DRE MENSAL",
-        separator,
-        f"Periodo: {dre.mes:02d}/{dre.ano}    Gerado em: {now}",
-        separator,
-        "",
-        "RESUMO FINANCEIRO",
-        _pad_row("Entradas liquidadas", _fmt_money(dre.entradas_liquidadas)),
-        _pad_row("Entradas previstas", _fmt_money(dre.entradas_previstas)),
-        _pad_row("Entradas total", _fmt_money(dre.entradas_total)),
-        _pad_row("Saidas liquidadas", _fmt_money(dre.saidas_liquidadas)),
-        _pad_row("Saidas previstas", _fmt_money(dre.saidas_previstas)),
-        _pad_row("Saidas total", _fmt_money(dre.saidas_total)),
-        _pad_row("Resultado liquidado", _fmt_money(dre.resultado_liquidado)),
-        _pad_row("Resultado previsto", _fmt_money(dre.resultado_previsto)),
-        _pad_row("Resultado total", _fmt_money(dre.resultado_total)),
-        "",
-        "ANALISE POR CATEGORIA - ENTRADAS",
-        separator,
-        _pad_row("Categoria", "Valor"),
-        separator,
-    ]
-    if dre.entradas_por_categoria:
-        for item in dre.entradas_por_categoria:
-            lines.append(_pad_row(item.categoria_nome, _fmt_money(item.valor)))
+    if REPORTLAB_AVAILABLE:
+        pdf_content = _build_reportlab_pdf(dre)
     else:
-        lines.append("Sem entradas no periodo.")
-
-    lines.extend(
-        [
+        now = date.today().isoformat()
+        separator = "-" * 90
+        lines = [
+            "FINANCAS CRISTAS - RELATORIO GERENCIAL",
+            "DRE MENSAL",
+            separator,
+            f"Periodo: {dre.mes:02d}/{dre.ano}    Gerado em: {now}",
+            separator,
             "",
-            "ANALISE POR CATEGORIA - SAIDAS",
+            "RESUMO FINANCEIRO",
+            _pad_row("Entradas liquidadas", _fmt_money(dre.entradas_liquidadas)),
+            _pad_row("Entradas previstas", _fmt_money(dre.entradas_previstas)),
+            _pad_row("Entradas total", _fmt_money(dre.entradas_total)),
+            _pad_row("Saidas liquidadas", _fmt_money(dre.saidas_liquidadas)),
+            _pad_row("Saidas previstas", _fmt_money(dre.saidas_previstas)),
+            _pad_row("Saidas total", _fmt_money(dre.saidas_total)),
+            _pad_row("Resultado liquidado", _fmt_money(dre.resultado_liquidado)),
+            _pad_row("Resultado previsto", _fmt_money(dre.resultado_previsto)),
+            _pad_row("Resultado total", _fmt_money(dre.resultado_total)),
+            "",
+            "ANALISE POR CATEGORIA - ENTRADAS",
             separator,
             _pad_row("Categoria", "Valor"),
             separator,
         ]
-    )
-    if dre.saidas_por_categoria:
-        for item in dre.saidas_por_categoria:
-            lines.append(_pad_row(item.categoria_nome, _fmt_money(item.valor)))
-    else:
-        lines.append("Sem saidas no periodo.")
+        if dre.entradas_por_categoria:
+            for item in dre.entradas_por_categoria:
+                lines.append(_pad_row(item.categoria_nome, _fmt_money(item.valor)))
+        else:
+            lines.append("Sem entradas no periodo.")
 
-    pdf_content = _build_simple_pdf(lines)
+        lines.extend(
+            [
+                "",
+                "ANALISE POR CATEGORIA - SAIDAS",
+                separator,
+                _pad_row("Categoria", "Valor"),
+                separator,
+            ]
+        )
+        if dre.saidas_por_categoria:
+            for item in dre.saidas_por_categoria:
+                lines.append(_pad_row(item.categoria_nome, _fmt_money(item.valor)))
+        else:
+            lines.append("Sem saidas no periodo.")
+        pdf_content = _build_simple_pdf(lines)
+
     filename = f"dre_mensal_{ano}_{mes:02d}.pdf"
     return Response(
         content=pdf_content,

@@ -135,6 +135,15 @@ const getCategoriaInfo = (categoriaId: number) => {
   }
 }
 
+const percentualOrcamento = (orcamento: Orcamento): number => {
+  if (!orcamento.valor_planejado || orcamento.valor_planejado <= 0) return 0
+  return (orcamento.valor_gasto / orcamento.valor_planejado) * 100
+}
+
+const percentualBarra = (orcamento: Orcamento): number => {
+  return Math.min(Math.max(percentualOrcamento(orcamento), 0), 100)
+}
+
 const getMeses = () => [
   { valor: 1, label: 'Janeiro' },
   { valor: 2, label: 'Fevereiro' },
@@ -311,17 +320,16 @@ onMounted(() => {
               <div class="flex justify-between items-center mb-2">
                 <span class="text-xs font-semibold">Progresso</span>
                 <span class="text-xs font-bold">
-                  {{ ((orcamento.valor_gasto / orcamento.valor_planejado) * 100).toFixed(1) }}%
+                  {{ percentualOrcamento(orcamento).toFixed(1) }}%
                 </span>
               </div>
-              <progress
-                class="progress h-3 w-full"
-                :value="orcamento.valor_gasto"
-                :max="orcamento.valor_planejado"
-                :style="{ 
-                  accentColor: orcamento.valor_gasto > orcamento.valor_planejado ? '#ef4444' : '#10b981'
-                }"
-              ></progress>
+              <div class="h-3 w-full rounded-full bg-gray-200 overflow-hidden">
+                <div
+                  class="h-full transition-all duration-300"
+                  :class="orcamento.valor_gasto > orcamento.valor_planejado ? 'bg-error' : 'bg-success'"
+                  :style="{ width: `${percentualBarra(orcamento)}%` }"
+                ></div>
+              </div>
             </div>
 
             <!-- Alert se exceder -->

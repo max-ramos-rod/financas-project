@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
-import type { Conta, Transacao, Meta, Categoria } from '@/types'
+import type { Conta, Transacao, Meta, Categoria, Orcamento } from '@/types'
 import { parseDate } from '@/utils/date'
 
 import FluxoFinanceiroChart from '@/components/charts/FluxoFinanceiroChart.vue'
 import DespesasCategoriaChart from '@/components/charts/DespesasCategoriaChart.vue'
+import OrcamentoComparativoChart from '@/components/charts/OrcamentoComparativoChart.vue'
 
 // State
 const contas = ref<Conta[]>([])
 const transacoes = ref<Transacao[]>([])
 const metas = ref<Meta[]>([])
 const categorias = ref<Categoria[]>([])
+const orcamentos = ref<Orcamento[]>([])
 const loading = ref(true)
 
 // =========================
@@ -20,6 +22,7 @@ const loading = ref(true)
 
 const mesAtual = new Date().getMonth() + 1
 const anoAtual = new Date().getFullYear()
+const mesOrcamentoSelecionado = ref(mesAtual)
 
 const transacoesMesAtual = computed(() => {
   return transacoes.value.filter(t => {
@@ -91,6 +94,42 @@ const despesasPorCategoria = computed(() => {
     .map(([nome, valor]) => ({ nome, valor }))
     .sort((a, b) => b.valor - a.valor)
 })
+
+const valorEfetivoTransacao = (t: Transacao) =>
+  Math.max(0, t.valor + (t.valor_multa || 0) + (t.valor_juros || 0) - (t.valor_desconto || 0))
+
+const orcamentosMesSelecionado = computed(() =>
+  orcamentos.value.filter(o => o.mes === mesOrcamentoSelecionado.value && o.ano === anoAtual)
+)
+
+const orcamentoComparativo = computed(() => {
+  return orcamentosMesSelecionado.value
+    .map((o) => {
+      const gasto = transacoes.value
+        .filter(
+          (t) =>
+            t.tipo === 'saida' &&
+            t.categoria_id === o.categoria_id &&
+            parseDate(t.data).getMonth() + 1 === mesOrcamentoSelecionado.value &&
+            parseDate(t.data).getFullYear() === anoAtual &&
+            t.status_liquidacao !== 'cancelado'
+        )
+        .reduce((sum, t) => sum + valorEfetivoTransacao(t), 0)
+
+      const categoriaNome = categorias.value.find(c => c.id === o.categoria_id)?.nome || `Categoria ${o.categoria_id}`
+      return {
+        categoria: categoriaNome,
+        planejado: o.valor_planejado,
+        gasto,
+        estourado: gasto > o.valor_planejado,
+      }
+    })
+    .sort((a, b) => (b.gasto / (b.planejado || 1)) - (a.gasto / (a.planejado || 1)))
+})
+
+const orcamentosEstourados = computed(() =>
+  orcamentoComparativo.value.filter(item => item.estourado)
+)
 
 // =========================
 // 🔥 TOP DESPESAS
@@ -176,18 +215,20 @@ const fetchDados = async () => {
   loading.value = true
 
   try {
-    const [contasRes, transacoesRes, metasRes, categoriasRes] =
+    const [contasRes, transacoesRes, metasRes, categoriasRes, orcamentosRes] =
       await Promise.all([
         api.get('/contas'),
         api.get('/transacoes'),
         api.get('/metas'),
-        api.get('/categorias')
+        api.get('/categorias'),
+        api.get('/orcamentos')
       ])
 
     contas.value = contasRes.data
     transacoes.value = transacoesRes.data
     metas.value = metasRes.data
     categorias.value = categoriasRes.data
+    orcamentos.value = orcamentosRes.data
 
   } catch (error) {
     console.error('Erro ao carregar dashboard:', error)
@@ -258,6 +299,52 @@ onMounted(fetchDados)
           </h3>
 
           <DespesasCategoriaChart :dados="despesasPorCategoria" />
+
+        </div>
+      </div>
+
+      <!-- ORCAMENTO X GASTO (MES ATUAL) -->
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body">
+
+          <h3 class="text-sm uppercase opacity-60 tracking-wide">
+            Orcamento x Gasto (Mes Atual)
+          </h3>
+
+          <div class="mt-3 mb-2 w-full max-w-xs">
+            <label class="label py-1"><span class="label-text text-xs">Mes de referencia</span></label>
+            <select v-model.number="mesOrcamentoSelecionado" class="select select-bordered select-sm w-full">
+              <option :value="1">Jan</option>
+              <option :value="2">Fev</option>
+              <option :value="3">Mar</option>
+              <option :value="4">Abr</option>
+              <option :value="5">Mai</option>
+              <option :value="6">Jun</option>
+              <option :value="7">Jul</option>
+              <option :value="8">Ago</option>
+              <option :value="9">Set</option>
+              <option :value="10">Out</option>
+              <option :value="11">Nov</option>
+              <option :value="12">Dez</option>
+            </select>
+          </div>
+
+          <div v-if="orcamentoComparativo.length === 0" class="text-sm opacity-50 py-4 text-center">
+            Nenhum orcamento cadastrado para o mes selecionado.
+          </div>
+
+          <template v-else>
+            <OrcamentoComparativoChart :dados="orcamentoComparativo" />
+
+            <div v-if="orcamentosEstourados.length" class="mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
+              <p class="text-sm font-semibold text-red-700">Atencao: orcamentos estourados</p>
+              <ul class="mt-2 space-y-1 text-sm text-red-700">
+                <li v-for="item in orcamentosEstourados" :key="item.categoria">
+                  {{ item.categoria }}: {{ formatarMoeda(item.gasto - item.planejado) }} acima do planejado
+                </li>
+              </ul>
+            </div>
+          </template>
 
         </div>
       </div>

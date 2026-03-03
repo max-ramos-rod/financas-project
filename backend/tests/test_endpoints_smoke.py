@@ -203,3 +203,62 @@ def test_orcamentos_crud_smoke(client):
 
     delete_response = client.delete(f"/api/v1/orcamentos/{orcamento_id}", headers=headers)
     assert delete_response.status_code == 204
+
+
+def test_orcamento_lista_recalcula_valor_gasto(client):
+    headers = _auth_headers(client)
+    hoje = date.today()
+    data_iso = hoje.isoformat()
+
+    conta_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Conta Orcamento",
+            "tipo": "conta_corrente",
+            "saldo": 1000.0,
+            "cor": "#10B981",
+            "ativa": True,
+        },
+    )
+    assert conta_response.status_code == 201
+    conta_id = conta_response.json()["id"]
+
+    categoria_id = 999
+    transacao_response = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_id,
+            "categoria_id": categoria_id,
+            "descricao": "Despesa para orcamento",
+            "valor": 200.0,
+            "valor_multa": 10.0,
+            "valor_juros": 5.0,
+            "valor_desconto": 5.0,
+            "tipo": "saida",
+            "data": data_iso,
+            "status_liquidacao": "previsto",
+        },
+    )
+    assert transacao_response.status_code == 201
+
+    orcamento_response = client.post(
+        "/api/v1/orcamentos",
+        headers=headers,
+        json={
+            "categoria_id": categoria_id,
+            "mes": hoje.month,
+            "ano": hoje.year,
+            "valor_planejado": 1000.0,
+        },
+    )
+    assert orcamento_response.status_code == 201
+
+    lista = client.get(
+        f"/api/v1/orcamentos?mes={hoje.month}&ano={hoje.year}",
+        headers=headers,
+    )
+    assert lista.status_code == 200
+    assert len(lista.json()) >= 1
+    assert lista.json()[0]["valor_gasto"] == 210.0

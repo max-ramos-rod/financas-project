@@ -9,6 +9,16 @@ const props = defineProps<{
   dados: { nome: string; valor: number }[]
 }>()
 
+const formatarMoedaCompacta = (valor: number): string =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(valor)
+
+const chartHeight = computed(() => Math.max(300, props.dados.length * 46))
+
 const series = computed(() => [
   {
     name: 'Despesas',
@@ -42,7 +52,11 @@ const chartOptions = computed(() => ({
 
   xaxis: {
     categories: props.dados.map(d => d.nome),
-    labels: { style: { colors: '#9CA3AF' } },
+    labels: {
+      formatter: (value: number) => formatarMoedaCompacta(value),
+      style: { colors: '#9CA3AF' }
+    },
+    tickAmount: 4,
     axisBorder: { show: false },
     axisTicks: { show: false }
   },
@@ -52,16 +66,33 @@ const chartOptions = computed(() => ({
   },
 
   tooltip: {
-    theme: 'dark'
+    theme: 'dark',
+    x: {
+      formatter: (_: unknown, opts: any) => props.dados[opts.dataPointIndex]?.nome || ''
+    },
+    y: {
+      formatter: (value: number) =>
+        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+    }
   },
 
-  colors: ['#7C3AED']
+  colors: ['#7C3AED'],
+
+  responsive: [
+    {
+      breakpoint: 1024,
+      options: {
+        plotOptions: { bar: { barHeight: '62%' } },
+        xaxis: { tickAmount: 3 }
+      }
+    }
+  ]
 }))
 </script>
 
 <template>
   <ApexChart
-    height="300"
+    :height="chartHeight"
     type="bar"
     :options="chartOptions"
     :series="series"
