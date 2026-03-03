@@ -9,15 +9,16 @@ const props = defineProps<{
   dados: { nome: string; valor: number }[]
 }>()
 
-const formatarMoedaCompacta = (valor: number): string =>
+const formatarMoedaEixo = (valor: number): string =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-    notation: 'compact',
-    maximumFractionDigits: 1,
   }).format(valor)
 
-const chartHeight = computed(() => Math.max(300, props.dados.length * 46))
+const chartHeight = computed(() => {
+  const dinamico = props.dados.length * 34
+  return Math.min(360, Math.max(260, dinamico))
+})
 
 const series = computed(() => [
   {
@@ -30,7 +31,8 @@ const chartOptions = computed(() => ({
   chart: {
     type: 'bar',
     background: 'transparent',
-    toolbar: { show: false }
+    toolbar: { show: false },
+    animations: { enabled: false }
   },
 
   theme: { mode: 'dark' },
@@ -39,7 +41,7 @@ const chartOptions = computed(() => ({
     bar: {
       horizontal: true,
       borderRadius: 6,
-      barHeight: '70%'
+      barHeight: '48%'
     }
   },
 
@@ -52,11 +54,13 @@ const chartOptions = computed(() => ({
 
   xaxis: {
     categories: props.dados.map(d => d.nome),
+    min: 0,
+    tickAmount: 4,
     labels: {
-      formatter: (value: number) => formatarMoedaCompacta(value),
+      show: true,
+      formatter: (value: number) => Number(value).toLocaleString('pt-BR'),
       style: { colors: '#9CA3AF' }
     },
-    tickAmount: 4,
     axisBorder: { show: false },
     axisTicks: { show: false }
   },
@@ -71,8 +75,7 @@ const chartOptions = computed(() => ({
       formatter: (_: unknown, opts: any) => props.dados[opts.dataPointIndex]?.nome || ''
     },
     y: {
-      formatter: (value: number) =>
-        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+      formatter: (value: number) => formatarMoedaEixo(value)
     }
   },
 
@@ -82,8 +85,15 @@ const chartOptions = computed(() => ({
     {
       breakpoint: 1024,
       options: {
-        plotOptions: { bar: { barHeight: '62%' } },
+        plotOptions: { bar: { barHeight: '42%' } },
         xaxis: { tickAmount: 3 }
+      }
+    },
+    {
+      breakpoint: 640,
+      options: {
+        plotOptions: { bar: { barHeight: '36%' } },
+        xaxis: { tickAmount: 2 }
       }
     }
   ]

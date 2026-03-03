@@ -26,18 +26,31 @@ const series = computed(() => [
   }
 ])
 
+const chartHeight = computed(() => {
+  const dinamico = props.dados.length * 44
+  return Math.min(340, Math.max(220, dinamico))
+})
+
+const maxValor = computed(() => {
+  const valores = props.dados.flatMap(d => [d.planejado, d.gasto])
+  const max = Math.max(...valores, 0)
+  const magnitude = Math.pow(10, Math.floor(Math.log10(max || 1)))
+  return Math.ceil(max / magnitude) * magnitude
+})
+
 const chartOptions = computed(() => ({
   chart: {
     type: 'bar',
     background: 'transparent',
-    toolbar: { show: false }
+    toolbar: { show: false },
+    animations: { enabled: false }
   },
   theme: { mode: 'dark' },
   plotOptions: {
     bar: {
-      horizontal: false,
+      horizontal: true,
       borderRadius: 6,
-      columnWidth: '38%'
+      barHeight: '42%'
     }
   },
   dataLabels: { enabled: false },
@@ -47,15 +60,19 @@ const chartOptions = computed(() => ({
   },
   xaxis: {
     categories: props.dados.map(d => d.categoria),
-    labels: { style: { colors: '#9CA3AF' }, rotate: -25, trim: true, hideOverlappingLabels: true },
+    min: 0,
+    max: maxValor.value,
+    tickAmount: 4,
+    labels: {
+      show: true,
+      formatter: (value: number) => Number(value).toLocaleString('pt-BR'),
+      style: { colors: '#9CA3AF' }
+    },
     axisBorder: { show: false },
     axisTicks: { show: false }
   },
   yaxis: {
-    labels: {
-      formatter: (value: number) => formatarMoeda(value),
-      style: { colors: '#D1D5DB' }
-    }
+    labels: { style: { colors: '#D1D5DB' } }
   },
   legend: {
     position: 'bottom',
@@ -67,21 +84,20 @@ const chartOptions = computed(() => ({
       formatter: (value: number) => formatarMoeda(value)
     }
   },
-  colors: ['#3B82F6', '#EF4444']
-  ,
+  colors: ['#3B82F6', '#EF4444'],
   responsive: [
     {
       breakpoint: 1024,
       options: {
-        plotOptions: { bar: { columnWidth: '55%' } },
-        xaxis: { labels: { rotate: -40 } }
+        plotOptions: { bar: { barHeight: '38%' } },
+        xaxis: { tickAmount: 3, max: maxValor.value }
       }
     },
     {
       breakpoint: 640,
       options: {
-        plotOptions: { bar: { columnWidth: '68%' } },
-        xaxis: { labels: { rotate: -50 } }
+        plotOptions: { bar: { barHeight: '34%' } },
+        xaxis: { tickAmount: 2, max: maxValor.value }
       }
     }
   ]
@@ -90,7 +106,7 @@ const chartOptions = computed(() => ({
 
 <template>
   <ApexChart
-    height="360"
+    :height="chartHeight"
     type="bar"
     :options="chartOptions"
     :series="series"

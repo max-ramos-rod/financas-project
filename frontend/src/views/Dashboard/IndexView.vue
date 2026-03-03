@@ -24,6 +24,13 @@ const mesAtual = new Date().getMonth() + 1
 const anoAtual = new Date().getFullYear()
 const mesOrcamentoSelecionado = ref(mesAtual)
 
+const nomesMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+const getMesAnoOffset = (mesBase: number, anoBase: number, offset: number) => {
+  const data = new Date(anoBase, mesBase - 1 + offset, 1)
+  return { mes: data.getMonth() + 1, ano: data.getFullYear() }
+}
+
 const transacoesMesAtual = computed(() => {
   return transacoes.value.filter(t => {
     const data = parseDate(t.data)
@@ -178,6 +185,55 @@ const fluxoFinanceiro = computed(() => {
   return { entradas, saidas }
 })
 
+const fluxoFinanceiroPorMes = (mes: number, ano: number) => {
+  const entradas = { recebidas: 0, previstas: 0 }
+  const saidas = { pagas: 0, previstas: 0, cartao: 0 }
+
+  for (const t of transacoes.value) {
+    const data = parseDate(t.data)
+    if (data.getMonth() + 1 !== mes || data.getFullYear() !== ano || t.status_liquidacao === 'cancelado') continue
+
+    const valor = t.valor
+
+    if (t.tipo === 'entrada') {
+      if (t.status_liquidacao === 'liquidado') entradas.recebidas += valor
+      else entradas.previstas += valor
+    }
+
+    if (t.tipo === 'saida') {
+      const conta = contas.value.find(c => c.id === t.conta_id)
+      if (conta?.tipo === 'cartao_credito') {
+        saidas.cartao += valor
+        continue
+      }
+      if (t.status_liquidacao === 'liquidado') saidas.pagas += valor
+      else saidas.previstas += valor
+    }
+  }
+
+  return { entradas, saidas }
+}
+
+const fluxoFinanceiroComparativo = computed(() => {
+  const refs = [
+    getMesAnoOffset(mesAtual, anoAtual, -1),
+    getMesAnoOffset(mesAtual, anoAtual, 0),
+    getMesAnoOffset(mesAtual, anoAtual, 1),
+  ]
+
+  return refs.map(({ mes, ano }) => {
+    const fluxo = fluxoFinanceiroPorMes(mes, ano)
+    return {
+      label: `${nomesMeses[mes - 1]}/${ano.toString().slice(-2)}`,
+      recebidas: fluxo.entradas.recebidas,
+      aReceber: fluxo.entradas.previstas,
+      pagas: fluxo.saidas.pagas,
+      aPagar: fluxo.saidas.previstas,
+      cartao: fluxo.saidas.cartao,
+    }
+  })
+})
+
 // =========================
 // 💳 CARTÃO EM ABERTO
 // =========================
@@ -276,15 +332,11 @@ onMounted(fetchDados)
         <div class="card-body">
 
           <h3 class="text-sm uppercase opacity-60 tracking-wide">
-            Fluxo Financeiro do Mês
+            Fluxo Financeiro (Mes Anterior / Atual / Proximo)
           </h3>
 
           <FluxoFinanceiroChart
-            :recebidas="fluxoFinanceiro.entradas.recebidas"
-            :aReceber="fluxoFinanceiro.entradas.previstas"
-            :pagas="fluxoFinanceiro.saidas.pagas"
-            :aPagar="fluxoFinanceiro.saidas.previstas"
-            :cartao="fluxoFinanceiro.saidas.cartao"
+            :dadosMeses="fluxoFinanceiroComparativo"
           />
 
         </div>
@@ -462,3 +514,4 @@ onMounted(fetchDados)
     </div>
   </div>
 </template>
+

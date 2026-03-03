@@ -4,20 +4,24 @@ import { computed, defineAsyncComponent } from 'vue'
 const ApexChart = defineAsyncComponent(() =>
   import('vue3-apexcharts')
 )
+
 const props = defineProps<{
-  recebidas: number
-  aReceber: number
-  pagas: number
-  aPagar: number
-  cartao: number
+  dadosMeses: {
+    label: string
+    recebidas: number
+    aReceber: number
+    pagas: number
+    aPagar: number
+    cartao: number
+  }[]
 }>()
 
 const series = computed(() => [
-  { name: 'Recebidas', data: [props.recebidas] },
-  { name: 'A Receber', data: [props.aReceber] },
-  { name: 'Pagas', data: [props.pagas] },
-  { name: 'A Pagar', data: [props.aPagar] },
-  { name: 'Cartão', data: [props.cartao] }
+  { name: 'Recebidas', data: props.dadosMeses.map(item => item.recebidas) },
+  { name: 'A Receber', data: props.dadosMeses.map(item => item.aReceber) },
+  { name: 'Pagas', data: props.dadosMeses.map(item => item.pagas) },
+  { name: 'A Pagar', data: props.dadosMeses.map(item => item.aPagar) },
+  { name: 'Cartao', data: props.dadosMeses.map(item => item.cartao) }
 ])
 
 const formatarMoeda = (valor: number) =>
@@ -39,7 +43,7 @@ const chartOptions = computed(() => ({
   plotOptions: {
     bar: {
       borderRadius: 6,
-      columnWidth: '50%'
+      columnWidth: '40%'
     }
   },
 
@@ -51,7 +55,7 @@ const chartOptions = computed(() => ({
   },
 
   xaxis: {
-    categories: ['Fluxo do Mês'],
+    categories: props.dadosMeses.map(item => item.label),
     labels: { style: { colors: '#9CA3AF' } },
     axisBorder: { show: false },
     axisTicks: { show: false }
@@ -82,6 +86,25 @@ const chartOptions = computed(() => ({
     '#64748B',
     '#F59E0B',
     '#EF4444'
+  ],
+
+  responsive: [
+    {
+      breakpoint: 1024,
+      options: {
+        plotOptions: {
+          bar: { columnWidth: '48%' }
+        }
+      }
+    },
+    {
+      breakpoint: 640,
+      options: {
+        plotOptions: {
+          bar: { columnWidth: '58%' }
+        }
+      }
+    }
   ]
 }))
 </script>
