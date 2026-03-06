@@ -15,6 +15,7 @@ const categorias = ref<Categoria[]>([])
 const filtrosPadrao = () => ({
   tipo: 'todas' as 'todas' | 'entrada' | 'saida',
   status_liquidacao: 'todos' as 'todos' | 'previsto' | 'liquidado' | 'atrasado' | 'cancelado',
+  fixa: 'todas' as 'todas' | 'fixas' | 'nao_fixas',
   conta_id: null as number | null,
   categoria_id: null as number | null,
   mes: new Date().getMonth() + 1,
@@ -43,6 +44,10 @@ const aplicarFiltrosDaQuery = () => {
       q.status_liquidacao === 'cancelado'
         ? q.status_liquidacao
         : 'todos',
+    fixa:
+      q.fixa === 'fixas' || q.fixa === 'nao_fixas'
+        ? q.fixa
+        : 'todas',
     conta_id: parseNumberQuery(q.conta_id),
     categoria_id: parseNumberQuery(q.categoria_id),
     mes: parseNumberQuery(q.mes) ?? mesAtual,
@@ -54,6 +59,7 @@ const aplicarFiltrosDaQuery = () => {
 const queryAtualDosFiltros = () => ({
   tipo: filtros.value.tipo,
   status_liquidacao: filtros.value.status_liquidacao,
+  fixa: filtros.value.fixa !== 'todas' ? filtros.value.fixa : undefined,
   conta_id: filtros.value.conta_id != null ? String(filtros.value.conta_id) : undefined,
   categoria_id: filtros.value.categoria_id != null ? String(filtros.value.categoria_id) : undefined,
   mes: filtros.value.mes != null ? String(filtros.value.mes) : undefined,
@@ -86,10 +92,16 @@ const transacoesFiltradas = computed(() => {
   if (filtros.value.status_liquidacao !== 'todos') {
     resultado = resultado.filter((t) => (t.status_liquidacao || 'liquidado') === filtros.value.status_liquidacao)
   }
+  if (filtros.value.fixa !== 'todas') {
+    const deveSerFixa = filtros.value.fixa === 'fixas'
+    resultado = resultado.filter((t) => Boolean(t.fixa) === deveSerFixa)
+  }
   if (filtros.value.conta_id) {
     resultado = resultado.filter((t) => t.conta_id === filtros.value.conta_id)
   }
-  if (filtros.value.categoria_id) {
+  if (filtros.value.categoria_id === -1) {
+    resultado = resultado.filter((t) => t.categoria_id == null)
+  } else if (filtros.value.categoria_id) {
     resultado = resultado.filter((t) => t.categoria_id === filtros.value.categoria_id)
   }
 
@@ -283,6 +295,11 @@ onMounted(async () => {
                   <option value="atrasado">Atrasados</option>
                   <option value="cancelado">Cancelados</option>
                 </select>
+                <select v-model="filtros.fixa" class="select select-bordered">
+                  <option value="todas">Fixas e nao fixas</option>
+                  <option value="fixas">Apenas fixas</option>
+                  <option value="nao_fixas">Apenas nao fixas</option>
+                </select>
                 <select v-model.number="filtros.mes" class="select select-bordered">
                   <option :value="null">Todos meses</option>
                   <option :value="1">Jan</option><option :value="2">Fev</option><option :value="3">Mar</option><option :value="4">Abr</option>
@@ -296,6 +313,7 @@ onMounted(async () => {
                 </select>
                 <select v-model.number="filtros.categoria_id" class="select select-bordered lg:col-span-2">
                   <option :value="null">Todas categorias</option>
+                  <option :value="-1">Sem categoria</option>
                   <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.nome }}</option>
                 </select>
               </div>
@@ -323,6 +341,11 @@ onMounted(async () => {
                 <option value="atrasado">Atrasados</option>
                 <option value="cancelado">Cancelados</option>
               </select>
+              <select v-model="filtros.fixa" class="select select-bordered">
+                <option value="todas">Fixas e nao fixas</option>
+                <option value="fixas">Apenas fixas</option>
+                <option value="nao_fixas">Apenas nao fixas</option>
+              </select>
               <select v-model.number="filtros.mes" class="select select-bordered">
                 <option :value="null">Todos meses</option>
                 <option :value="1">Jan</option><option :value="2">Fev</option><option :value="3">Mar</option><option :value="4">Abr</option>
@@ -336,6 +359,7 @@ onMounted(async () => {
               </select>
               <select v-model.number="filtros.categoria_id" class="select select-bordered lg:col-span-2">
                 <option :value="null">Todas categorias</option>
+                <option :value="-1">Sem categoria</option>
                 <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.nome }}</option>
               </select>
             </div>
