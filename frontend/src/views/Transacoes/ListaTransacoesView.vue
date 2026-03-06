@@ -173,7 +173,10 @@ const estaAtrasada = (t: Transacao) => {
 const statusLabel = (t: Transacao) => {
   const s = t.status_liquidacao || 'liquidado'
   if (s === 'liquidado') return t.tipo === 'entrada' ? 'Recebido' : 'Pago'
-  if (s === 'previsto') return t.tipo === 'entrada' ? 'Previsto' : 'A pagar'
+  if (s === 'previsto') {
+    if (t.tipo === 'entrada') return 'Previsto'
+    return isContaCartaoCredito(t.conta_id) ? 'Fatura' : 'A pagar'
+  }
   if (s === 'atrasado') return 'Atrasado'
   return 'Cancelado'
 }
@@ -220,6 +223,10 @@ const limparFiltros = () => {
   filtros.value = filtrosPadrao()
 }
 
+const setTipoAba = (tipo: 'todas' | 'entrada' | 'saida') => {
+  filtros.value.tipo = tipo
+}
+
 watch(
   filtros,
   () => {
@@ -248,6 +255,7 @@ onMounted(async () => {
     </div>
 
     <div v-else class="container mx-auto px-4 py-6 space-y-6">
+
 
       <div class="card bg-white shadow">
         <div class="card-body">
@@ -422,6 +430,14 @@ onMounted(async () => {
 
       <div class="card bg-white shadow">
         <div class="card-body">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="card-title">Lista de transacoes</h2>
+            <div role="tablist" class="tabs tabs-boxed">
+              <a role="tab" class="tab" :class="{ 'tab-active': filtros.tipo === 'todas' }" @click="setTipoAba('todas')">Todas</a>
+              <a role="tab" class="tab" :class="{ 'tab-active': filtros.tipo === 'entrada' }" @click="setTipoAba('entrada')">Entradas</a>
+              <a role="tab" class="tab" :class="{ 'tab-active': filtros.tipo === 'saida' }" @click="setTipoAba('saida')">Saidas</a>
+            </div>
+          </div>
           <div v-if="transacoesFiltradas.length === 0" class="text-center py-16">
             <div class="text-6xl mb-4">📭</div>
             <p class="text-3xl font-semibold mb-2">Nenhuma transacao encontrada</p>
@@ -440,10 +456,20 @@ onMounted(async () => {
               class="bg-base-100 rounded-xl p-4 hover:bg-base-200 transition-colors flex items-center justify-between gap-4"
             >
               <div>
-                <!-- Descrição -->
-                <p class="font-medium">
-                  {{ t.descricao }}
-                </p>
+                <!-- Descricao + tipo -->
+                <div class="flex items-center gap-2">
+                  <span
+                    :class="[
+                      'badge badge-sm badge-outline px-3 py-2 font-medium',
+                      t.tipo === 'entrada' ? 'badge-success' : 'badge-error'
+                    ]"
+                  >
+                    {{ t.tipo === 'entrada' ? 'Entrada' : 'Saida' }}
+                  </span>
+                  <p class="font-medium">
+                    {{ t.descricao }}
+                  </p>
+                </div>
 
                 <!-- Conta / categoria -->
                 <p class="text-xs opacity-50">
@@ -522,3 +548,12 @@ onMounted(async () => {
     </div>
   </div>
 </template>
+
+
+
+
+
+
+
+
+

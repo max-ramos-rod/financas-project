@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
@@ -50,7 +50,7 @@ const form = ref({
 
 const formCategoria = ref({
   nome: '',
-  icone: '📌',
+  icone: '??',
   cor: '#6B7280',
 })
 
@@ -169,7 +169,7 @@ const abrirModalCategoria = () => {
   erroCategoria.value = ''
   formCategoria.value = {
     nome: '',
-    icone: '📌',
+    icone: '??',
     cor: '#6B7280',
   }
   showCategoriaModal.value = true
@@ -186,7 +186,7 @@ const salvarCategoria = async () => {
   try {
     const payload = {
       nome: formCategoria.value.nome.trim(),
-      icone: formCategoria.value.icone.trim() || '📌',
+      icone: formCategoria.value.icone.trim() || '??',
       cor: formCategoria.value.cor,
       tipo: form.value.tipo,
     }
@@ -201,7 +201,37 @@ const salvarCategoria = async () => {
   }
 }
 
-const salvar = async () => {
+const resetarFormularioParaNovoCadastro = () => {
+  const primeiraAtiva = contas.value.find((c) => c.ativa)
+  form.value = {
+    conta_id: primeiraAtiva?.id ?? null,
+    categoria_id: null,
+    descricao: '',
+    valor: null,
+    tipo: 'saida',
+    data: formatDateForInput(new Date()),
+    data_vencimento: formatDateForInput(new Date()),
+    data_liquidacao: null,
+    status_liquidacao: 'previsto',
+    fixa: false,
+    recorrente: false,
+    confirmada: true,
+    tem_dizimo: false,
+    percentual_dizimo: 10.0,
+    parcelado: false,
+    total_parcelas: null,
+    e_emprestimo: false,
+    pessoa_emprestimo: '',
+    observacoes: '',
+    tags: '',
+    valor_multa: 0,
+    valor_juros: 0,
+    valor_desconto: 0,
+    meta_id: null,
+  }
+}
+
+const salvar = async (destino: 'lista' | 'continuar' = 'lista') => {
   if (!formValido.value) return
   loading.value = true
 
@@ -250,6 +280,11 @@ const salvar = async () => {
       await api.post('/transacoes', dados)
     }
 
+    if (destino === 'continuar' && !editando.value) {
+      resetarFormularioParaNovoCadastro()
+      return
+    }
+
     router.push({ path: '/transacoes', query: route.query })
   } catch (error: any) {
     alert(error?.response?.data?.detail || 'Erro ao salvar transacao')
@@ -287,7 +322,7 @@ onMounted(() => {
     </div>
 
     <div v-else class="container mx-auto px-4 py-8">
-      <form @submit.prevent="salvar" class="card bg-white shadow-lg max-w-3xl mx-auto">
+      <form @submit.prevent="salvar('lista')" class="card bg-white shadow-lg max-w-3xl mx-auto">
         <div class="card-body space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="md:col-span-2">
@@ -326,13 +361,13 @@ onMounted(() => {
             <div>
               <label class="label"><span class="label-text font-semibold">Status</span></label>
               <select v-model="form.status_liquidacao" class="select select-bordered w-full" :disabled="statusBloqueado">
-                <option value="previsto">{{ form.tipo === 'entrada' ? 'Previsto' : 'A pagar' }}</option>
+                <option value="previsto">{{ form.tipo === 'entrada' ? 'Previsto' : (isCartaoCredito ? 'Fatura' : 'A pagar') }}</option>
                 <option value="liquidado">{{ form.tipo === 'entrada' ? 'Recebido' : 'Pago' }}</option>
                 <option value="atrasado">Atrasado</option>
                 <option value="cancelado">Cancelado</option>
               </select>
               <p v-if="statusBloqueado" class="text-xs text-gray-500 mt-1">
-                Para cartao de credito, o status inicial e sempre A pagar.
+                Para cartao de credito, o status inicial e sempre Fatura.
               </p>
             </div>
             <div v-if="form.status_liquidacao === 'liquidado'">
@@ -410,7 +445,8 @@ onMounted(() => {
 
           <div class="card-actions justify-end border-t pt-4">
             <button type="button" @click="cancelar" class="btn btn-ghost" :disabled="loading">Cancelar</button>
-            <button type="submit" class="btn btn-primary" :disabled="!formValido || loading">{{ loading ? 'Salvando...' : 'Salvar' }}</button>
+            <button v-if="!editando" type="button" class="btn btn-outline" :disabled="!formValido || loading" @click="salvar('continuar')">{{ loading ? 'Salvando...' : 'Salvar e novo' }}</button>
+            <button type="button" class="btn btn-primary" :disabled="!formValido || loading" @click="salvar('lista')">{{ loading ? 'Salvando...' : (editando ? 'Salvar e sair' : 'Salvar e sair') }}</button>
           </div>
         </div>
       </form>
@@ -450,4 +486,8 @@ onMounted(() => {
     </form>
   </div>
 </template>
+
+
+
+
 
