@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
 import type { Categoria, Conta, Transacao } from '@/types'
 import { parseDate, formatDateBR, formatDateForInput } from '@/utils/date'
+import { TransacoesLoadControl } from './transacoesLoadControl'
+import { buscarTransacoesFiltradas, type FiltrosTransacoes } from './transacoesFetch'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,11 +13,13 @@ const loading = ref(true)
 const transacoes = ref<Transacao[]>([])
 const contas = ref<Conta[]>([])
 const categorias = ref<Categoria[]>([])
+const loadControl = new TransacoesLoadControl()
 
 const filtrosPadrao = () => ({
   tipo: 'todas' as 'todas' | 'entrada' | 'saida',
   status_liquidacao: 'todos' as 'todos' | 'previsto' | 'liquidado' | 'atrasado' | 'cancelado',
   fixa: 'todas' as 'todas' | 'fixas' | 'nao_fixas',
+  orcamento: 'todos' as 'todos' | 'fora' | 'dentro',
   valor_modo: 'todos' as 'todos' | 'igual' | 'gte' | 'lte',
   valor_ref: '',
   conta_id: null as number | null,
@@ -30,24 +34,6 @@ const filtros = ref(filtrosPadrao())
 const parseNumberQuery = (value: unknown): number | null => {
   if (typeof value !== 'string' || value.trim() === '') return null
   const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-const parseMoneyInput = (value: string): number | null => {
-  const raw = (value || '').trim()
-  if (!raw) return null
-
-  let normalized = raw.replace(/\s/g, '')
-  const hasComma = normalized.includes(',')
-  const hasDot = normalized.includes('.')
-
-  if (hasComma && hasDot) {
-    normalized = normalized.replace(/\./g, '').replace(',', '.')
-  } else if (hasComma) {
-    normalized = normalized.replace(',', '.')
-  }
-
-  const parsed = Number(normalized)
   return Number.isFinite(parsed) ? parsed : null
 }
 
@@ -68,6 +54,10 @@ const aplicarFiltrosDaQuery = () => {
       q.fixa === 'fixas' || q.fixa === 'nao_fixas'
         ? q.fixa
         : 'todas',
+    orcamento:
+      q.orcamento === 'fora' || q.orcamento === 'dentro'
+        ? q.orcamento
+        : 'todos',
     valor_modo:
       q.valor_modo === 'igual' || q.valor_modo === 'gte' || q.valor_modo === 'lte'
         ? q.valor_modo
@@ -85,6 +75,7 @@ const queryAtualDosFiltros = () => ({
   tipo: filtros.value.tipo,
   status_liquidacao: filtros.value.status_liquidacao,
   fixa: filtros.value.fixa !== 'todas' ? filtros.value.fixa : undefined,
+  orcamento: filtros.value.orcamento !== 'todos' ? filtros.value.orcamento : undefined,
   valor_modo: filtros.value.valor_modo !== 'todos' ? filtros.value.valor_modo : undefined,
   valor_ref: filtros.value.valor_ref.trim() || undefined,
   conta_id: filtros.value.conta_id != null ? String(filtros.value.conta_id) : undefined,
@@ -94,70 +85,27 @@ const queryAtualDosFiltros = () => ({
   busca: filtros.value.busca || undefined,
 })
 
-const fetchDados = async () => {
-  loading.value = true
-  try {
-    const [transacoesRes, contasRes, categoriasRes] = await Promise.all([
-      api.get('/transacoes'),
-      api.get('/contas'),
-      api.get('/categorias'),
-    ])
-    transacoes.value = transacoesRes.data
-    contas.value = contasRes.data
-    categorias.value = categoriasRes.data
-  } finally {
-    loading.value = false
-  }
+const filtrosParaApi = (): FiltrosTransacoes => ({
+  ...filtros.value,
+})
+
+const fetchApoio = async () => {
+  const [contasRes, categoriasRes] = await Promise.all([
+    api.get('/contas'),
+    api.get('/categorias'),
+  ])
+  contas.value = contasRes.data
+  categorias.value = categoriasRes.data
 }
 
+const fetchTransacoes = async () => {
+  transacoes.value = (await buscarTransacoesFiltradas(api, filtrosParaApi())) as Transacao[]
+}
+
+const valorEfetivo = (t: Transacao) => Math.max(0, t.valor + (t.valor_multa || 0) + (t.valor_juros || 0) - (t.valor_desconto || 0))
+
 const transacoesFiltradas = computed(() => {
-  let resultado = [...transacoes.value]
-
-  if (filtros.value.tipo !== 'todas') {
-    resultado = resultado.filter((t) => t.tipo === filtros.value.tipo)
-  }
-  if (filtros.value.status_liquidacao !== 'todos') {
-    resultado = resultado.filter((t) => (t.status_liquidacao || 'liquidado') === filtros.value.status_liquidacao)
-  }
-  if (filtros.value.fixa !== 'todas') {
-    const deveSerFixa = filtros.value.fixa === 'fixas'
-    resultado = resultado.filter((t) => Boolean(t.fixa) === deveSerFixa)
-  }
-  if (filtros.value.valor_modo !== 'todos') {
-    const valorFiltro = parseMoneyInput(filtros.value.valor_ref)
-    if (valorFiltro != null) {
-      resultado = resultado.filter((t) => {
-        const valor = valorEfetivo(t)
-        if (filtros.value.valor_modo === 'igual') return Math.abs(valor - valorFiltro) < 0.005
-        if (filtros.value.valor_modo === 'gte') return valor >= valorFiltro
-        return valor <= valorFiltro
-      })
-    }
-  }
-  if (filtros.value.conta_id) {
-    resultado = resultado.filter((t) => t.conta_id === filtros.value.conta_id)
-  }
-  if (filtros.value.categoria_id === -1) {
-    resultado = resultado.filter((t) => t.categoria_id == null)
-  } else if (filtros.value.categoria_id) {
-    resultado = resultado.filter((t) => t.categoria_id === filtros.value.categoria_id)
-  }
-
-  if (filtros.value.mes) {
-    resultado = resultado.filter((t) => {
-      const data = parseDate(t.data)
-      return data.getMonth() + 1 === filtros.value.mes && data.getFullYear() === filtros.value.ano
-    })
-  } else if (filtros.value.ano) {
-    resultado = resultado.filter((t) => parseDate(t.data).getFullYear() === filtros.value.ano)
-  }
-
-  if (filtros.value.busca) {
-    const busca = filtros.value.busca.toLowerCase()
-    resultado = resultado.filter((t) => t.descricao.toLowerCase().includes(busca))
-  }
-
-  return resultado.sort((a, b) => {
+  return [...transacoes.value].sort((a, b) => {
     const byDate = parseDate(b.data).getTime() - parseDate(a.data).getTime()
     if (byDate !== 0) return byDate
     return b.id - a.id
@@ -200,8 +148,6 @@ const totais = computed(() => {
     saldoProjetado,
   }
 })
-
-const valorEfetivo = (t: Transacao) => Math.max(0, t.valor + (t.valor_multa || 0) + (t.valor_juros || 0) - (t.valor_desconto || 0))
 
 const formatarMoeda = (valor: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
 const formatarData = (data: string) => formatDateBR(data)
@@ -253,7 +199,7 @@ const editarTransacao = (id: number) => router.push({ path: `/transacoes/${id}/e
 
 const deletarTransacao = async (id: number) => {
   await api.delete(`/transacoes/${id}`)
-  await fetchDados()
+  await fetchTransacoes()
 }
 
 const marcarComoLiquidado = async (t: Transacao) => {
@@ -266,7 +212,7 @@ const marcarComoLiquidado = async (t: Transacao) => {
     status_liquidacao: 'liquidado',
     data_liquidacao: formatDateForInput(new Date()),
   })
-  await fetchDados()
+  await fetchTransacoes()
 }
 
 const limparFiltros = () => {
@@ -280,14 +226,25 @@ const setTipoAba = (tipo: 'todas' | 'entrada' | 'saida') => {
 watch(
   filtros,
   () => {
-    void router.replace({ query: queryAtualDosFiltros() })
+    void loadControl.aoAlterarFiltros({
+      replaceQuery: () => router.replace({ query: queryAtualDosFiltros() }),
+      fetchTransacoes,
+    })
   },
   { deep: true }
 )
 
 onMounted(async () => {
-  aplicarFiltrosDaQuery()
-  await fetchDados()
+  loading.value = true
+  try {
+    await loadControl.inicializar({
+      aplicarFiltrosDaQuery,
+      fetchApoio,
+      fetchTransacoes,
+    })
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
@@ -338,18 +295,25 @@ onMounted(async () => {
                   <option value="fixas">Apenas fixas</option>
                   <option value="nao_fixas">Apenas nao fixas</option>
                 </select>
-                <select v-model="filtros.valor_modo" class="select select-bordered">
-                  <option value="todos">Valor (todos)</option>
-                  <option value="igual">Valor igual a</option>
-                  <option value="gte">Valor maior ou igual</option>
-                  <option value="lte">Valor menor ou igual</option>
+                <select v-model="filtros.orcamento" class="select select-bordered">
+                  <option value="todos">Orcamento (todos)</option>
+                  <option value="fora">Fora do orcamento</option>
+                  <option value="dentro">Dentro do orcamento</option>
                 </select>
-                <input
-                  v-model="filtros.valor_ref"
-                  class="input input-bordered"
-                  placeholder="Ex: 500,00"
-                  :disabled="filtros.valor_modo === 'todos'"
-                />
+                <div class="flex gap-2">
+                  <select v-model="filtros.valor_modo" class="select select-bordered w-1/2">
+                    <option value="todos">Valor (todos)</option>
+                    <option value="igual">Valor igual a</option>
+                    <option value="gte">Valor maior ou igual</option>
+                    <option value="lte">Valor menor ou igual</option>
+                  </select>
+                  <input
+                    v-model="filtros.valor_ref"
+                    class="input input-bordered w-1/2"
+                    placeholder="Ex: 500,00"
+                    :disabled="filtros.valor_modo === 'todos'"
+                  />
+                </div>
                 <select v-model.number="filtros.mes" class="select select-bordered">
                   <option :value="null">Todos meses</option>
                   <option :value="1">Jan</option><option :value="2">Fev</option><option :value="3">Mar</option><option :value="4">Abr</option>
@@ -396,18 +360,25 @@ onMounted(async () => {
                 <option value="fixas">Apenas fixas</option>
                 <option value="nao_fixas">Apenas nao fixas</option>
               </select>
-              <select v-model="filtros.valor_modo" class="select select-bordered">
-                <option value="todos">Valor (todos)</option>
-                <option value="igual">Valor igual a</option>
-                <option value="gte">Valor maior ou igual</option>
-                <option value="lte">Valor menor ou igual</option>
+              <select v-model="filtros.orcamento" class="select select-bordered">
+                <option value="todos">Orcamento (todos)</option>
+                <option value="fora">Fora do orcamento</option>
+                <option value="dentro">Dentro do orcamento</option>
               </select>
-              <input
-                v-model="filtros.valor_ref"
-                class="input input-bordered"
-                placeholder="Ex: 500,00"
-                :disabled="filtros.valor_modo === 'todos'"
-              />
+              <div class="flex gap-2 lg:col-span-2">
+                <select v-model="filtros.valor_modo" class="select select-bordered w-1/2">
+                  <option value="todos">Valor (todos)</option>
+                  <option value="igual">Valor igual a</option>
+                  <option value="gte">Valor maior ou igual</option>
+                  <option value="lte">Valor menor ou igual</option>
+                </select>
+                <input
+                  v-model="filtros.valor_ref"
+                  class="input input-bordered w-1/2"
+                  placeholder="Ex: 500,00"
+                  :disabled="filtros.valor_modo === 'todos'"
+                />
+              </div>
               <select v-model.number="filtros.mes" class="select select-bordered">
                 <option :value="null">Todos meses</option>
                 <option :value="1">Jan</option><option :value="2">Fev</option><option :value="3">Mar</option><option :value="4">Abr</option>
