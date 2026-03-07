@@ -269,6 +269,12 @@ def criar_transacao(
     transacao: TransacaoCreate,
     user_id: int,
 ) -> Transacao:
+    contas_permitidas_entrada = {
+        TipoConta.CARTEIRA,
+        TipoConta.POUPANCA,
+        TipoConta.CONTA_CORRENTE,
+    }
+
     conta = db.query(Conta).filter(
         and_(
             Conta.id == transacao.conta_id,
@@ -279,8 +285,8 @@ def criar_transacao(
     if not conta:
         raise ValueError("Conta nao encontrada ou nao pertence ao usuario")
 
-    if conta.tipo == TipoConta.CARTAO_CREDITO and transacao.tipo == TipoTransacao.ENTRADA:
-        raise ValueError("Nao e permitido registrar entrada em conta de cartao de credito.")
+    if transacao.tipo == TipoTransacao.ENTRADA and conta.tipo not in contas_permitidas_entrada:
+        raise ValueError("Entrada so pode ser registrada em conta corrente, poupanca ou carteira.")
 
     if conta.tipo == TipoConta.CARTAO_CREDITO and transacao.tipo == TipoTransacao.SAIDA:
         transacao.status_liquidacao = StatusLiquidacao.PREVISTO
@@ -439,6 +445,12 @@ def atualizar_transacao(
     user_id: int,
     transacao_update: TransacaoUpdate,
 ) -> Optional[Transacao]:
+    contas_permitidas_entrada = {
+        TipoConta.CARTEIRA,
+        TipoConta.POUPANCA,
+        TipoConta.CONTA_CORRENTE,
+    }
+
     db_transacao = get_transacao(db, transacao_id, user_id)
     if not db_transacao:
         return None
@@ -510,8 +522,8 @@ def atualizar_transacao(
         raise ValueError("Informe data_liquidacao quando o status for liquidado.")
 
     conta_final = db.query(Conta).filter(Conta.id == db_transacao.conta_id, Conta.user_id == user_id).first()
-    if conta_final and conta_final.tipo == TipoConta.CARTAO_CREDITO and db_transacao.tipo == TipoTransacao.ENTRADA:
-        raise ValueError("Nao e permitido registrar entrada em conta de cartao de credito.")
+    if conta_final and db_transacao.tipo == TipoTransacao.ENTRADA and conta_final.tipo not in contas_permitidas_entrada:
+        raise ValueError("Entrada so pode ser registrada em conta corrente, poupanca ou carteira.")
 
     if conta_final and conta_final.tipo == TipoConta.CARTAO_CREDITO and db_transacao.tipo == TipoTransacao.SAIDA:
         db_transacao.status_liquidacao = StatusLiquidacao.PREVISTO

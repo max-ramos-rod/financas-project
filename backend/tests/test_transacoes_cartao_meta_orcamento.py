@@ -106,7 +106,7 @@ def test_transacao_cartao_entrada_bloqueada(client):
     )
 
     assert transacao_response.status_code == 400
-    assert "entrada em conta de cartao de credito" in transacao_response.json()["detail"].lower()
+    assert "entrada so pode ser registrada" in transacao_response.json()["detail"].lower()
 
 
 def test_atualizar_transacao_para_entrada_em_cartao_bloqueada(client):
@@ -165,7 +165,41 @@ def test_atualizar_transacao_para_entrada_em_cartao_bloqueada(client):
     )
 
     assert update_response.status_code == 400
-    assert "entrada em conta de cartao de credito" in update_response.json()["detail"].lower()
+    assert "entrada so pode ser registrada" in update_response.json()["detail"].lower()
+
+
+def test_transacao_entrada_em_conta_investimento_bloqueada(client):
+    headers = _auth_headers(client)
+
+    conta_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Investimento Teste",
+            "tipo": "investimento",
+            "saldo": 0,
+            "cor": "#3B82F6",
+            "ativa": True,
+        },
+    )
+    assert conta_response.status_code == 201
+    conta_id = conta_response.json()["id"]
+
+    transacao_response = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_id,
+            "descricao": "Aporte",
+            "valor": 100.0,
+            "tipo": "entrada",
+            "data": date.today().isoformat(),
+            "status_liquidacao": "liquidado",
+        },
+    )
+
+    assert transacao_response.status_code == 400
+    assert "entrada so pode ser registrada" in transacao_response.json()["detail"].lower()
 
 
 def test_transacao_atualiza_meta_e_orcamento(client):
