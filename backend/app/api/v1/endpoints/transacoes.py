@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.db.session import get_db
 from app.api.deps import AccessContext, get_access_context
+from app.models import StatusLiquidacao, TipoTransacao
 from app.schemas.transacao import (
     TransacaoCreate,
     TransacaoUpdate,
@@ -18,6 +19,17 @@ router = APIRouter()
 def listar_transacoes(
     skip: int = 0,
     limit: int = 1000,
+    tipo: TipoTransacao | None = Query(default=None),
+    status_liquidacao: StatusLiquidacao | None = Query(default=None),
+    fixa: str | None = Query(default=None, pattern="^(fixas|nao_fixas)$"),
+    conta_id: int | None = None,
+    categoria_id: int | None = None,
+    mes: int | None = Query(default=None, ge=1, le=12),
+    ano: int | None = Query(default=None, ge=2000, le=2100),
+    busca: str | None = None,
+    valor_modo: str | None = Query(default=None, pattern="^(igual|gte|lte)$"),
+    valor_ref: str | None = None,
+    orcamento: str | None = Query(default=None, pattern="^(fora|dentro)$"),
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context)
 ):
@@ -26,7 +38,40 @@ def listar_transacoes(
     
     Inclui transações normais e dízimos gerados automaticamente.
     """
-    transacoes = crud.get_transacoes(db, access_ctx.effective_user.id, skip, limit)
+    fixa_bool = None
+    if fixa == "fixas":
+        fixa_bool = True
+    elif fixa == "nao_fixas":
+        fixa_bool = False
+
+    sem_categoria = categoria_id == -1
+    categoria_normalizada = None if sem_categoria else categoria_id
+
+    valor_ref_num = None
+    if valor_ref is not None and valor_ref.strip():
+        try:
+            valor_ref_num = float(valor_ref.replace(".", "").replace(",", ".")) if ("," in valor_ref and "." in valor_ref) else float(valor_ref.replace(",", "."))
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="valor_ref invalido")
+
+    transacoes = crud.get_transacoes(
+        db=db,
+        user_id=access_ctx.effective_user.id,
+        skip=skip,
+        limit=limit,
+        tipo=tipo,
+        status_liquidacao=status_liquidacao,
+        fixa=fixa_bool,
+        conta_id=conta_id,
+        categoria_id=categoria_normalizada,
+        sem_categoria=sem_categoria,
+        mes=mes,
+        ano=ano,
+        busca=busca,
+        valor_modo=valor_modo,
+        valor_ref=valor_ref_num,
+        orcamento=orcamento,
+    )
     return transacoes
 
 
