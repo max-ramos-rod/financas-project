@@ -279,6 +279,9 @@ def criar_transacao(
     if not conta:
         raise ValueError("Conta nao encontrada ou nao pertence ao usuario")
 
+    if conta.tipo == TipoConta.CARTAO_CREDITO and transacao.tipo == TipoTransacao.ENTRADA:
+        raise ValueError("Nao e permitido registrar entrada em conta de cartao de credito.")
+
     if conta.tipo == TipoConta.CARTAO_CREDITO and transacao.tipo == TipoTransacao.SAIDA:
         transacao.status_liquidacao = StatusLiquidacao.PREVISTO
         transacao.data_liquidacao = None
@@ -507,6 +510,9 @@ def atualizar_transacao(
         raise ValueError("Informe data_liquidacao quando o status for liquidado.")
 
     conta_final = db.query(Conta).filter(Conta.id == db_transacao.conta_id, Conta.user_id == user_id).first()
+    if conta_final and conta_final.tipo == TipoConta.CARTAO_CREDITO and db_transacao.tipo == TipoTransacao.ENTRADA:
+        raise ValueError("Nao e permitido registrar entrada em conta de cartao de credito.")
+
     if conta_final and conta_final.tipo == TipoConta.CARTAO_CREDITO and db_transacao.tipo == TipoTransacao.SAIDA:
         db_transacao.status_liquidacao = StatusLiquidacao.PREVISTO
         db_transacao.data_liquidacao = None

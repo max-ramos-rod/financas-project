@@ -72,6 +72,102 @@ def test_transacao_cartao_saida_forca_status_previsto(client):
     assert payload["data_liquidacao"] is None
 
 
+def test_transacao_cartao_entrada_bloqueada(client):
+    headers = _auth_headers(client)
+
+    conta_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Cartao Teste",
+            "tipo": "cartao_credito",
+            "saldo": 0,
+            "dia_fechamento": 20,
+            "dia_vencimento": 28,
+            "limite_credito": 3000,
+            "cor": "#3B82F6",
+            "ativa": True,
+        },
+    )
+    assert conta_response.status_code == 201
+    conta_id = conta_response.json()["id"]
+
+    transacao_response = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_id,
+            "descricao": "Estorno no cartao",
+            "valor": 100.0,
+            "tipo": "entrada",
+            "data": date.today().isoformat(),
+            "status_liquidacao": "liquidado",
+        },
+    )
+
+    assert transacao_response.status_code == 400
+    assert "entrada em conta de cartao de credito" in transacao_response.json()["detail"].lower()
+
+
+def test_atualizar_transacao_para_entrada_em_cartao_bloqueada(client):
+    headers = _auth_headers(client)
+
+    conta_corrente_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Conta Corrente",
+            "tipo": "conta_corrente",
+            "saldo": 500.0,
+            "cor": "#10B981",
+            "ativa": True,
+        },
+    )
+    assert conta_corrente_response.status_code == 201
+    conta_corrente_id = conta_corrente_response.json()["id"]
+
+    cartao_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Cartao Teste",
+            "tipo": "cartao_credito",
+            "saldo": 0,
+            "dia_fechamento": 20,
+            "dia_vencimento": 28,
+            "limite_credito": 3000,
+            "cor": "#3B82F6",
+            "ativa": True,
+        },
+    )
+    assert cartao_response.status_code == 201
+    cartao_id = cartao_response.json()["id"]
+
+    create_response = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_corrente_id,
+            "descricao": "Recebimento inicial",
+            "valor": 200.0,
+            "tipo": "entrada",
+            "data": date.today().isoformat(),
+            "status_liquidacao": "liquidado",
+        },
+    )
+    assert create_response.status_code == 201
+    transacao_id = create_response.json()["id"]
+
+    update_response = client.put(
+        f"/api/v1/transacoes/{transacao_id}",
+        headers=headers,
+        json={"conta_id": cartao_id},
+    )
+
+    assert update_response.status_code == 400
+    assert "entrada em conta de cartao de credito" in update_response.json()["detail"].lower()
+
+
 def test_transacao_atualiza_meta_e_orcamento(client):
     headers = _auth_headers(client)
 
