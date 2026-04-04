@@ -1,28 +1,26 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
-from datetime import datetime
+﻿from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr
+
 from app.models.user import UserRole
 
 
-# Base schemas
 class UserBase(BaseModel):
     email: EmailStr
     nome: str
     role: UserRole
 
 
-# Create schemas
 class UserCreate(UserBase):
     password: str
 
 
-# Update schemas
 class UserUpdate(BaseModel):
     nome: Optional[str] = None
     email: Optional[EmailStr] = None
 
 
-# Response schemas
 class UserResponse(UserBase):
     id: int
     created_at: datetime
@@ -30,10 +28,10 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# Auth schemas
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    expires_in: int
 
 
 class TokenData(BaseModel):

@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 
 
 def _register_user(client, email: str, password: str = "senha123"):
@@ -31,6 +31,33 @@ def test_login_returns_access_token(client):
     payload = login_response.json()
     assert "access_token" in payload
     assert payload["token_type"] == "bearer"
+    assert payload["expires_in"] > 0
+
+
+def test_refresh_session_returns_new_access_token(client):
+    email = f"user_{uuid.uuid4().hex[:8]}@example.com"
+    _register_user(client, email)
+    login_response = _login_user(client, email)
+    token = login_response.json()["access_token"]
+
+    refresh_response = client.post(
+        "/api/v1/auth/refresh-session",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert refresh_response.status_code == 200
+    payload = refresh_response.json()
+    assert payload["access_token"]
+    assert payload["token_type"] == "bearer"
+    assert payload["expires_in"] > 0
+
+
+def test_refresh_session_requires_valid_token(client):
+    response = client.post(
+        "/api/v1/auth/refresh-session",
+        headers={"Authorization": "Bearer token-invalido"},
+    )
+    assert response.status_code == 401
 
 
 def test_protected_endpoint_requires_valid_token(client):

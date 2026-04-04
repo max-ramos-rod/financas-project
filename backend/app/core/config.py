@@ -1,13 +1,16 @@
+﻿from typing import List
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
-import secrets
+
 
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "Finanças Cristãs API"
+    PROJECT_NAME: str = "Financas Cristas API"
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30
+    SESSION_INACTIVITY_MINUTES: int = 2
+    SESSION_REFRESH_THRESHOLD_SECONDS: int = 300
     DATABASE_URL: str = "postgresql://financas_user:financas_pass@localhost:5432/financas_db"
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
     ENVIRONMENT: str = "development"
@@ -18,7 +21,8 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = None
     SMTP_USE_TLS: bool = True
     SMTP_FROM_EMAIL: str | None = None
-    
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+
 
 settings = Settings()
