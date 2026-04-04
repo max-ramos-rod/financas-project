@@ -252,8 +252,8 @@ onMounted(async () => {
   <div class="min-h-screen bg-base-200">
     <div class="bg-white shadow">
       <div class="container mx-auto px-4 py-4 flex items-center justify-between">
-        <h1 class="text-2xl font-bold">💸 Transacoes</h1>
-        <button @click="novaTransacao" class="btn btn-primary">➕ Nova transacao</button>
+        <h1 class="text-2xl font-bold">Transacoes</h1>
+        <button @click="novaTransacao" class="btn btn-primary">Nova transacao</button>
       </div>
     </div>
 
@@ -267,11 +267,11 @@ onMounted(async () => {
       <div class="card bg-white shadow">
         <div class="card-body">
 
-          <!-- Mobile: retrátil -->
+          <!-- Mobile: retratil -->
           <div class="collapse collapse-arrow md:hidden bg-base-200">
             <input type="checkbox" />
             <div class="collapse-title font-medium">
-              🔎 Filtros
+              Filtros
             </div>
             <div class="collapse-content">
 

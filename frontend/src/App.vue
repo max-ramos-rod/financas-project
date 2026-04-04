@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 
 import Navbar from './components/Navbar.vue'
 import { useAuthStore } from '@/stores/auth'
+import Footer from './components/Footer.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -15,12 +16,20 @@ const mostrarNavbar = computed(() => {
   const rotaSemNavbar = route.path === '/'
   return rotaProtegida && !rotaSemNavbar && !!authStore.token
 })
+
+const mostrarFooter = computed(() => {
+  const rotasSemFooter = ['/login', '/registro']
+  return !rotasSemFooter.includes(route.path)
+})
 </script>
 
 <template>
-  <div>
+  <div class="min-h-screen flex flex-col bg-base-200">
     <Navbar v-if="mostrarNavbar" />
-    <router-view />
+    <main class="flex-1">
+      <router-view />
+    </main>
+    <Footer v-if="mostrarFooter" />
   </div>
 </template>
 

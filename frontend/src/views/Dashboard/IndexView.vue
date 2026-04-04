@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 import type { Conta, Transacao, Meta, Categoria, Orcamento } from '@/types'
@@ -8,17 +8,12 @@ import FluxoFinanceiroChart from '@/components/charts/FluxoFinanceiroChart.vue'
 import DespesasCategoriaChart from '@/components/charts/DespesasCategoriaChart.vue'
 import OrcamentoComparativoChart from '@/components/charts/OrcamentoComparativoChart.vue'
 
-// State
 const contas = ref<Conta[]>([])
 const transacoes = ref<Transacao[]>([])
 const metas = ref<Meta[]>([])
 const categorias = ref<Categoria[]>([])
 const orcamentos = ref<Orcamento[]>([])
 const loading = ref(true)
-
-// =========================
-// 📅 MÊS ATUAL (timezone-safe)
-// =========================
 
 const mesAtual = new Date().getMonth() + 1
 const anoAtual = new Date().getFullYear()
@@ -41,10 +36,6 @@ const transacoesMesAtual = computed(() => {
   })
 })
 
-// =========================
-// 💰 SALDOS
-// =========================
-
 const saldoTotal = computed(() =>
   contas.value
     .filter(c => c.ativa)
@@ -63,10 +54,6 @@ const saldoInvestimento = computed(() =>
     .reduce((sum, c) => sum + c.saldo, 0)
 )
 
-// =========================
-// 📈 RECEITAS / DESPESAS
-// =========================
-
 const receitasMes = computed(() =>
   transacoesMesAtual.value
     .filter(t => t.tipo === 'entrada')
@@ -80,10 +67,6 @@ const despesasMes = computed(() =>
 )
 
 const saldoMes = computed(() => receitasMes.value - despesasMes.value)
-
-// =========================
-// 📊 DESPESAS POR CATEGORIA
-// =========================
 
 const despesasPorCategoria = computed(() => {
   const grupos: Record<string, number> = {}
@@ -138,20 +121,12 @@ const orcamentosEstourados = computed(() =>
   orcamentoComparativo.value.filter(item => item.estourado)
 )
 
-// =========================
-// 🔥 TOP DESPESAS
-// =========================
-
 const topDespesas = computed(() =>
   transacoesMesAtual.value
     .filter(t => t.tipo === 'saida')
     .sort((a, b) => b.valor - a.valor)
     .slice(0, 5)
 )
-
-// =========================
-// 💥 FLUXO FINANCEIRO (core UX)
-// =========================
 
 const fluxoFinanceiro = computed(() => {
   const entradas = { recebidas: 0, previstas: 0 }
@@ -161,10 +136,8 @@ const fluxoFinanceiro = computed(() => {
     const valor = t.valor
 
     if (t.tipo === 'entrada') {
-      if (t.status_liquidacao === 'liquidado')
-        entradas.recebidas += valor
-      else
-        entradas.previstas += valor
+      if (t.status_liquidacao === 'liquidado') entradas.recebidas += valor
+      else entradas.previstas += valor
     }
 
     if (t.tipo === 'saida') {
@@ -175,10 +148,8 @@ const fluxoFinanceiro = computed(() => {
         continue
       }
 
-      if (t.status_liquidacao === 'liquidado')
-        saidas.pagas += valor
-      else
-        saidas.previstas += valor
+      if (t.status_liquidacao === 'liquidado') saidas.pagas += valor
+      else saidas.previstas += valor
     }
   }
 
@@ -234,17 +205,9 @@ const fluxoFinanceiroComparativo = computed(() => {
   })
 })
 
-// =========================
-// 💳 CARTÃO EM ABERTO
-// =========================
-
 const debitoFaturaAtualCartoes = computed(() =>
   fluxoFinanceiro.value.saidas.cartao
 )
-
-// =========================
-// 🎯 METAS
-// =========================
 
 const metasEmAndamento = computed(() =>
   metas.value.filter(m => !m.concluida)
@@ -253,19 +216,11 @@ const metasEmAndamento = computed(() =>
 const getPercentualMeta = (meta: Meta): number =>
   Math.min((meta.valor_atual / meta.valor_alvo) * 100, 100)
 
-// =========================
-// 🎨 FORMATADORES
-// =========================
-
 const formatarMoeda = (valor: number): string =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL'
   }).format(valor)
-
-// =========================
-// 🌐 FETCH
-// =========================
 
 const fetchDados = async () => {
   loading.value = true
@@ -285,7 +240,6 @@ const fetchDados = async () => {
     metas.value = metasRes.data
     categorias.value = categoriasRes.data
     orcamentos.value = orcamentosRes.data
-
   } catch (error) {
     console.error('Erro ao carregar dashboard:', error)
   } finally {
@@ -298,220 +252,176 @@ onMounted(fetchDados)
 
 <template>
   <div class="min-h-screen bg-base-200">
-
-    <!-- Loading -->
-    <div v-if="loading" class="container mx-auto px-4 py-16 text-center">
-      <span class="loading loading-spinner loading-lg"></span>
-      <p class="mt-4 opacity-70">Carregando seu painel financeiro...</p>
+    <div v-if="loading" class="container mx-auto px-4 py-6 space-y-6">
+      <div class="skeleton h-40 w-full rounded-box"></div>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div class="skeleton h-28 rounded-box"></div>
+        <div class="skeleton h-28 rounded-box"></div>
+        <div class="skeleton h-28 rounded-box"></div>
+        <div class="skeleton h-28 rounded-box"></div>
+      </div>
+      <div class="skeleton h-80 w-full rounded-box"></div>
+      <div class="skeleton h-80 w-full rounded-box"></div>
+      <div class="skeleton h-72 w-full rounded-box"></div>
     </div>
 
-    <!-- Dashboard -->
     <div v-else class="container mx-auto px-4 py-6 space-y-6">
-
-      <!-- SALDO DOMINANTE -->
-      <div class="card text-white shadow-xl"
-           style="background: linear-gradient(135deg, #7C3AED, #5B21B6)">
-        <div class="card-body">
-
-          <p class="text-sm opacity-80">Saldo Total</p>
-
-          <p class="text-4xl font-bold tracking-tight">
-            {{ formatarMoeda(saldoTotal) }}
-          </p>
-
-          <div class="flex justify-between text-xs opacity-80 mt-2">
-            <span>Conta Corrente: {{ formatarMoeda(saldoContaCorrente) }}</span>
-            <span>Investimentos: {{ formatarMoeda(saldoInvestimento) }}</span>
+      <div class="card text-white shadow-xl" style="background: linear-gradient(135deg, #7C3AED, #5B21B6)">
+        <div class="card-body gap-4">
+          <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p class="text-sm opacity-80">Saldo Total</p>
+              <p class="text-4xl font-bold tracking-tight">
+                {{ formatarMoeda(saldoTotal) }}
+              </p>
+            </div>
+            <router-link to="/transacoes/nova" class="btn btn-secondary btn-sm w-full md:w-auto">
+              Nova transacao
+            </router-link>
           </div>
 
+          <div class="stats stats-vertical bg-white/10 text-white shadow-none md:stats-horizontal">
+            <div class="stat px-4 py-3">
+              <div class="stat-title text-white/70">Conta corrente</div>
+              <div class="stat-value text-xl">{{ formatarMoeda(saldoContaCorrente) }}</div>
+            </div>
+            <div class="stat px-4 py-3">
+              <div class="stat-title text-white/70">Investimentos</div>
+              <div class="stat-value text-xl">{{ formatarMoeda(saldoInvestimento) }}</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- FLUXO FINANCEIRO -->
-      <div class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-
-          <h3 class="text-sm uppercase opacity-60 tracking-wide">
-            Fluxo Financeiro (Mes Anterior / Atual / Proximo)
-          </h3>
-
-          <FluxoFinanceiroChart
-            :dadosMeses="fluxoFinanceiroComparativo"
-          />
-
+      <div class="stats stats-vertical gap-4 shadow-sm lg:stats-horizontal">
+        <div class="stat bg-base-100 rounded-box">
+          <div class="stat-title">Receitas do mes</div>
+          <div class="stat-value text-success">{{ formatarMoeda(receitasMes) }}</div>
+        </div>
+        <div class="stat bg-base-100 rounded-box">
+          <div class="stat-title">Despesas do mes</div>
+          <div class="stat-value text-error">{{ formatarMoeda(despesasMes) }}</div>
+        </div>
+        <div class="stat bg-base-100 rounded-box">
+          <div class="stat-title">Cartao em aberto</div>
+          <div class="stat-value text-error">{{ formatarMoeda(debitoFaturaAtualCartoes) }}</div>
+        </div>
+        <div class="stat bg-base-100 rounded-box">
+          <div class="stat-title">Saldo do mes</div>
+          <div :class="['stat-value', saldoMes >= 0 ? 'text-success' : 'text-error']">
+            {{ formatarMoeda(saldoMes) }}
+          </div>
+          <div class="stat-desc">{{ saldoMes >= 0 ? 'Resultado positivo no periodo' : 'Atencao ao fluxo do periodo' }}</div>
         </div>
       </div>
 
-      <!-- DESPESAS POR CATEGORIA -->
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body">
+          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 class="text-sm uppercase opacity-60 tracking-wide">Fluxo Financeiro</h3>
+              <p class="text-xs opacity-50">Mes anterior, atual e proximo para leitura de tendencia.</p>
+            </div>
+          </div>
+          <FluxoFinanceiroChart :dadosMeses="fluxoFinanceiroComparativo" />
+        </div>
+      </div>
 
-          <h3 class="text-sm uppercase opacity-60 tracking-wide">
-            Despesas por Categoria
-          </h3>
-
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body">
+          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 class="text-sm uppercase opacity-60 tracking-wide">Despesas por Categoria</h3>
+              <p class="text-xs opacity-50">Categorias com maior peso no mes atual.</p>
+            </div>
+          </div>
           <DespesasCategoriaChart :dados="despesasPorCategoria" />
-
         </div>
       </div>
 
-      <!-- ORCAMENTO X GASTO (MES ATUAL) -->
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body">
+          <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 class="text-sm uppercase opacity-60 tracking-wide">Orcamento x Gasto</h3>
+              <p class="text-xs opacity-50">Compare rapidamente o planejado com o realizado.</p>
+            </div>
 
-          <h3 class="text-sm uppercase opacity-60 tracking-wide">
-            Orcamento x Gasto (Mes Atual)
-          </h3>
-
-          <div class="mt-3 mb-2 w-full max-w-xs">
-            <label class="label py-1"><span class="label-text text-xs">Mes de referencia</span></label>
-            <select v-model.number="mesOrcamentoSelecionado" class="select select-bordered select-sm w-full">
-              <option :value="1">Jan</option>
-              <option :value="2">Fev</option>
-              <option :value="3">Mar</option>
-              <option :value="4">Abr</option>
-              <option :value="5">Mai</option>
-              <option :value="6">Jun</option>
-              <option :value="7">Jul</option>
-              <option :value="8">Ago</option>
-              <option :value="9">Set</option>
-              <option :value="10">Out</option>
-              <option :value="11">Nov</option>
-              <option :value="12">Dez</option>
-            </select>
+            <div class="w-full max-w-xs">
+              <label class="label py-1"><span class="label-text text-xs">Mes de referencia</span></label>
+              <select v-model.number="mesOrcamentoSelecionado" class="select select-bordered select-sm w-full">
+                <option :value="1">Jan</option>
+                <option :value="2">Fev</option>
+                <option :value="3">Mar</option>
+                <option :value="4">Abr</option>
+                <option :value="5">Mai</option>
+                <option :value="6">Jun</option>
+                <option :value="7">Jul</option>
+                <option :value="8">Ago</option>
+                <option :value="9">Set</option>
+                <option :value="10">Out</option>
+                <option :value="11">Nov</option>
+                <option :value="12">Dez</option>
+              </select>
+            </div>
           </div>
 
-          <div v-if="orcamentoComparativo.length === 0" class="text-sm opacity-50 py-4 text-center">
+          <div v-if="orcamentoComparativo.length === 0" class="py-4 text-center text-sm opacity-50">
             Nenhum orcamento cadastrado para o mes selecionado.
           </div>
 
           <template v-else>
             <OrcamentoComparativoChart :dados="orcamentoComparativo" />
 
-            <div v-if="orcamentosEstourados.length" class="mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
-              <p class="text-sm font-semibold text-red-700">Atencao: orcamentos estourados</p>
-              <ul class="mt-2 space-y-1 text-sm text-red-700">
-                <li v-for="item in orcamentosEstourados" :key="item.categoria">
-                  {{ item.categoria }}: {{ formatarMoeda(item.gasto - item.planejado) }} acima do planejado
-                </li>
-              </ul>
+            <div v-if="orcamentosEstourados.length" class="alert alert-warning mt-4">
+              <div>
+                <p class="font-semibold">Atencao: orcamentos estourados</p>
+                <ul class="mt-2 space-y-1 text-sm">
+                  <li v-for="item in orcamentosEstourados" :key="item.categoria">
+                    {{ item.categoria }}: {{ formatarMoeda(item.gasto - item.planejado) }} acima do planejado
+                  </li>
+                </ul>
+              </div>
             </div>
           </template>
-
         </div>
       </div>
 
-      <!-- COMPROMISSOS / ALERTAS -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body">
-            <p class="text-xs opacity-60">Cartão em Aberto</p>
-            <p class="text-xl font-bold text-error">
-              {{ formatarMoeda(debitoFaturaAtualCartoes) }}
-            </p>
-          </div>
-        </div>
-
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body">
-            <p class="text-xs opacity-60">Saldo do Mês</p>
-            <p :class="[
-                'text-xl font-bold',
-                saldoMes >= 0 ? 'text-success' : 'text-error'
-            ]">
-              {{ formatarMoeda(saldoMes) }}
-            </p>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- MAIORES DESPESAS -->
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body">
+          <h3 class="mb-2 text-sm uppercase tracking-wide opacity-60">Maiores Despesas</h3>
 
-          <h3 class="text-sm uppercase opacity-60 tracking-wide mb-2">
-            Maiores Despesas
-          </h3>
-
-          <div v-if="topDespesas.length === 0"
-               class="text-sm opacity-50 py-4 text-center">
-            Nenhuma despesa relevante este mês
+          <div v-if="topDespesas.length === 0" class="py-4 text-center text-sm opacity-50">
+            Nenhuma despesa relevante este mes
           </div>
 
           <div v-else class="space-y-2">
-            <div v-for="t in topDespesas" :key="t.id"
-                 class="flex justify-between text-sm">
-
-              <span class="opacity-80 truncate">
-                {{ t.descricao }}
-              </span>
-
-              <span class="font-semibold text-error">
+            <div v-for="t in topDespesas" :key="t.id" class="flex justify-between gap-3 text-sm">
+              <span class="truncate opacity-80">{{ t.descricao }}</span>
+              <span class="whitespace-nowrap font-semibold text-error">
                 {{ formatarMoeda(t.valor) }}
               </span>
-
             </div>
           </div>
-
         </div>
       </div>
 
-      <!-- METAS -->
-      <div v-if="metasEmAndamento.length"
-           class="card bg-base-100 shadow-sm">
+      <div v-if="metasEmAndamento.length" class="card bg-base-100 shadow-sm">
         <div class="card-body">
+          <h3 class="text-sm uppercase opacity-60 tracking-wide">Metas Financeiras</h3>
 
-          <h3 class="text-sm uppercase opacity-60 tracking-wide">
-            Metas Financeiras
-          </h3>
-
-          <div class="space-y-3 mt-2">
-            <div v-for="meta in metasEmAndamento.slice(0, 3)"
-                 :key="meta.id">
-
-              <div class="flex justify-between text-xs mb-1">
+          <div class="mt-2 space-y-3">
+            <div v-for="meta in metasEmAndamento.slice(0, 3)" :key="meta.id">
+              <div class="mb-1 flex justify-between text-xs">
                 <span>{{ meta.nome }}</span>
                 <span>{{ getPercentualMeta(meta).toFixed(0) }}%</span>
               </div>
 
-              <progress class="progress progress-primary w-full"
-                        :value="getPercentualMeta(meta)"
-                        max="100"></progress>
-
+              <progress class="progress progress-primary w-full" :value="getPercentualMeta(meta)" max="100"></progress>
             </div>
           </div>
-
         </div>
       </div>
-
-      <!-- AÇÕES RÁPIDAS -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-
-        <router-link to="/transacoes/nova"
-                     class="btn btn-primary">
-          Nova
-        </router-link>
-
-        <router-link to="/transacoes"
-                     class="btn btn-ghost">
-          Transações
-        </router-link>
-
-        <router-link to="/relatorios"
-                     class="btn btn-ghost">
-          Relatórios
-        </router-link>
-
-        <router-link to="/metas"
-                     class="btn btn-ghost">
-          Metas
-        </router-link>
-
-      </div>
-
     </div>
   </div>
 </template>
-
