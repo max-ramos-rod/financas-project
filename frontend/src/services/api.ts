@@ -39,6 +39,9 @@ class ApiService {
       (error: AxiosError<ApiError>) => {
         if (error.response?.status === 401) {
           localStorage.removeItem('access_token')
+          localStorage.removeItem('access_token_expires_at')
+          localStorage.removeItem('session_timeout_seconds')
+          localStorage.removeItem('last_activity_at')
           localStorage.removeItem('act_as_user_id')
           window.location.href = '/login'
         }

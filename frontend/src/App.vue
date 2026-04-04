@@ -1,11 +1,14 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+
 import Navbar from './components/Navbar.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const route = useRoute()
+
+authStore.initializeSessionMonitoring()
 
 const mostrarNavbar = computed(() => {
   const rotaProtegida = route.matched.some((record) => record.meta.requiresAuth)

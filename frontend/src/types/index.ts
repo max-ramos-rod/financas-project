@@ -1,4 +1,4 @@
-export interface LoginCredentials {
+﻿export interface LoginCredentials {
   email: string
   password: string
 }
@@ -8,6 +8,12 @@ export interface RegisterData {
   password: string
   nome: string
   role: 'user'
+}
+
+export interface AuthTokenResponse {
+  access_token: string
+  token_type: 'bearer'
+  expires_in: number
 }
 
 export interface User {
@@ -44,7 +50,7 @@ export interface Transacao {
   categoria_id: number | null
   descricao: string
   valor: number
-  tipo: "entrada" | "saida" | "transferencia"
+  tipo: 'entrada' | 'saida' | 'transferencia'
   data: string
   data_vencimento?: string | null
   data_liquidacao?: string | null
@@ -81,6 +87,7 @@ export interface Meta {
   cor: string
   created_at: string
 }
+
 export interface Orcamento {
   id: number
   user_id: number
@@ -117,6 +124,7 @@ export interface FaturaResumo {
   valor_total: number
   itens: FaturaItem[]
 }
+
 export interface ApiError {
   detail: string | { loc: string[]; msg: string; type: string }[]
 }
