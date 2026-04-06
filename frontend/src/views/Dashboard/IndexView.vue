@@ -128,34 +128,6 @@ const topDespesas = computed(() =>
     .slice(0, 5)
 )
 
-const fluxoFinanceiro = computed(() => {
-  const entradas = { recebidas: 0, previstas: 0 }
-  const saidas = { pagas: 0, previstas: 0, cartao: 0 }
-
-  for (const t of transacoesMesAtual.value) {
-    const valor = t.valor
-
-    if (t.tipo === 'entrada') {
-      if (t.status_liquidacao === 'liquidado') entradas.recebidas += valor
-      else entradas.previstas += valor
-    }
-
-    if (t.tipo === 'saida') {
-      const conta = contas.value.find(c => c.id === t.conta_id)
-
-      if (conta?.tipo === 'cartao_credito') {
-        saidas.cartao += valor
-        continue
-      }
-
-      if (t.status_liquidacao === 'liquidado') saidas.pagas += valor
-      else saidas.previstas += valor
-    }
-  }
-
-  return { entradas, saidas }
-})
-
 const fluxoFinanceiroPorMes = (mes: number, ano: number) => {
   const entradas = { recebidas: 0, previstas: 0 }
   const saidas = { pagas: 0, previstas: 0, cartao: 0 }
@@ -206,7 +178,9 @@ const fluxoFinanceiroComparativo = computed(() => {
 })
 
 const debitoFaturaAtualCartoes = computed(() =>
-  fluxoFinanceiro.value.saidas.cartao
+  contas.value
+    .filter((conta) => conta.ativa && conta.tipo === 'cartao_credito')
+    .reduce((sum, conta) => sum + (conta.valor_fatura_fechada || 0), 0)
 )
 
 const metasEmAndamento = computed(() =>

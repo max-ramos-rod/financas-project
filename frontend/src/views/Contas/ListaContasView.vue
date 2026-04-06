@@ -2,14 +2,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
-import type { Conta, Transacao } from '@/types'
+import type { Conta } from '@/types'
+import { formatDateBR } from '@/utils/date'
 
 const router = useRouter()
 
 // State
 const loading = ref(true)
 const contas = ref<Conta[]>([])
-const transacoes = ref<Transacao[]>([])
 const contaADeletar = ref<Conta | null>(null)
 const mostraModalDelete = ref(false)
 const showErrorModal = ref(false)
@@ -85,84 +85,12 @@ const totais = computed(() => {
   }
 })
 
-const clampDay = (year: number, month: number, day: number): Date => {
-  const lastDay = new Date(year, month, 0).getDate()
-  return new Date(year, month - 1, Math.min(day, lastDay))
-}
-
-const shiftMonth = (base: Date, months: number): Date => {
-  return new Date(base.getFullYear(), base.getMonth() + months, 1)
-}
-
-const calcularPeriodoFaturaAberta = (refDate: Date, diaFechamento: number): { inicio: Date; fim: Date } => {
-  const fechamentoMesAtual = clampDay(refDate.getFullYear(), refDate.getMonth() + 1, diaFechamento)
-  const ultimoFechamento =
-    refDate.getDate() > fechamentoMesAtual.getDate()
-      ? fechamentoMesAtual
-      : clampDay(
-          shiftMonth(refDate, -1).getFullYear(),
-          shiftMonth(refDate, -1).getMonth() + 1,
-          diaFechamento
-        )
-
-  const periodoInicio = new Date(ultimoFechamento)
-  periodoInicio.setDate(periodoInicio.getDate() + 1)
-  return { inicio: periodoInicio, fim: refDate }
-}
-
-const toYmd = (value: Date): string => {
-  const y = value.getFullYear()
-  const m = String(value.getMonth() + 1).padStart(2, '0')
-  const d = String(value.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-const extractYmd = (value: string): string => value.slice(0, 10)
-
-const debitoAbertoPorCartao = computed<Record<number, number>>(() => {
-  const hoje = new Date()
-  const resultado: Record<number, number> = {}
-
-  for (const conta of contas.value) {
-    if (!conta.ativa || conta.tipo !== 'cartao_credito') continue
-
-    const periodo =
-      conta.dia_fechamento != null
-        ? calcularPeriodoFaturaAberta(hoje, Number(conta.dia_fechamento))
-        : null
-
-    const inicioYmd = periodo ? toYmd(periodo.inicio) : null
-    const fimYmd = periodo ? toYmd(periodo.fim) : null
-
-    resultado[conta.id] = transacoes.value
-      .filter(t => {
-        if (t.conta_id !== conta.id || t.tipo !== 'saida') return false
-        if (t.status_liquidacao === 'liquidado' || t.status_liquidacao === 'cancelado') return false
-        if (!inicioYmd || !fimYmd) return true
-        const dataYmd = extractYmd(t.data)
-        return dataYmd >= inicioYmd && dataYmd <= fimYmd
-      })
-      .reduce((sum, t) => {
-        const multa = t.valor_multa ?? 0
-        const juros = t.valor_juros ?? 0
-        const desconto = t.valor_desconto ?? 0
-        return sum + Math.max(0, t.valor + multa + juros - desconto)
-      }, 0)
-  }
-
-  return resultado
-})
-
 // Metodos
 const fetchDados = async () => {
   loading.value = true
   try {
-    const [contasRes, transacoesRes] = await Promise.all([
-      api.get('/contas'),
-      api.get('/transacoes')
-    ])
+    const contasRes = await api.get('/contas')
     contas.value = contasRes.data
-    transacoes.value = transacoesRes.data
   } catch (error) {
     console.error('Erro ao carregar dados:', error)
   } finally {
@@ -225,6 +153,11 @@ const formatarTipo = (tipo: string): string => {
     outro: '📌 Outro',
   }
   return tipos[tipo] || tipo
+}
+
+const formatarData = (valor?: string | null): string => {
+  if (!valor) return '-'
+  return formatDateBR(valor)
 }
 
 const limparFiltros = () => {
@@ -393,8 +326,23 @@ onMounted(() => {
               ]">
                 {{ formatarMoeda(conta.saldo) }}
               </p>
-              <p v-if="conta.tipo === 'cartao_credito'" class="text-sm text-error mt-2">
-                Em aberto: {{ formatarMoeda(debitoAbertoPorCartao[conta.id] || 0) }}
+              <p
+                v-if="conta.tipo === 'cartao_credito'"
+                :class="[
+                  'text-sm mt-2',
+                  (conta.valor_fatura_fechada || 0) > 0 ? 'text-error' : 'text-success'
+                ]"
+              >
+                Fatura a pagar: {{ formatarMoeda(conta.valor_fatura_fechada || 0) }}
+              </p>
+              <p v-if="conta.tipo === 'cartao_credito'" class="text-xs text-gray-500 mt-1">
+                Pago na fatura fechada: {{ formatarMoeda(conta.valor_fatura_fechada_pago || 0) }}
+              </p>
+              <p v-if="conta.tipo === 'cartao_credito'" class="text-xs text-gray-500 mt-1">
+                Fatura atual: {{ formatarMoeda(conta.valor_fatura_aberta || 0) }}
+              </p>
+              <p v-if="conta.tipo === 'cartao_credito' && conta.data_vencimento_fatura_fechada" class="text-xs text-gray-500 mt-1">
+                Vencimento da fatura fechada: {{ formatarData(conta.data_vencimento_fatura_fechada) }}
               </p>
             </div>
 

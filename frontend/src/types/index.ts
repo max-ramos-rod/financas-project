@@ -33,6 +33,19 @@ export interface Conta {
   limite_credito?: number | null
   cor: string
   ativa: boolean
+  valor_fatura_aberta?: number | null
+  valor_fatura_fechada?: number | null
+  valor_fatura_fechada_pago?: number | null
+  valor_fatura_fechada_total?: number | null
+  total_itens_fatura_aberta?: number | null
+  total_itens_fatura_fechada?: number | null
+  periodo_fatura_inicio?: string | null
+  periodo_fatura_fim?: string | null
+  periodo_fatura_fechada_inicio?: string | null
+  periodo_fatura_fechada_fim?: string | null
+  data_fechamento_fatura?: string | null
+  data_vencimento_fatura?: string | null
+  data_vencimento_fatura_fechada?: string | null
 }
 
 export interface Categoria {
@@ -115,13 +128,22 @@ export interface FaturaItem {
 export interface FaturaResumo {
   conta_id: number
   conta_nome: string
+  competencia_ano: number
+  competencia_mes: number
   periodo_inicio: string
   periodo_fim: string
   dia_fechamento: number
   dia_vencimento: number
+  data_fechamento_prevista: string
+  data_fechamento_real?: string | null
+  data_fechamento_fatura: string
+  data_vencimento_prevista: string
   data_vencimento_fatura: string
+  observacao_ciclo?: string | null
   total_itens: number
   valor_total: number
+  valor_pago: number
+  valor_a_pagar: number
   itens: FaturaItem[]
 }
 

@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Conta, FaturaResumo } from '@/types'
-import { formatDateForInput } from '@/utils/date'
+import { formatDateBR, formatDateForInput } from '@/utils/date'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,12 +11,17 @@ const contaId = Number(route.params.id)
 
 const loading = ref(true)
 const pagando = ref(false)
+const salvandoCiclo = ref(false)
 const error = ref('')
 const success = ref('')
-const fatura = ref<FaturaResumo | null>(null)
+const faturaFechada = ref<FaturaResumo | null>(null)
+const cicloAberto = ref<FaturaResumo | null>(null)
 const contas = ref<Conta[]>([])
 const contaPagamentoId = ref<number | null>(null)
 const dataPagamento = ref(formatDateForInput(new Date()))
+const dataFechamentoReal = ref('')
+const dataVencimentoReal = ref('')
+const observacaoCiclo = ref('')
 
 const contasPagamento = computed(() =>
   contas.value.filter((c) => c.ativa && c.tipo !== 'cartao_credito' && c.id !== contaId)
@@ -25,26 +30,70 @@ const contasPagamento = computed(() =>
 const formatarMoeda = (valor: number): string =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
 
-const formatarData = (data: string): string =>
-  new Date(data).toLocaleDateString('pt-BR')
+const formatarData = (data: string): string => formatDateBR(data)
+
+const aplicarCicloAbertoNaTela = (resumo: FaturaResumo) => {
+  cicloAberto.value = resumo
+  dataFechamentoReal.value = resumo.data_fechamento_real || ''
+  dataVencimentoReal.value = resumo.data_vencimento_fatura !== resumo.data_vencimento_prevista
+    ? resumo.data_vencimento_fatura
+    : ''
+  observacaoCiclo.value = resumo.observacao_ciclo || ''
+}
 
 const carregar = async () => {
   loading.value = true
   error.value = ''
   try {
-    const [faturaRes, contasRes] = await Promise.all([
+    const [faturaFechadaRes, cicloAbertoRes, contasRes] = await Promise.all([
+      api.get<FaturaResumo>(`/contas/${contaId}/fatura-fechada`),
       api.get<FaturaResumo>(`/contas/${contaId}/fatura-atual`),
       api.get<Conta[]>('/contas'),
     ])
-    fatura.value = faturaRes.data
+    faturaFechada.value = faturaFechadaRes.data
+    aplicarCicloAbertoNaTela(cicloAbertoRes.data)
     contas.value = contasRes.data
     if (!contaPagamentoId.value && contasPagamento.value.length > 0) {
       contaPagamentoId.value = contasPagamento.value[0].id
     }
   } catch (err: any) {
-    error.value = err?.response?.data?.detail || 'Erro ao carregar fatura.'
+    error.value = err?.response?.data?.detail || 'Erro ao carregar dados da fatura.'
   } finally {
     loading.value = false
+  }
+}
+
+const salvarAjusteCiclo = async () => {
+  salvandoCiclo.value = true
+  error.value = ''
+  success.value = ''
+  try {
+    const res = await api.put<FaturaResumo>(`/contas/${contaId}/fatura-atual/ajuste-ciclo`, {
+      data_fechamento_real: dataFechamentoReal.value || null,
+      data_vencimento_real: dataVencimentoReal.value || null,
+      observacao: observacaoCiclo.value || null,
+    })
+    aplicarCicloAbertoNaTela(res.data)
+    success.value = 'Ajuste do ciclo salvo com sucesso.'
+  } catch (err: any) {
+    error.value = err?.response?.data?.detail || 'Erro ao salvar ajuste do ciclo.'
+  } finally {
+    salvandoCiclo.value = false
+  }
+}
+
+const limparAjusteCiclo = async () => {
+  salvandoCiclo.value = true
+  error.value = ''
+  success.value = ''
+  try {
+    const res = await api.delete<FaturaResumo>(`/contas/${contaId}/fatura-atual/ajuste-ciclo`)
+    aplicarCicloAbertoNaTela(res.data)
+    success.value = 'Ajuste do ciclo removido.'
+  } catch (err: any) {
+    error.value = err?.response?.data?.detail || 'Erro ao limpar ajuste do ciclo.'
+  } finally {
+    salvandoCiclo.value = false
   }
 }
 
@@ -57,12 +106,12 @@ const pagarFatura = async () => {
   error.value = ''
   success.value = ''
   try {
-    const res = await api.post<FaturaResumo>(`/contas/${contaId}/pagar-fatura`, {
+    await api.post<FaturaResumo>(`/contas/${contaId}/pagar-fatura`, {
       conta_pagamento_id: contaPagamentoId.value,
       data_pagamento: dataPagamento.value,
     })
-    fatura.value = res.data
-    success.value = 'Fatura paga com sucesso.'
+    await carregar()
+    success.value = 'Fatura a pagar quitada com sucesso.'
   } catch (err: any) {
     error.value = err?.response?.data?.detail || 'Erro ao pagar fatura.'
   } finally {
@@ -75,9 +124,9 @@ onMounted(carregar)
 
 <template>
   <div class="min-h-screen bg-base-200 p-6">
-    <div class="max-w-5xl mx-auto space-y-6">
+    <div class="max-w-6xl mx-auto space-y-6">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold">💳 Fatura do Cartao</h1>
+        <h1 class="text-2xl font-bold">Fatura do Cartao</h1>
         <button class="btn btn-ghost" @click="router.push('/contas')">Voltar</button>
       </div>
 
@@ -89,34 +138,40 @@ onMounted(carregar)
         <div v-if="error" class="alert alert-error"><span>{{ error }}</span></div>
         <div v-if="success" class="alert alert-success"><span>{{ success }}</span></div>
 
-        <div v-if="fatura" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="card bg-base-100 shadow">
-            <div class="card-body">
-              <p class="text-sm text-gray-500">Cartao</p>
-              <p class="font-semibold">{{ fatura.conta_nome }}</p>
-              <p class="text-xs text-gray-500">Fechamento dia {{ fatura.dia_fechamento }}</p>
-            </div>
-          </div>
-          <div class="card bg-base-100 shadow">
-            <div class="card-body">
-              <p class="text-sm text-gray-500">Periodo</p>
-              <p class="font-semibold">{{ formatarData(fatura.periodo_inicio) }} - {{ formatarData(fatura.periodo_fim) }}</p>
-              <p class="text-xs text-gray-500">Vencimento: {{ formatarData(fatura.data_vencimento_fatura) }}</p>
-            </div>
-          </div>
-          <div class="card bg-primary text-primary-content shadow">
-            <div class="card-body">
-              <p class="text-sm opacity-90">Total em aberto</p>
-              <p class="text-3xl font-bold">{{ formatarMoeda(fatura.valor_total) }}</p>
-              <p class="text-xs opacity-80">{{ fatura.total_itens }} item(ns)</p>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="fatura" class="card bg-base-100 shadow">
+        <div
+          v-if="faturaFechada"
+          class="card bg-base-100 shadow"
+          :class="(faturaFechada.valor_a_pagar || 0) > 0 ? 'border border-error/20' : 'border border-success/20'"
+        >
           <div class="card-body">
-            <h2 class="card-title">Pagar Fatura</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <h2 class="card-title">Ultima Fatura Fechada</h2>
+              <p class="text-sm text-gray-500">Ultima fatura consolidada do cartao, paga ou ainda a vencer.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+              <div class="rounded-box bg-base-200 p-4">
+                <p class="text-sm text-gray-500">Periodo fechado</p>
+                <p class="font-semibold">{{ formatarData(faturaFechada.periodo_inicio) }} - {{ formatarData(faturaFechada.periodo_fim) }}</p>
+                <p class="text-xs text-gray-500 mt-1">Fechamento: {{ formatarData(faturaFechada.data_fechamento_fatura) }}</p>
+              </div>
+              <div class="rounded-box bg-base-200 p-4">
+                <p class="text-sm text-gray-500">Vencimento</p>
+                <p class="font-semibold">{{ formatarData(faturaFechada.data_vencimento_fatura) }}</p>
+                <p class="text-xs text-gray-500 mt-1">{{ faturaFechada.total_itens }} item(ns)</p>
+              </div>
+              <div
+                class="rounded-box p-4"
+                :class="(faturaFechada.valor_a_pagar || 0) > 0 ? 'bg-error text-error-content' : 'bg-success text-success-content'"
+              >
+                <p class="text-sm opacity-80">Total da fatura fechada</p>
+                <p class="text-3xl font-bold">{{ formatarMoeda(faturaFechada.valor_total) }}</p>
+                <p class="text-xs opacity-80 mt-2">Pago: {{ formatarMoeda(faturaFechada.valor_pago || 0) }}</p>
+                <p class="text-xs opacity-80">A pagar: {{ formatarMoeda(faturaFechada.valor_a_pagar || 0) }}</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <div>
                 <label class="label"><span class="label-text">Conta de pagamento</span></label>
                 <select v-model.number="contaPagamentoId" class="select select-bordered w-full">
@@ -131,21 +186,92 @@ onMounted(carregar)
                 <input v-model="dataPagamento" type="date" class="input input-bordered w-full" />
               </div>
               <div class="flex items-end">
-                <button class="btn btn-primary w-full" :disabled="pagando || !fatura || fatura.total_itens === 0" @click="pagarFatura">
+                <button class="btn btn-primary w-full" :disabled="pagando || !faturaFechada || (faturaFechada.valor_a_pagar || 0) === 0" @click="pagarFatura">
                   <span v-if="pagando" class="loading loading-spinner loading-sm"></span>
-                  <span v-else>Pagar {{ formatarMoeda(fatura?.valor_total || 0) }}</span>
+                  <span v-else>Pagar</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div v-if="fatura" class="card bg-base-100 shadow">
+        <div v-if="cicloAberto" class="card bg-base-100 shadow">
           <div class="card-body">
-            <h2 class="card-title">Itens da Fatura</h2>
-            <div v-if="fatura.itens.length === 0" class="text-gray-500 py-6">Nenhum item em aberto no ciclo atual.</div>
+            <div>
+              <h2 class="card-title">Fatura Atual</h2>
+              <p class="text-sm text-gray-500">Lancamentos do ciclo em que estamos agora.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+              <div class="rounded-box bg-base-200 p-4">
+                <p class="text-sm text-gray-500">Periodo do ciclo</p>
+                <p class="font-semibold">{{ formatarData(cicloAberto.periodo_inicio) }} - {{ formatarData(cicloAberto.periodo_fim) }}</p>
+                <p class="text-xs text-gray-500 mt-1">Fechamento do ciclo: {{ formatarData(cicloAberto.data_fechamento_fatura) }}</p>
+              </div>
+              <div class="rounded-box bg-base-200 p-4">
+                <p class="text-sm text-gray-500">Vencimento previsto</p>
+                <p class="font-semibold">{{ formatarData(cicloAberto.data_vencimento_fatura) }}</p>
+                <p class="text-xs text-gray-500 mt-1">{{ cicloAberto.total_itens }} item(ns)</p>
+              </div>
+              <div class="rounded-box bg-primary text-primary-content p-4">
+                <p class="text-sm opacity-80">Parcial da fatura atual</p>
+                <p class="text-3xl font-bold">{{ formatarMoeda(cicloAberto.valor_total) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="cicloAberto" class="card bg-base-100 shadow">
+          <div class="card-body">
+            <h2 class="card-title">Ajuste da Fatura Atual</h2>
+            <p class="text-sm text-gray-500">
+              Registre aqui excecoes do mes, como feriados, fins de semana ou mudancas operacionais do emissor.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="label"><span class="label-text">Fechamento previsto</span></label>
+                <input :value="cicloAberto.data_fechamento_prevista" type="date" class="input input-bordered w-full" disabled />
+              </div>
+              <div>
+                <label class="label"><span class="label-text">Vencimento previsto</span></label>
+                <input :value="cicloAberto.data_vencimento_prevista" type="date" class="input input-bordered w-full" disabled />
+              </div>
+              <div>
+                <label class="label"><span class="label-text">Fechamento real do ciclo</span></label>
+                <input v-model="dataFechamentoReal" type="date" class="input input-bordered w-full" />
+              </div>
+              <div>
+                <label class="label"><span class="label-text">Vencimento real da fatura</span></label>
+                <input v-model="dataVencimentoReal" type="date" class="input input-bordered w-full" />
+              </div>
+            </div>
+            <div>
+              <label class="label"><span class="label-text">Observacao do ciclo</span></label>
+              <textarea
+                v-model="observacaoCiclo"
+                class="textarea textarea-bordered w-full"
+                rows="3"
+                placeholder="Ex.: banco postergou vencimento por feriado nacional."
+              ></textarea>
+            </div>
+            <div class="flex flex-col md:flex-row gap-3 md:justify-end">
+              <button class="btn btn-ghost" :disabled="salvandoCiclo" @click="limparAjusteCiclo">
+                Limpar ajuste
+              </button>
+              <button class="btn btn-secondary" :disabled="salvandoCiclo" @click="salvarAjusteCiclo">
+                <span v-if="salvandoCiclo" class="loading loading-spinner loading-sm"></span>
+                <span v-else>Salvar ajuste do ciclo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="cicloAberto" class="card bg-base-100 shadow">
+          <div class="card-body">
+            <h2 class="card-title">Lancamentos da Fatura Atual</h2>
+            <div v-if="cicloAberto.itens.length === 0" class="text-gray-500 py-6">Nenhum item em aberto no ciclo atual.</div>
             <div v-else class="space-y-2">
-              <div v-for="item in fatura.itens" :key="item.transacao_id" class="border rounded-lg p-3 flex items-center justify-between">
+              <div v-for="item in cicloAberto.itens" :key="item.transacao_id" class="border rounded-lg p-3 flex items-center justify-between">
                 <div>
                   <p class="font-medium">{{ item.descricao }}</p>
                   <p class="text-xs text-gray-500">
