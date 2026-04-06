@@ -1,75 +1,71 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+﻿from datetime import date
 from typing import List
-from datetime import date, timedelta
-from calendar import monthrange
 import uuid
 
-from app.db.session import get_db
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.api.deps import AccessContext, get_access_context
+from app.crud import crud_conta as crud
+from app.db.session import get_db
+from app.domain.cartao_fatura import (
+    determinar_competencia_fatura_atual,
+    obter_resumo_fatura_atual,
+    obter_resumo_fatura_fechada_atual,
+    valor_efetivo_transacao,
+)
+from app.models import ContaCartaoCiclo, StatusLiquidacao, TipoConta, TipoTransacao, Transacao
 from app.schemas.conta import (
     ContaCreate,
-    ContaUpdate,
     ContaResponse,
-    FaturaResumoResponse,
+    ContaUpdate,
+    FaturaCicloAjusteRequest,
     FaturaItemResponse,
+    FaturaResumoResponse,
     PagarFaturaRequest,
 )
-from app.models import Conta, TipoConta, Transacao, TipoTransacao, StatusLiquidacao
-
-from app.crud import crud_conta as crud
 
 router = APIRouter()
 
 
-def _safe_date_with_day(year: int, month: int, day: int) -> date:
-    return date(year, month, min(day, monthrange(year, month)[1]))
-
-
-def _shift_month(base: date, months: int) -> date:
-    month_index = (base.month - 1) + months
-    year = base.year + (month_index // 12)
-    month = (month_index % 12) + 1
-    return date(year, month, 1)
-
-
-def _calcular_periodo_fatura(ref_date: date, dia_fechamento: int) -> tuple[date, date]:
-    fechamento_mes_atual = _safe_date_with_day(ref_date.year, ref_date.month, dia_fechamento)
-    if ref_date.day >= fechamento_mes_atual.day:
-        periodo_fim = fechamento_mes_atual
-    else:
-        mes_anterior = _shift_month(ref_date, -1)
-        periodo_fim = _safe_date_with_day(mes_anterior.year, mes_anterior.month, dia_fechamento)
-
-    mes_antes = _shift_month(periodo_fim, -1)
-    fechamento_anterior = _safe_date_with_day(mes_antes.year, mes_antes.month, dia_fechamento)
-    periodo_inicio = fechamento_anterior + timedelta(days=1)
-    return periodo_inicio, periodo_fim
-
-
-def _calcular_vencimento_fatura(periodo_fim: date, dia_vencimento: int) -> date:
-    if dia_vencimento > periodo_fim.day:
-        return _safe_date_with_day(periodo_fim.year, periodo_fim.month, dia_vencimento)
-    proximo_mes = _shift_month(periodo_fim, 1)
-    return _safe_date_with_day(proximo_mes.year, proximo_mes.month, dia_vencimento)
-
-
-def _valor_efetivo(transacao: Transacao) -> float:
-    return max(
-        0.0,
-        (transacao.valor or 0)
-        + (transacao.valor_multa or 0)
-        + (transacao.valor_juros or 0)
-        - (transacao.valor_desconto or 0),
-    )
-
 @router.get("", response_model=List[ContaResponse])
 def listar_contas(
     db: Session = Depends(get_db),
-    access_ctx: AccessContext = Depends(get_access_context)
+    access_ctx: AccessContext = Depends(get_access_context),
 ):
-    """Lista todas as contas do usuário"""
     contas = crud.get_contas(db, access_ctx.effective_user.id)
+
+    for conta in contas:
+        if conta.tipo != TipoConta.CARTAO_CREDITO:
+            continue
+        try:
+            resumo = obter_resumo_fatura_atual(
+                db,
+                user_id=access_ctx.effective_user.id,
+                conta=conta,
+            )
+        except ValueError:
+            continue
+
+        conta.valor_fatura_aberta = resumo.valor_total
+        conta.total_itens_fatura_aberta = resumo.total_itens
+        conta.periodo_fatura_inicio = resumo.periodo_inicio
+        conta.periodo_fatura_fim = resumo.periodo_fim
+        conta.data_fechamento_fatura = resumo.data_fechamento_fatura
+        conta.data_vencimento_fatura = resumo.data_vencimento_fatura
+        resumo_fechado = obter_resumo_fatura_fechada_atual(
+            db,
+            user_id=access_ctx.effective_user.id,
+            conta=conta,
+        )
+        conta.valor_fatura_fechada = resumo_fechado.valor_a_pagar
+        conta.valor_fatura_fechada_pago = resumo_fechado.valor_pago
+        conta.valor_fatura_fechada_total = resumo_fechado.valor_total
+        conta.total_itens_fatura_fechada = resumo_fechado.total_itens
+        conta.periodo_fatura_fechada_inicio = resumo_fechado.periodo_inicio
+        conta.periodo_fatura_fechada_fim = resumo_fechado.periodo_fim
+        conta.data_vencimento_fatura_fechada = resumo_fechado.data_vencimento_fatura
+
     return contas
 
 
@@ -77,17 +73,44 @@ def listar_contas(
 def buscar_conta(
     conta_id: int,
     db: Session = Depends(get_db),
-    access_ctx: AccessContext = Depends(get_access_context)
+    access_ctx: AccessContext = Depends(get_access_context),
 ):
-    """Busca uma conta específica"""
     conta = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
-    
+
     if not conta:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conta não encontrada"
+            detail="Conta nao encontrada",
         )
-    
+
+    if conta.tipo == TipoConta.CARTAO_CREDITO:
+        try:
+            resumo = obter_resumo_fatura_atual(
+                db,
+                user_id=access_ctx.effective_user.id,
+                conta=conta,
+            )
+            conta.valor_fatura_aberta = resumo.valor_total
+            conta.total_itens_fatura_aberta = resumo.total_itens
+            conta.periodo_fatura_inicio = resumo.periodo_inicio
+            conta.periodo_fatura_fim = resumo.periodo_fim
+            conta.data_fechamento_fatura = resumo.data_fechamento_fatura
+            conta.data_vencimento_fatura = resumo.data_vencimento_fatura
+            resumo_fechado = obter_resumo_fatura_fechada_atual(
+                db,
+                user_id=access_ctx.effective_user.id,
+                conta=conta,
+            )
+            conta.valor_fatura_fechada = resumo_fechado.valor_a_pagar
+            conta.valor_fatura_fechada_pago = resumo_fechado.valor_pago
+            conta.valor_fatura_fechada_total = resumo_fechado.valor_total
+            conta.total_itens_fatura_fechada = resumo_fechado.total_itens
+            conta.periodo_fatura_fechada_inicio = resumo_fechado.periodo_inicio
+            conta.periodo_fatura_fechada_fim = resumo_fechado.periodo_fim
+            conta.data_vencimento_fatura_fechada = resumo_fechado.data_vencimento_fatura
+        except ValueError:
+            pass
+
     return conta
 
 
@@ -95,17 +118,16 @@ def buscar_conta(
 def criar_conta(
     conta: ContaCreate,
     db: Session = Depends(get_db),
-    access_ctx: AccessContext = Depends(get_access_context)
+    access_ctx: AccessContext = Depends(get_access_context),
 ):
-    """Cria uma nova conta"""
     try:
         nova_conta = crud.criar_conta(db, conta, access_ctx.effective_user.id)
         return nova_conta
-    except ValueError as e:
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+            detail=str(exc),
+        ) from exc
 
 
 @router.put("/{conta_id}", response_model=ContaResponse)
@@ -113,50 +135,46 @@ def atualizar_conta(
     conta_id: int,
     conta: ContaUpdate,
     db: Session = Depends(get_db),
-    access_ctx: AccessContext = Depends(get_access_context)
+    access_ctx: AccessContext = Depends(get_access_context),
 ):
-    """Atualiza uma conta existente"""
     try:
-        conta_atualizada = crud.atualizar_conta(
-            db, conta_id, access_ctx.effective_user.id, conta
-        )
-        
+        conta_atualizada = crud.atualizar_conta(db, conta_id, access_ctx.effective_user.id, conta)
+
         if not conta_atualizada:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Conta não encontrada"
+                detail="Conta nao encontrada",
             )
-        
+
         return conta_atualizada
-    except ValueError as e:
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+            detail=str(exc),
+        ) from exc
 
 
 @router.delete("/{conta_id}", status_code=status.HTTP_204_NO_CONTENT)
 def deletar_conta(
     conta_id: int,
     db: Session = Depends(get_db),
-    access_ctx: AccessContext = Depends(get_access_context)
+    access_ctx: AccessContext = Depends(get_access_context),
 ):
-    """Deleta uma conta"""
     try:
         sucesso = crud.deletar_conta(db, conta_id, access_ctx.effective_user.id)
-        
+
         if not sucesso:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Conta não encontrada"
+                detail="Conta nao encontrada",
             )
-        
+
         return None
-    except ValueError as e:
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+            detail=str(exc),
+        ) from exc
 
 
 @router.get("/{conta_id}/fatura-atual", response_model=FaturaResumoResponse)
@@ -167,23 +185,16 @@ def obter_fatura_atual(
 ):
     conta = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
     if not conta:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta não encontrada")
-    if conta.tipo != TipoConta.CARTAO_CREDITO:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Conta não é cartão de crédito")
-    if conta.dia_fechamento is None or conta.dia_vencimento is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cartão sem fechamento/vencimento configurado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
 
-    periodo_inicio, periodo_fim = _calcular_periodo_fatura(date.today(), conta.dia_fechamento)
-    vencimento_fatura = _calcular_vencimento_fatura(periodo_fim, conta.dia_vencimento)
-
-    transacoes = db.query(Transacao).filter(
-        Transacao.user_id == access_ctx.effective_user.id,
-        Transacao.conta_id == conta.id,
-        Transacao.tipo == TipoTransacao.SAIDA,
-        Transacao.data >= periodo_inicio,
-        Transacao.data <= periodo_fim,
-        Transacao.status_liquidacao.in_([StatusLiquidacao.PREVISTO, StatusLiquidacao.ATRASADO]),
-    ).order_by(Transacao.data.asc(), Transacao.id.asc()).all()
+    try:
+        resumo = obter_resumo_fatura_atual(
+            db,
+            user_id=access_ctx.effective_user.id,
+            conta=conta,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     itens = [
         FaturaItemResponse(
@@ -196,24 +207,176 @@ def obter_fatura_atual(
             valor_multa=t.valor_multa or 0,
             valor_juros=t.valor_juros or 0,
             valor_desconto=t.valor_desconto or 0,
-            valor_efetivo=_valor_efetivo(t),
+            valor_efetivo=valor_efetivo_transacao(t),
         )
-        for t in transacoes
+        for t in resumo.itens
     ]
 
-    valor_total = sum(item.valor_efetivo for item in itens)
     return FaturaResumoResponse(
-        conta_id=conta.id,
-        conta_nome=conta.nome,
-        periodo_inicio=periodo_inicio,
-        periodo_fim=periodo_fim,
-        dia_fechamento=conta.dia_fechamento,
-        dia_vencimento=conta.dia_vencimento,
-        data_vencimento_fatura=vencimento_fatura,
-        total_itens=len(itens),
-        valor_total=valor_total,
+        conta_id=resumo.conta_id,
+        conta_nome=resumo.conta_nome,
+        competencia_ano=resumo.competencia_ano,
+        competencia_mes=resumo.competencia_mes,
+        periodo_inicio=resumo.periodo_inicio,
+        periodo_fim=resumo.periodo_fim,
+        dia_fechamento=resumo.dia_fechamento,
+        dia_vencimento=resumo.dia_vencimento,
+        data_fechamento_prevista=resumo.data_fechamento_prevista,
+        data_fechamento_real=resumo.data_fechamento_real,
+        data_fechamento_fatura=resumo.data_fechamento_fatura,
+        data_vencimento_prevista=resumo.data_vencimento_prevista,
+        data_vencimento_fatura=resumo.data_vencimento_fatura,
+        observacao_ciclo=resumo.observacao_ciclo,
+        total_itens=resumo.total_itens,
+        valor_total=resumo.valor_total,
+        valor_pago=resumo.valor_pago,
+        valor_a_pagar=resumo.valor_a_pagar,
         itens=itens,
     )
+
+
+@router.get("/{conta_id}/fatura-fechada", response_model=FaturaResumoResponse)
+def obter_fatura_fechada(
+    conta_id: int,
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context),
+):
+    conta = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
+    if not conta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
+
+    try:
+        resumo = obter_resumo_fatura_fechada_atual(
+            db,
+            user_id=access_ctx.effective_user.id,
+            conta=conta,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    itens = [
+        FaturaItemResponse(
+            transacao_id=t.id,
+            descricao=t.descricao,
+            data=t.data,
+            data_vencimento=t.data_vencimento,
+            status_liquidacao=t.status_liquidacao.value,
+            valor=t.valor,
+            valor_multa=t.valor_multa or 0,
+            valor_juros=t.valor_juros or 0,
+            valor_desconto=t.valor_desconto or 0,
+            valor_efetivo=valor_efetivo_transacao(t),
+        )
+        for t in resumo.itens
+    ]
+
+    return FaturaResumoResponse(
+        conta_id=resumo.conta_id,
+        conta_nome=resumo.conta_nome,
+        competencia_ano=resumo.competencia_ano,
+        competencia_mes=resumo.competencia_mes,
+        periodo_inicio=resumo.periodo_inicio,
+        periodo_fim=resumo.periodo_fim,
+        dia_fechamento=resumo.dia_fechamento,
+        dia_vencimento=resumo.dia_vencimento,
+        data_fechamento_prevista=resumo.data_fechamento_prevista,
+        data_fechamento_real=resumo.data_fechamento_real,
+        data_fechamento_fatura=resumo.data_fechamento_fatura,
+        data_vencimento_prevista=resumo.data_vencimento_prevista,
+        data_vencimento_fatura=resumo.data_vencimento_fatura,
+        observacao_ciclo=resumo.observacao_ciclo,
+        total_itens=resumo.total_itens,
+        valor_total=resumo.valor_total,
+        valor_pago=resumo.valor_pago,
+        valor_a_pagar=resumo.valor_a_pagar,
+        itens=itens,
+    )
+
+
+@router.put("/{conta_id}/fatura-atual/ajuste-ciclo", response_model=FaturaResumoResponse)
+def ajustar_ciclo_fatura_atual(
+    conta_id: int,
+    payload: FaturaCicloAjusteRequest,
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context),
+):
+    conta = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
+    if not conta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
+    if conta.tipo != TipoConta.CARTAO_CREDITO:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Conta nao e cartao de credito")
+    if conta.dia_fechamento is None or conta.dia_vencimento is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cartao sem fechamento/vencimento configurado")
+
+    referencia = date.today()
+    competencia_ano, competencia_mes = determinar_competencia_fatura_atual(
+        db,
+        conta=conta,
+        ref_date=referencia,
+    )
+    resumo_atual = obter_fatura_atual(conta_id=conta_id, db=db, access_ctx=access_ctx)
+
+    ciclo = (
+        db.query(ContaCartaoCiclo)
+        .filter(
+            ContaCartaoCiclo.conta_id == conta.id,
+            ContaCartaoCiclo.competencia_ano == competencia_ano,
+            ContaCartaoCiclo.competencia_mes == competencia_mes,
+        )
+        .first()
+    )
+
+    if ciclo is None:
+        ciclo = ContaCartaoCiclo(
+            conta_id=conta.id,
+            competencia_ano=competencia_ano,
+            competencia_mes=competencia_mes,
+            data_fechamento_prevista=resumo_atual.data_fechamento_prevista,
+            data_vencimento_prevista=resumo_atual.data_vencimento_prevista,
+        )
+
+    ciclo.data_fechamento_prevista = resumo_atual.data_fechamento_prevista
+    ciclo.data_vencimento_prevista = resumo_atual.data_vencimento_prevista
+    ciclo.data_fechamento_real = payload.data_fechamento_real
+    ciclo.data_vencimento_real = payload.data_vencimento_real
+    ciclo.observacao = payload.observacao
+    db.add(ciclo)
+    db.commit()
+
+    return obter_fatura_atual(conta_id=conta_id, db=db, access_ctx=access_ctx)
+
+
+@router.delete("/{conta_id}/fatura-atual/ajuste-ciclo", response_model=FaturaResumoResponse)
+def limpar_ajuste_ciclo_fatura_atual(
+    conta_id: int,
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context),
+):
+    conta = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
+    if not conta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
+    if conta.tipo != TipoConta.CARTAO_CREDITO:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Conta nao e cartao de credito")
+
+    competencia_ano, competencia_mes = determinar_competencia_fatura_atual(
+        db,
+        conta=conta,
+        ref_date=date.today(),
+    )
+    ciclo = (
+        db.query(ContaCartaoCiclo)
+        .filter(
+            ContaCartaoCiclo.conta_id == conta.id,
+            ContaCartaoCiclo.competencia_ano == competencia_ano,
+            ContaCartaoCiclo.competencia_mes == competencia_mes,
+        )
+        .first()
+    )
+    if ciclo:
+        db.delete(ciclo)
+        db.commit()
+
+    return obter_fatura_atual(conta_id=conta_id, db=db, access_ctx=access_ctx)
 
 
 @router.post("/{conta_id}/pagar-fatura", response_model=FaturaResumoResponse)
@@ -225,38 +388,51 @@ def pagar_fatura(
 ):
     conta_cartao = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
     if not conta_cartao:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta não encontrada")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
     if conta_cartao.tipo != TipoConta.CARTAO_CREDITO:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Conta não é cartão de crédito")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Conta nao e cartao de credito")
     if conta_cartao.dia_fechamento is None or conta_cartao.dia_vencimento is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cartão sem fechamento/vencimento configurado")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cartao sem fechamento/vencimento configurado")
 
     conta_pagamento = crud.get_conta(db, payload.conta_pagamento_id, access_ctx.effective_user.id)
     if not conta_pagamento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta de pagamento não encontrada")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta de pagamento nao encontrada")
     if conta_pagamento.id == conta_cartao.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Conta de pagamento deve ser diferente do cartão")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Conta de pagamento deve ser diferente do cartao")
     if conta_pagamento.tipo == TipoConta.CARTAO_CREDITO:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pagamento deve sair de conta não cartão")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pagamento deve sair de conta nao cartao")
 
-    periodo_inicio, periodo_fim = _calcular_periodo_fatura(date.today(), conta_cartao.dia_fechamento)
-    transacoes = db.query(Transacao).filter(
-        Transacao.user_id == access_ctx.effective_user.id,
-        Transacao.conta_id == conta_cartao.id,
-        Transacao.tipo == TipoTransacao.SAIDA,
-        Transacao.data >= periodo_inicio,
-        Transacao.data <= periodo_fim,
-        Transacao.status_liquidacao.in_([StatusLiquidacao.PREVISTO, StatusLiquidacao.ATRASADO]),
-    ).order_by(Transacao.data.asc(), Transacao.id.asc()).all()
+    resumo_fatura = obter_resumo_fatura_fechada_atual(
+        db,
+        user_id=access_ctx.effective_user.id,
+        conta=conta_cartao,
+        ref_date=date.today(),
+    )
+    periodo_inicio = resumo_fatura.periodo_inicio
+    periodo_fim = resumo_fatura.periodo_fim
+    transacoes = (
+        db.query(Transacao)
+        .filter(
+            Transacao.user_id == access_ctx.effective_user.id,
+            Transacao.conta_id == conta_cartao.id,
+            Transacao.tipo == TipoTransacao.SAIDA,
+            Transacao.data >= periodo_inicio,
+            Transacao.data <= periodo_fim,
+            Transacao.status_liquidacao.in_([StatusLiquidacao.PREVISTO, StatusLiquidacao.ATRASADO]),
+        )
+        .order_by(Transacao.data.asc(), Transacao.id.asc())
+        .all()
+    )
 
     if not transacoes:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não há itens em aberto na fatura atual")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nao ha itens em aberto na fatura fechada")
 
-    valor_total = sum(_valor_efetivo(t) for t in transacoes)
+    valor_total = sum(valor_efetivo_transacao(t) for t in transacoes)
     data_pagamento = payload.data_pagamento or date.today()
-    descricao_pagamento = payload.descricao or f"Pagamento fatura {conta_cartao.nome} ({periodo_inicio.strftime('%m/%Y')} - {periodo_fim.strftime('%m/%Y')})"
+    descricao_pagamento = payload.descricao or (
+        f"FTPG {conta_cartao.nome} ({periodo_inicio.strftime('%d/%m')} a {periodo_fim.strftime('%d/%m')})"
+    )
 
-    # Debita a conta de pagamento e registra uma transferência de controle.
     conta_pagamento.saldo -= valor_total
     pagamento = Transacao(
         user_id=access_ctx.effective_user.id,
@@ -281,6 +457,7 @@ def pagar_fatura(
         valor_multa=0,
         valor_juros=0,
         valor_desconto=0,
+        tags="pagamento_fatura",
     )
     db.add(pagamento)
 
@@ -292,5 +469,4 @@ def pagar_fatura(
     db.add(conta_pagamento)
     db.commit()
 
-    # Retorna resumo atualizado (tende a ficar vazio apos pagamento).
-    return obter_fatura_atual(conta_id=conta_id, db=db, access_ctx=access_ctx)
+    return obter_fatura_fechada(conta_id=conta_id, db=db, access_ctx=access_ctx)

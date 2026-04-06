@@ -39,6 +39,28 @@ class Conta(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     user = relationship("User", back_populates="contas")
     transacoes = relationship("Transacao", back_populates="conta")
+    ciclos_fatura = relationship("ContaCartaoCiclo", back_populates="conta", cascade="all, delete-orphan")
+
+
+class ContaCartaoCiclo(Base):
+    __tablename__ = "conta_cartao_ciclos"
+    __table_args__ = (
+        UniqueConstraint("conta_id", "competencia_ano", "competencia_mes", name="uq_conta_cartao_ciclo_competencia"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    conta_id = Column(Integer, ForeignKey("contas.id"), nullable=False)
+    competencia_ano = Column(Integer, nullable=False)
+    competencia_mes = Column(Integer, nullable=False)
+    data_fechamento_prevista = Column(Date, nullable=False)
+    data_fechamento_real = Column(Date, nullable=True)
+    data_vencimento_prevista = Column(Date, nullable=False)
+    data_vencimento_real = Column(Date, nullable=True)
+    observacao = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    conta = relationship("Conta", back_populates="ciclos_fatura")
 
 class Categoria(Base):
     __tablename__ = "categorias"

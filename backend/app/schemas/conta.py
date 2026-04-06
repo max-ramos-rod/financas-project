@@ -40,6 +40,19 @@ class ContaResponse(ContaBase):
     id: int
     user_id: int
     saldo: float
+    valor_fatura_aberta: Optional[float] = None
+    valor_fatura_fechada: Optional[float] = None
+    valor_fatura_fechada_pago: Optional[float] = None
+    valor_fatura_fechada_total: Optional[float] = None
+    total_itens_fatura_aberta: Optional[int] = None
+    total_itens_fatura_fechada: Optional[int] = None
+    periodo_fatura_inicio: Optional[date] = None
+    periodo_fatura_fim: Optional[date] = None
+    periodo_fatura_fechada_inicio: Optional[date] = None
+    periodo_fatura_fechada_fim: Optional[date] = None
+    data_fechamento_fatura: Optional[date] = None
+    data_vencimento_fatura: Optional[date] = None
+    data_vencimento_fatura_fechada: Optional[date] = None
     created_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
@@ -61,13 +74,22 @@ class FaturaItemResponse(BaseModel):
 class FaturaResumoResponse(BaseModel):
     conta_id: int
     conta_nome: str
+    competencia_ano: int
+    competencia_mes: int
     periodo_inicio: date
     periodo_fim: date
     dia_fechamento: int
     dia_vencimento: int
+    data_fechamento_prevista: date
+    data_fechamento_real: Optional[date] = None
+    data_fechamento_fatura: date
+    data_vencimento_prevista: date
     data_vencimento_fatura: date
+    observacao_ciclo: Optional[str] = None
     total_itens: int
     valor_total: float
+    valor_pago: float = 0
+    valor_a_pagar: float = 0
     itens: List[FaturaItemResponse]
 
 
@@ -75,3 +97,19 @@ class PagarFaturaRequest(BaseModel):
     conta_pagamento_id: int
     data_pagamento: Optional[date] = None
     descricao: Optional[str] = None
+
+
+class FaturaCicloAjusteRequest(BaseModel):
+    data_fechamento_real: Optional[date] = None
+    data_vencimento_real: Optional[date] = None
+    observacao: Optional[str] = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def validar_intervalo(self):
+        if (
+            self.data_fechamento_real is not None
+            and self.data_vencimento_real is not None
+            and self.data_vencimento_real < self.data_fechamento_real
+        ):
+            raise ValueError("Data de vencimento real nao pode ser anterior ao fechamento real.")
+        return self
