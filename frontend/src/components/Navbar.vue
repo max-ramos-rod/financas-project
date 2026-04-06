@@ -44,8 +44,6 @@ const closeMobileMenu = () => {
   activeElement?.blur()
 }
 
-const isRotaAtiva = (rotas: string[]) => rotas.includes(String(rotaAtiva.value || ''))
-
 const navegarPara = (nomeRota: string) => {
   router.push({ name: nomeRota })
 }
