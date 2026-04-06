@@ -138,60 +138,52 @@ onMounted(() => {
   <nav class="navbar bg-primary text-primary-content shadow-lg sticky top-0 z-40">
     <div class="navbar-start">
       <button @click="navegarPara('dashboard')" class="btn btn-ghost text-xl font-bold">
-        Financas
+        Finanças
       </button>
     </div>
-
+    <div class="flex items-stretch">
+    </div>
     <div class="navbar-center hidden lg:flex">
-      <ul class="menu menu-horizontal items-center gap-1 rounded-box bg-primary/10 px-2 py-1">
-        <li v-for="item in navItemsPrincipais" :key="item.rota">
-          <button
+      <div class="hidden lg:flex items-center gap-2">
+        <ul class="menu menu-horizontal items-center gap-1 rounded-box bg-primary/10 px-2 py-1">
+          <li v-for="item in navItemsPrincipais" :key="item.rota">
+            <button
             @click="navegarPara(item.rota)"
             :class="[
               'btn btn-sm',
               rotaAtiva === item.rota
-                ? 'btn-active btn-secondary'
-                : 'btn-ghost'
-            ]"
-          >
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path :d="iconPaths[item.icon]" />
-            </svg>
-            <span>{{ item.label }}</span>
-          </button>
-        </li>
-        <li>
-          <details>
-            <summary
-              :class="[
-                'btn btn-sm list-none',
-                isRotaAtiva(navItemsGestao.map((item) => item.rota))
-                  ? 'btn-active btn-secondary'
-                  : 'btn-ghost'
+              ? 'btn-active btn-secondary'
+              : 'btn-ghost'
               ]"
-            >
-              <span>Gestao</span>
-            </summary>
-            <ul class="bg-base-100 text-base-content rounded-box z-50 mt-3 w-56 p-2 shadow-lg">
-              <li v-for="item in navItemsGestao" :key="item.rota">
-                <a @click="navegarPara(item.rota)" :class="{ 'menu-active': rotaAtiva === item.rota }">
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path :d="iconPaths[item.icon]" />
-                  </svg>
-                  <span>{{ item.label }}</span>
-                </a>
-              </li>
+              >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path :d="iconPaths[item.icon]" />
+              </svg>
+              <span>{{ item.label }}</span>
+            </button>
+          </li>
+          <div class="dropdown dropdown-end">
+            <div tabindex="0" role="button" class="btn btn-sm btn-ghost">Gestão</div>
+            <ul tabindex="0" class="dropdown-content menu bg-base-100 text-base-content rounded-box z-50 mt-3 w-60 p-2 shadow-lg">
+                <li v-for="item in navItemsGestao" :key="item.rota">
+                  <a @click="navegarPara(item.rota)" :class="{ 'menu-active': rotaAtiva === item.rota }">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path :d="iconPaths[item.icon]" />
+                    </svg>
+                    <span>{{ item.label }}</span>
+                  </a>
+                </li>
             </ul>
-          </details>
-        </li>
-      </ul>
+          </div>
+        </ul>
+      </div>
     </div>
 
     <div class="navbar-end gap-2">
       <div class="hidden lg:flex items-center gap-2">
         <div class="dropdown dropdown-end">
           <div tabindex="0" role="button" class="btn btn-sm btn-ghost">
-            Colaboracao
+            Colaboração
             <span v-if="pendingInviteCount" class="badge badge-warning badge-sm">{{ pendingInviteCount }}</span>
           </div>
           <ul tabindex="0" class="dropdown-content menu bg-base-100 text-base-content rounded-box z-50 mt-3 w-60 p-2 shadow-lg">
