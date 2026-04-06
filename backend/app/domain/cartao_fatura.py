@@ -284,6 +284,23 @@ def _obter_resumo_fatura_por_competencia(
     )
 
 
+def obter_resumo_fatura_por_competencia(
+    db: Session,
+    *,
+    user_id: int,
+    conta: Conta,
+    competencia_ano: int,
+    competencia_mes: int,
+) -> ResumoFatura:
+    return _obter_resumo_fatura_por_competencia(
+        db,
+        user_id=user_id,
+        conta=conta,
+        competencia_ano=competencia_ano,
+        competencia_mes=competencia_mes,
+    )
+
+
 def obter_resumo_fatura_atual(
     db: Session,
     *,

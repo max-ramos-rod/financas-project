@@ -442,3 +442,87 @@ def test_ajuste_de_fechamento_real_inclui_compras_nos_dias_extras_do_ciclo(clien
     assert ajuste.status_code == 200
     descricoes_depois = [item["descricao"] for item in ajuste.json()["itens"]]
     assert "Compra no dia extra do ciclo" in descricoes_depois
+
+
+def test_ajustar_ciclo_antigo_por_competencia(client):
+    headers = _auth_headers(client)
+    conta_cartao_id = _criar_conta_cartao(client, headers)
+
+    compra_dia_extra = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_cartao_id,
+            "descricao": "Compra ciclo antigo ajustado",
+            "valor": 125.0,
+            "tipo": "saida",
+            "data": "2026-03-21",
+            "status_liquidacao": "previsto",
+        },
+    )
+    assert compra_dia_extra.status_code == 201
+
+    antes = client.get(f"/api/v1/contas/{conta_cartao_id}/faturas/2026/3", headers=headers)
+    assert antes.status_code == 200
+    assert "Compra ciclo antigo ajustado" not in [item["descricao"] for item in antes.json()["itens"]]
+
+    ajuste = client.put(
+        f"/api/v1/contas/{conta_cartao_id}/faturas/2026/3/ajuste-ciclo",
+        headers=headers,
+        json={
+            "data_fechamento_real": "2026-03-22",
+            "data_vencimento_real": "2026-04-01",
+            "observacao": "Ajuste manual de fatura antiga.",
+        },
+    )
+    assert ajuste.status_code == 200
+    payload = ajuste.json()
+
+    assert payload["competencia_ano"] == 2026
+    assert payload["competencia_mes"] == 3
+    assert payload["data_fechamento_real"] == "2026-03-22"
+    assert payload["data_fechamento_fatura"] == "2026-03-22"
+    assert payload["data_vencimento_real"] == "2026-04-01"
+    assert payload["data_vencimento_fatura"] == "2026-04-01"
+    assert payload["observacao_ciclo"] == "Ajuste manual de fatura antiga."
+    assert "Compra ciclo antigo ajustado" in [item["descricao"] for item in payload["itens"]]
+
+
+def test_pagar_fatura_antiga_por_competencia(client):
+    headers = _auth_headers(client)
+    conta_cartao_id = _criar_conta_cartao(client, headers)
+    conta_pagamento_id = _criar_conta_pagamento(client, headers, saldo=1000.0)
+
+    compra = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_cartao_id,
+            "descricao": "Compra fatura antiga",
+            "valor": 200.0,
+            "tipo": "saida",
+            "data": "2026-03-10",
+            "status_liquidacao": "previsto",
+        },
+    )
+    assert compra.status_code == 201
+    transacao_id = compra.json()["id"]
+
+    pagar = client.post(
+        f"/api/v1/contas/{conta_cartao_id}/faturas/2026/3/pagar",
+        headers=headers,
+        json={
+            "conta_pagamento_id": conta_pagamento_id,
+            "data_pagamento": "2026-04-01",
+        },
+    )
+    assert pagar.status_code == 200
+    assert pagar.json()["valor_total"] == 200.0
+    assert pagar.json()["valor_pago"] == 200.0
+    assert pagar.json()["valor_a_pagar"] == 0
+
+    transacoes = client.get("/api/v1/transacoes", headers=headers)
+    assert transacoes.status_code == 200
+    item = next(t for t in transacoes.json() if t["id"] == transacao_id)
+    assert item["status_liquidacao"] == "liquidado"
+    assert item["data_liquidacao"] == "2026-04-01"

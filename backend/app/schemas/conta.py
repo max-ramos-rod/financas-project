@@ -84,6 +84,7 @@ class FaturaResumoResponse(BaseModel):
     data_fechamento_real: Optional[date] = None
     data_fechamento_fatura: date
     data_vencimento_prevista: date
+    data_vencimento_real: Optional[date] = None
     data_vencimento_fatura: date
     observacao_ciclo: Optional[str] = None
     total_itens: int
