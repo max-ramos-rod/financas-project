@@ -13,7 +13,7 @@ export default defineConfig({
     port: 5173,
     host: true,
     allowedHosts: [
-      "terms-wonder-sectors-puzzle.trycloudflare.com"
+      "financas.igrejabatistafe.com.br"
     ]    
   },
   build: {

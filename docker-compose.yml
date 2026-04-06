@@ -38,7 +38,7 @@ services:
       dockerfile: frontend/Dockerfile
     container_name: financas_frontend
     env_file:
-      - ./backend/.env    
+      - ./frontend/.env    
     ports:
       - "5173:5173"
     depends_on:
