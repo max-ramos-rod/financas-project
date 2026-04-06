@@ -138,6 +138,7 @@ export interface FaturaResumo {
   data_fechamento_real?: string | null
   data_fechamento_fatura: string
   data_vencimento_prevista: string
+  data_vencimento_real?: string | null
   data_vencimento_fatura: string
   observacao_ciclo?: string | null
   total_itens: number
