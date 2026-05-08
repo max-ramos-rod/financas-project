@@ -39,10 +39,12 @@ services:
     container_name: financas_frontend
     env_file:
       - ./frontend/.env    
+    expose:
+      - "80"
     ports:
-      - "5173:5173"
+      - "5173:80"
     depends_on:
-      - backend
+      - financas_backend
     networks:
       - app_network
 

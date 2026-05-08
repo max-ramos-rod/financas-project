@@ -7,6 +7,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# VITE_API_URL resolvido em build time
+ARG VITE_API_URL=https://financas.igrejabatistafe.com.br/api/v1
+ENV VITE_API_URL=$VITE_API_URL
+
 CMD ["gunicorn", "app.main:app", \
      "-k", "uvicorn.workers.UvicornWorker", \
      "-w", "2", \
