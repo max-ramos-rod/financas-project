@@ -44,7 +44,7 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - financas_backend
+      - backend
     networks:
       - app_network
 
