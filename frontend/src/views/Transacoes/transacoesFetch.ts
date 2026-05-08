@@ -34,9 +34,8 @@ export const buscarTransacoesFiltradas = async (
   apiClient: ApiClient,
   filtros: FiltrosTransacoes,
 ) => {
-  const response = await apiClient.get('/transacoes', {
+  const response = await apiClient.get('/transacoes/visao-financeira', {
     params: montarParamsApiDosFiltros(filtros),
   })
   return response.data
 }
-

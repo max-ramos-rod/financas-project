@@ -10,6 +10,7 @@ import { buscarTransacoesFiltradas, type FiltrosTransacoes } from './transacoesF
 const router = useRouter()
 const route = useRoute()
 const loading = ref(true)
+const duplicandoId = ref<number | null>(null)
 const transacoes = ref<Transacao[]>([])
 const contas = ref<Conta[]>([])
 const categorias = ref<Categoria[]>([])
@@ -155,6 +156,7 @@ const formatarData = (data: string) => formatDateBR(data)
 const getContaNome = (id: number) => contas.value.find((c) => c.id === id)?.nome || 'Conta'
 const getCategoriaNome = (id: number | null) => categorias.value.find((c) => c.id === id)?.nome || 'Sem categoria'
 const isContaCartaoCredito = (contaId: number) => contas.value.find((c) => c.id === contaId)?.tipo === 'cartao_credito'
+const isFaturaCartao = (t: Transacao) => t.item_tipo === 'fatura_cartao'
 const estaAtrasada = (t: Transacao) => {
   const status = t.status_liquidacao || 'liquidado'
   if (status === 'atrasado') return true
@@ -196,6 +198,26 @@ const statusClass = (t: Transacao) => {
 
 const novaTransacao = () => router.push({ path: '/transacoes/nova', query: queryAtualDosFiltros() })
 const editarTransacao = (id: number) => router.push({ path: `/transacoes/${id}/editar`, query: queryAtualDosFiltros() })
+const abrirFaturaCartao = (t: Transacao) => {
+  if (!t.fatura_conta_id || !t.fatura_competencia_ano || !t.fatura_competencia_mes) return
+  router.push({
+    path: `/contas/${t.fatura_conta_id}/fatura`,
+    query: {
+      ano: String(t.fatura_competencia_ano),
+      mes: String(t.fatura_competencia_mes),
+    },
+  })
+}
+
+const duplicarTransacao = async (id: number) => {
+  duplicandoId.value = id
+  try {
+    const res = await api.post<Transacao>(`/transacoes/${id}/duplicar`)
+    await router.push({ path: `/transacoes/${res.data.id}/editar`, query: queryAtualDosFiltros() })
+  } finally {
+    duplicandoId.value = null
+  }
+}
 
 const deletarTransacao = async (id: number) => {
   await api.delete(`/transacoes/${id}`)
@@ -518,10 +540,14 @@ onMounted(async () => {
                   <span
                     :class="[
                       'badge badge-sm badge-outline px-3 py-2 font-medium',
-                      t.tipo === 'entrada' ? 'badge-success' : 'badge-error'
+                      isFaturaCartao(t)
+                        ? 'badge-warning'
+                        : t.tipo === 'entrada'
+                          ? 'badge-success'
+                          : 'badge-error'
                     ]"
                   >
-                    {{ t.tipo === 'entrada' ? 'Entrada' : 'Saida' }}
+                    {{ isFaturaCartao(t) ? 'Fatura' : t.tipo === 'entrada' ? 'Entrada' : 'Saida' }}
                   </span>
                   <p class="font-medium">
                     {{ t.descricao }}
@@ -530,14 +556,24 @@ onMounted(async () => {
 
                 <!-- Conta / categoria -->
                 <p class="text-xs opacity-50">
-                  {{ getContaNome(t.conta_id) }} • {{ getCategoriaNome(t.categoria_id) }}
+                  <template v-if="isFaturaCartao(t)">
+                    {{ getContaNome(t.conta_id) }} - {{ t.fatura_total_itens || 0 }} lancamento(s)
+                  </template>
+                  <template v-else>
+                    {{ getContaNome(t.conta_id) }} - {{ getCategoriaNome(t.categoria_id) }}
+                  </template>
                 </p>
 
                 <!-- Datas -->
                 <p class="text-xs opacity-50">
-                  {{ formatarData(t.data) }}
+                  <template v-if="isFaturaCartao(t) && t.fatura_periodo_inicio && t.fatura_periodo_fim">
+                    Periodo {{ formatarData(t.fatura_periodo_inicio) }} ate {{ formatarData(t.fatura_periodo_fim) }}
+                  </template>
+                  <template v-else>
+                    {{ formatarData(t.data) }}
+                  </template>
                   <span v-if="t.data_vencimento">
-                    • Venc. {{ formatarData(t.data_vencimento) }}
+                    - Venc. {{ formatarData(t.data_vencimento) }}
                   </span>
                 </p>
 
@@ -547,7 +583,7 @@ onMounted(async () => {
                 </div>
               </div>
 
-              <!-- Valor + ações -->
+              <!-- Valor + acoes -->
               <div class="text-right">
                 <p
                   :class="[
@@ -561,17 +597,37 @@ onMounted(async () => {
 
                 <div class="flex gap-1 mt-2 justify-end">
 
-                  <div class="tooltip" data-tip="Editar">
+                  <div v-if="isFaturaCartao(t)" class="tooltip" data-tip="Abrir fatura">
+                    <button
+                      class="btn btn-primary btn-xs"
+                      @click="abrirFaturaCartao(t)"
+                    >
+                      Ver fatura
+                    </button>
+                  </div>
+
+                  <div v-if="!isFaturaCartao(t)" class="tooltip" data-tip="Editar">
                     <button
                       class="btn btn-ghost btn-xs opacity-70 hover:opacity-100"
                       @click="editarTransacao(t.id)"
                     >
-                      ✏️
+                      Editar
+                    </button>
+                  </div>
+
+                  <div v-if="!isFaturaCartao(t)" class="tooltip" data-tip="Duplicar">
+                    <button
+                      class="btn btn-ghost btn-xs opacity-70 hover:opacity-100"
+                      :disabled="duplicandoId === t.id"
+                      @click="duplicarTransacao(t.id)"
+                    >
+                      <span v-if="duplicandoId === t.id" class="loading loading-spinner loading-xs"></span>
+                      <span v-else>Copiar</span>
                     </button>
                   </div>
 
                   <div
-                    v-if="(t.status_liquidacao || 'liquidado') !== 'liquidado' && !isContaCartaoCredito(t.conta_id)"
+                    v-if="!isFaturaCartao(t) && (t.status_liquidacao || 'liquidado') !== 'liquidado' && !isContaCartaoCredito(t.conta_id)"
                     class="tooltip"
                     data-tip="Liquidar"
                   >
@@ -579,16 +635,16 @@ onMounted(async () => {
                       class="btn btn-ghost btn-xs text-success opacity-70 hover:opacity-100"
                       @click="marcarComoLiquidado(t)"
                     >
-                      ✔
+                      Liquidar
                     </button>
                   </div>
 
-                  <div class="tooltip" data-tip="Excluir">
+                  <div v-if="!isFaturaCartao(t)" class="tooltip" data-tip="Excluir">
                     <button
                       class="btn btn-ghost btn-xs text-error opacity-40 hover:opacity-80"
                       @click="deletarTransacao(t.id)"
                     >
-                      🗑
+                      Excluir
                     </button>
                   </div>
 

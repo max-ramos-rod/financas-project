@@ -616,6 +616,102 @@ def atualizar_transacao(
     return db_transacao
 
 
+def duplicar_transacao(
+    db: Session,
+    transacao_id: int,
+    user_id: int,
+) -> Optional[Transacao]:
+    original = get_transacao(db, transacao_id, user_id)
+    if not original:
+        return None
+
+    if original.e_dizimo:
+        raise ValueError("Transacoes de dizimo nao podem ser duplicadas diretamente. Duplique a entrada original.")
+
+    hoje = date.today()
+
+    if original.parcelado:
+        nova_transacao = Transacao(
+            user_id=user_id,
+            transacao_uuid=str(uuid.uuid4()),
+            conta_id=original.conta_id,
+            categoria_id=original.categoria_id,
+            descricao=original.descricao,
+            valor=original.valor,
+            tipo=original.tipo,
+            data=hoje,
+            data_vencimento=hoje,
+            data_liquidacao=None,
+            status_liquidacao=StatusLiquidacao.PREVISTO,
+            fixa=original.fixa,
+            recorrente=original.recorrente,
+            confirmada=original.confirmada,
+            tem_dizimo=False,
+            percentual_dizimo=original.percentual_dizimo,
+            transacao_dizimo_uuid=None,
+            e_dizimo=False,
+            entrada_origem_id=None,
+            parcelado=True,
+            parcela_atual=original.parcela_atual,
+            total_parcelas=original.total_parcelas,
+            grupo_parcelamento_uuid=str(uuid.uuid4()) if original.grupo_parcelamento_uuid else None,
+            e_emprestimo=original.e_emprestimo,
+            pessoa_emprestimo=original.pessoa_emprestimo,
+            observacoes=original.observacoes,
+            tags=original.tags,
+            valor_multa=original.valor_multa or 0,
+            valor_juros=original.valor_juros or 0,
+            valor_desconto=original.valor_desconto or 0,
+            meta_id=original.meta_id,
+        )
+
+        db.add(nova_transacao)
+        db.flush()
+
+        if nova_transacao.meta_id:
+            _recalcular_meta(db, user_id, nova_transacao.meta_id)
+        if nova_transacao.categoria_id and nova_transacao.tipo == TipoTransacao.SAIDA:
+            _recalcular_orcamento_mes(
+                db,
+                user_id,
+                nova_transacao.categoria_id,
+                nova_transacao.data.month,
+                nova_transacao.data.year,
+            )
+
+        db.commit()
+        db.refresh(nova_transacao)
+        return nova_transacao
+
+    transacao_copia = TransacaoCreate(
+        conta_id=original.conta_id,
+        categoria_id=original.categoria_id,
+        descricao=original.descricao,
+        valor=original.valor,
+        tipo=original.tipo,
+        data=hoje,
+        data_vencimento=hoje,
+        data_liquidacao=None,
+        status_liquidacao=StatusLiquidacao.PREVISTO,
+        fixa=original.fixa,
+        recorrente=original.recorrente,
+        confirmada=original.confirmada,
+        tem_dizimo=bool(original.tem_dizimo and original.tipo == TipoTransacao.ENTRADA),
+        percentual_dizimo=original.percentual_dizimo or 10.0,
+        parcelado=False,
+        total_parcelas=None,
+        e_emprestimo=original.e_emprestimo,
+        pessoa_emprestimo=original.pessoa_emprestimo,
+        observacoes=original.observacoes,
+        tags=original.tags,
+        valor_multa=original.valor_multa or 0,
+        valor_juros=original.valor_juros or 0,
+        valor_desconto=original.valor_desconto or 0,
+        meta_id=original.meta_id,
+    )
+    return criar_transacao(db, transacao_copia, user_id)
+
+
 def deletar_transacao(
     db: Session,
     transacao_id: int,

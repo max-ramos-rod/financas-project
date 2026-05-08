@@ -49,7 +49,7 @@ describe('transacoesFetch', () => {
 
     expect(data).toEqual([{ id: 1 }])
     expect(apiGet).toHaveBeenCalledTimes(1)
-    expect(apiGet).toHaveBeenCalledWith('/transacoes', {
+    expect(apiGet).toHaveBeenCalledWith('/transacoes/visao-financeira', {
       params: {
         tipo: 'saida',
         status_liquidacao: undefined,
@@ -66,4 +66,3 @@ describe('transacoesFetch', () => {
     })
   })
 })
-

@@ -1,19 +1,133 @@
+from datetime import date
+from calendar import monthrange
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.db.session import get_db
 from app.api.deps import AccessContext, get_access_context
-from app.models import StatusLiquidacao, TipoTransacao
+from app.domain.cartao_fatura import obter_resumo_fatura_por_competencia
+from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao
 from app.schemas.transacao import (
     TransacaoCreate,
     TransacaoUpdate,
     TransacaoResponse,
+    TransacaoFinanceiraResponse,
 )
 
 from app.crud import crud_transacao as crud
 
 router = APIRouter()
+
+
+def _parse_valor_ref(valor_ref: str | None) -> float | None:
+    if valor_ref is None or not valor_ref.strip():
+        return None
+    try:
+        return float(valor_ref.replace(".", "").replace(",", ".")) if ("," in valor_ref and "." in valor_ref) else float(valor_ref.replace(",", "."))
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="valor_ref invalido")
+
+
+def _valor_efetivo_item(item) -> float:
+    return max(
+        0.0,
+        (item.valor or 0)
+        + (getattr(item, "valor_multa", 0) or 0)
+        + (getattr(item, "valor_juros", 0) or 0)
+        - (getattr(item, "valor_desconto", 0) or 0),
+    )
+
+
+def _status_fatura(valor_a_pagar: float) -> StatusLiquidacao:
+    return StatusLiquidacao.PREVISTO if valor_a_pagar > 0 else StatusLiquidacao.LIQUIDADO
+
+
+def _competencias_para_periodo(ano: int, mes: int) -> list[tuple[int, int]]:
+    base = date(ano, mes, 1)
+    competencias: list[tuple[int, int]] = []
+    for deslocamento in range(-2, 2):
+        month_index = base.month - 1 + deslocamento
+        year = base.year + month_index // 12
+        month = month_index % 12 + 1
+        competencia = (year, month)
+        if competencia not in competencias:
+            competencias.append(competencia)
+    return competencias
+
+
+def _montar_fatura_financeira(resumo) -> TransacaoFinanceiraResponse:
+    status_fatura = _status_fatura(resumo.valor_a_pagar)
+    valor_total = resumo.valor_a_pagar if resumo.valor_a_pagar > 0 else resumo.valor_total
+    return TransacaoFinanceiraResponse(
+        id=-(resumo.conta_id * 1000000 + resumo.competencia_ano * 100 + resumo.competencia_mes),
+        user_id=0,
+        transacao_uuid=f"fatura-cartao-{resumo.conta_id}-{resumo.competencia_ano}-{resumo.competencia_mes}",
+        conta_id=resumo.conta_id,
+        categoria_id=None,
+        descricao=f"Fatura {resumo.conta_nome}",
+        valor=valor_total,
+        tipo=TipoTransacao.SAIDA,
+        data=resumo.data_fechamento_fatura,
+        data_vencimento=resumo.data_vencimento_fatura,
+        data_liquidacao=resumo.data_vencimento_fatura if status_fatura == StatusLiquidacao.LIQUIDADO else None,
+        status_liquidacao=status_fatura,
+        fixa=False,
+        recorrente=False,
+        confirmada=True,
+        tem_dizimo=False,
+        percentual_dizimo=0,
+        parcelado=False,
+        total_parcelas=None,
+        e_emprestimo=False,
+        pessoa_emprestimo=None,
+        observacoes=f"Periodo: {resumo.periodo_inicio.isoformat()} a {resumo.periodo_fim.isoformat()}",
+        tags="fatura_cartao",
+        valor_multa=0,
+        valor_juros=0,
+        valor_desconto=0,
+        meta_id=None,
+        transacao_dizimo_uuid=None,
+        e_dizimo=False,
+        entrada_origem_id=None,
+        parcela_atual=None,
+        grupo_parcelamento_uuid=None,
+        item_tipo="fatura_cartao",
+        fatura_conta_id=resumo.conta_id,
+        fatura_competencia_ano=resumo.competencia_ano,
+        fatura_competencia_mes=resumo.competencia_mes,
+        fatura_periodo_inicio=resumo.periodo_inicio,
+        fatura_periodo_fim=resumo.periodo_fim,
+        fatura_total_itens=resumo.total_itens,
+    )
+
+
+def _aplicar_filtros_financeiros(
+    itens: list[TransacaoFinanceiraResponse],
+    *,
+    status_liquidacao: StatusLiquidacao | None,
+    conta_id: int | None,
+    busca: str | None,
+    valor_modo: str | None,
+    valor_ref: float | None,
+) -> list[TransacaoFinanceiraResponse]:
+    filtrados = itens
+    if status_liquidacao:
+        filtrados = [item for item in filtrados if item.status_liquidacao == status_liquidacao]
+    if conta_id is not None:
+        filtrados = [item for item in filtrados if item.conta_id == conta_id]
+    if busca:
+        busca_lower = busca.lower()
+        filtrados = [item for item in filtrados if busca_lower in item.descricao.lower()]
+    if valor_modo and valor_ref is not None:
+        if valor_modo == "igual":
+            filtrados = [item for item in filtrados if abs(_valor_efetivo_item(item) - valor_ref) < 0.005]
+        elif valor_modo == "gte":
+            filtrados = [item for item in filtrados if _valor_efetivo_item(item) >= valor_ref]
+        elif valor_modo == "lte":
+            filtrados = [item for item in filtrados if _valor_efetivo_item(item) <= valor_ref]
+    return filtrados
 
 @router.get("", response_model=List[TransacaoResponse])
 def listar_transacoes(
@@ -75,6 +189,135 @@ def listar_transacoes(
     return transacoes
 
 
+@router.get("/visao-financeira", response_model=List[TransacaoFinanceiraResponse])
+def listar_transacoes_visao_financeira(
+    skip: int = 0,
+    limit: int = 1000,
+    tipo: TipoTransacao | None = Query(default=None),
+    status_liquidacao: StatusLiquidacao | None = Query(default=None),
+    fixa: str | None = Query(default=None, pattern="^(fixas|nao_fixas)$"),
+    conta_id: int | None = None,
+    categoria_id: int | None = None,
+    mes: int | None = Query(default=None, ge=1, le=12),
+    ano: int | None = Query(default=None, ge=2000, le=2100),
+    busca: str | None = None,
+    valor_modo: str | None = Query(default=None, pattern="^(igual|gte|lte)$"),
+    valor_ref: str | None = None,
+    orcamento: str | None = Query(default=None, pattern="^(fora|dentro)$"),
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context),
+):
+    """
+    Lista a visao financeira das transacoes.
+
+    Compras individuais em cartao de credito sao substituidas por uma linha
+    consolidada da fatura do cartao no mes de vencimento.
+    """
+    fixa_bool = None
+    if fixa == "fixas":
+        fixa_bool = True
+    elif fixa == "nao_fixas":
+        fixa_bool = False
+
+    sem_categoria = categoria_id == -1
+    categoria_normalizada = None if sem_categoria else categoria_id
+    valor_ref_num = _parse_valor_ref(valor_ref)
+
+    transacoes = crud.get_transacoes(
+        db=db,
+        user_id=access_ctx.effective_user.id,
+        skip=0,
+        limit=None,
+        tipo=tipo,
+        status_liquidacao=status_liquidacao,
+        fixa=fixa_bool,
+        conta_id=conta_id,
+        categoria_id=categoria_normalizada,
+        sem_categoria=sem_categoria,
+        mes=mes,
+        ano=ano,
+        busca=busca,
+        valor_modo=valor_modo,
+        valor_ref=valor_ref_num,
+        orcamento=orcamento,
+    )
+
+    contas_cartao_ids = {
+        conta.id
+        for conta in db.query(Conta).filter(
+            Conta.user_id == access_ctx.effective_user.id,
+            Conta.tipo == TipoConta.CARTAO_CREDITO,
+        ).all()
+    }
+
+    itens: list[TransacaoFinanceiraResponse] = [
+        TransacaoFinanceiraResponse.model_validate(transacao, from_attributes=True)
+        for transacao in transacoes
+        if transacao.conta_id not in contas_cartao_ids
+    ]
+
+    inclui_faturas = tipo in (None, TipoTransacao.SAIDA)
+    filtros_incompativeis_com_fatura = categoria_id is not None or fixa_bool is not None or orcamento is not None
+
+    if inclui_faturas and not filtros_incompativeis_com_fatura:
+        hoje = date.today()
+        ano_ref = ano or hoje.year
+        meses_ref = [mes] if mes is not None else list(range(1, 13))
+        contas_cartao = db.query(Conta).filter(
+            Conta.user_id == access_ctx.effective_user.id,
+            Conta.tipo == TipoConta.CARTAO_CREDITO,
+        ).all()
+
+        faturas: list[TransacaoFinanceiraResponse] = []
+        chaves_faturas: set[tuple[int, int, int]] = set()
+        for mes_ref in meses_ref:
+            inicio_mes = date(ano_ref, mes_ref, 1)
+            fim_mes = date(ano_ref, mes_ref, monthrange(ano_ref, mes_ref)[1])
+            for conta in contas_cartao:
+                if conta_id is not None and conta.id != conta_id:
+                    continue
+                if conta.dia_fechamento is None or conta.dia_vencimento is None:
+                    continue
+                for competencia_ano, competencia_mes in _competencias_para_periodo(ano_ref, mes_ref):
+                    chave = (conta.id, competencia_ano, competencia_mes)
+                    if chave in chaves_faturas:
+                        continue
+                    try:
+                        resumo = obter_resumo_fatura_por_competencia(
+                            db,
+                            user_id=access_ctx.effective_user.id,
+                            conta=conta,
+                            competencia_ano=competencia_ano,
+                            competencia_mes=competencia_mes,
+                        )
+                    except ValueError:
+                        continue
+                    if resumo.total_itens == 0:
+                        continue
+                    if not (inicio_mes <= resumo.data_vencimento_fatura <= fim_mes):
+                        continue
+                    chaves_faturas.add(chave)
+                    faturas.append(_montar_fatura_financeira(resumo))
+
+        itens.extend(
+            _aplicar_filtros_financeiros(
+                faturas,
+                status_liquidacao=status_liquidacao,
+                conta_id=conta_id,
+                busca=busca,
+                valor_modo=valor_modo,
+                valor_ref=valor_ref_num,
+            )
+        )
+
+    itens.sort(key=lambda item: (item.data, item.id), reverse=True)
+    if skip:
+        itens = itens[skip:]
+    if limit is not None:
+        itens = itens[:limit]
+    return itens
+
+
 @router.get("/{transacao_id}", response_model=TransacaoResponse)
 def buscar_transacao(
     transacao_id: int,
@@ -130,6 +373,30 @@ def criar_transacao(
     """
     try:
         nova_transacao = crud.criar_transacao(db, transacao, access_ctx.effective_user.id)
+        return nova_transacao
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post("/{transacao_id}/duplicar", response_model=TransacaoResponse, status_code=status.HTTP_201_CREATED)
+def duplicar_transacao(
+    transacao_id: int,
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context)
+):
+    """Duplica uma transacao individual usando data e vencimento atuais."""
+    try:
+        nova_transacao = crud.duplicar_transacao(db, transacao_id, access_ctx.effective_user.id)
+
+        if not nova_transacao:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="TransaÃ§Ã£o nÃ£o encontrada"
+            )
+
         return nova_transacao
     except ValueError as e:
         raise HTTPException(

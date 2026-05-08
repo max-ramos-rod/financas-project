@@ -95,3 +95,13 @@ class TransacaoResponse(TransacaoBase):
     updated_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
+
+
+class TransacaoFinanceiraResponse(TransacaoResponse):
+    item_tipo: str = "transacao"
+    fatura_conta_id: Optional[int] = None
+    fatura_competencia_ano: Optional[int] = None
+    fatura_competencia_mes: Optional[int] = None
+    fatura_periodo_inicio: Optional[date] = None
+    fatura_periodo_fim: Optional[date] = None
+    fatura_total_itens: Optional[int] = None

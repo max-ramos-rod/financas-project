@@ -9,6 +9,7 @@ const router = useRouter()
 const route = useRoute()
 
 const loading = ref(false)
+const duplicando = ref(false)
 const carregando = ref(true)
 const contas = ref<Conta[]>([])
 const categorias = ref<Categoria[]>([])
@@ -293,6 +294,24 @@ const salvar = async (destino: 'lista' | 'continuar' = 'lista') => {
   }
 }
 
+const duplicarTransacaoAtual = async () => {
+  if (!transacaoId.value) return
+  duplicando.value = true
+  try {
+    const res = await api.post(`/transacoes/${transacaoId.value}/duplicar`)
+    const novoId = res.data.id
+    transacaoId.value = novoId
+    editando.value = true
+    editandoDizimo.value = false
+    await router.push({ path: `/transacoes/${novoId}/editar`, query: route.query })
+    await carregarTransacao()
+  } catch (error: any) {
+    alert(error?.response?.data?.detail || 'Erro ao duplicar transacao')
+  } finally {
+    duplicando.value = false
+  }
+}
+
 const cancelar = () => router.back()
 
 const formatarMoeda = (valor: number): string => {
@@ -314,6 +333,16 @@ onMounted(() => {
       <div class="container mx-auto px-4 py-4 flex items-center gap-4">
         <button @click="cancelar" class="btn btn-ghost btn-sm">Voltar</button>
         <h1 class="text-2xl font-bold">{{ editando ? 'Editar Transacao' : 'Nova Transacao' }}</h1>
+        <button
+          v-if="editando && !editandoDizimo"
+          type="button"
+          class="btn btn-outline btn-sm ml-auto"
+          :disabled="duplicando"
+          @click="duplicarTransacaoAtual"
+        >
+          <span v-if="duplicando" class="loading loading-spinner loading-xs"></span>
+          <span v-else>Duplicar</span>
+        </button>
       </div>
     </div>
 

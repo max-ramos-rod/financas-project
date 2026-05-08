@@ -7,14 +7,14 @@ services:
     env_file:
       - ./backend/.env.confdb
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - financas_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - financas_network
+      - app_network
 
   backend:
     build:
@@ -30,7 +30,7 @@ services:
       - "8000"
     restart: always
     networks:
-      - financas_network
+      - app_network
 
   frontend:
     build:
@@ -44,28 +44,11 @@ services:
     depends_on:
       - backend
     networks:
-      - financas_network
-
-  nginx:
-    image: nginx:alpine
-    container_name: nginx_proxy
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    depends_on:
-      - backend
-      - frontend
-    networks:
-      - financas_network
+      - app_network
 
 volumes:
-  pgdata:
+  financas_pgdata:
 
 networks:
-  financas_network:
-    driver: bridge
+  app_network:
+    external: true

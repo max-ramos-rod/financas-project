@@ -431,3 +431,206 @@ def test_editar_entrada_desligando_dizimo_remove_saida(client):
         if t.get("e_dizimo") is True and t.get("entrada_origem_id") == transacao_id
     ]
     assert len(dizimos_depois) == 0
+
+
+def test_duplicar_transacao_copia_dados_com_datas_atuais_e_status_previsto(client):
+    headers = _auth_headers(client)
+
+    conta_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Conta Duplicacao",
+            "tipo": "conta_corrente",
+            "saldo": 1000.0,
+            "cor": "#3B82F6",
+            "ativa": True,
+        },
+    )
+    assert conta_response.status_code == 201
+    conta_id = conta_response.json()["id"]
+
+    original_response = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_id,
+            "descricao": "Despesa para duplicar",
+            "valor": 123.45,
+            "tipo": "saida",
+            "data": "2026-03-10",
+            "data_vencimento": "2026-03-15",
+            "status_liquidacao": "liquidado",
+            "data_liquidacao": "2026-03-15",
+            "fixa": True,
+            "recorrente": True,
+            "observacoes": "Observacao original",
+            "tags": "mensal",
+            "valor_multa": 2.0,
+            "valor_juros": 3.0,
+            "valor_desconto": 1.0,
+        },
+    )
+    assert original_response.status_code == 201
+    original = original_response.json()
+
+    duplicada_response = client.post(
+        f"/api/v1/transacoes/{original['id']}/duplicar",
+        headers=headers,
+    )
+    assert duplicada_response.status_code == 201
+    duplicada = duplicada_response.json()
+    hoje = date.today().isoformat()
+
+    assert duplicada["id"] != original["id"]
+    assert duplicada["transacao_uuid"] != original["transacao_uuid"]
+    assert duplicada["conta_id"] == original["conta_id"]
+    assert duplicada["descricao"] == original["descricao"]
+    assert duplicada["valor"] == original["valor"]
+    assert duplicada["tipo"] == original["tipo"]
+    assert duplicada["data"] == hoje
+    assert duplicada["data_vencimento"] == hoje
+    assert duplicada["data_liquidacao"] is None
+    assert duplicada["status_liquidacao"] == "previsto"
+    assert duplicada["fixa"] is True
+    assert duplicada["recorrente"] is True
+    assert duplicada["observacoes"] == "Observacao original"
+    assert duplicada["tags"] == "mensal"
+    assert duplicada["valor_multa"] == 2.0
+    assert duplicada["valor_juros"] == 3.0
+    assert duplicada["valor_desconto"] == 1.0
+
+    contas = client.get("/api/v1/contas", headers=headers)
+    assert contas.status_code == 200
+    conta = next(c for c in contas.json() if c["id"] == conta_id)
+    assert conta["saldo"] == 872.55
+
+
+def test_duplicar_transacao_de_dizimo_direto_bloqueia(client):
+    headers = _auth_headers(client)
+
+    conta_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Conta Dizimo",
+            "tipo": "conta_corrente",
+            "saldo": 0.0,
+            "cor": "#3B82F6",
+            "ativa": True,
+        },
+    )
+    assert conta_response.status_code == 201
+    conta_id = conta_response.json()["id"]
+
+    entrada_response = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_id,
+            "descricao": "Receita com dizimo para duplicar",
+            "valor": 1000.0,
+            "tipo": "entrada",
+            "data": date.today().isoformat(),
+            "tem_dizimo": True,
+            "percentual_dizimo": 10.0,
+        },
+    )
+    assert entrada_response.status_code == 201
+
+    lista = client.get("/api/v1/transacoes", headers=headers)
+    assert lista.status_code == 200
+    dizimo = next(t for t in lista.json() if t.get("e_dizimo") is True)
+
+    duplicar_response = client.post(
+        f"/api/v1/transacoes/{dizimo['id']}/duplicar",
+        headers=headers,
+    )
+    assert duplicar_response.status_code == 400
+    assert "dizimo" in duplicar_response.json()["detail"].lower()
+
+
+def test_visao_financeira_consolida_lancamentos_de_cartao_em_fatura(client):
+    headers = _auth_headers(client)
+
+    conta_corrente_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Conta Corrente",
+            "tipo": "conta_corrente",
+            "saldo": 1000.0,
+            "cor": "#10B981",
+            "ativa": True,
+        },
+    )
+    assert conta_corrente_response.status_code == 201
+    conta_corrente_id = conta_corrente_response.json()["id"]
+
+    cartao_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Cartao Visa",
+            "tipo": "cartao_credito",
+            "saldo": 0,
+            "dia_fechamento": 20,
+            "dia_vencimento": 28,
+            "limite_credito": 3000,
+            "cor": "#3B82F6",
+            "ativa": True,
+        },
+    )
+    assert cartao_response.status_code == 201
+    cartao_id = cartao_response.json()["id"]
+
+    compra_cartao_response = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": cartao_id,
+            "descricao": "Compra Cartao",
+            "valor": 200.0,
+            "tipo": "saida",
+            "data": "2026-03-10",
+            "status_liquidacao": "previsto",
+        },
+    )
+    assert compra_cartao_response.status_code == 201
+
+    despesa_normal_response = client.post(
+        "/api/v1/transacoes",
+        headers=headers,
+        json={
+            "conta_id": conta_corrente_id,
+            "descricao": "Despesa Normal",
+            "valor": 50.0,
+            "tipo": "saida",
+            "data": "2026-03-05",
+            "status_liquidacao": "previsto",
+        },
+    )
+    assert despesa_normal_response.status_code == 201
+
+    response = client.get(
+        "/api/v1/transacoes/visao-financeira?mes=3&ano=2026",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    descricoes = [item["descricao"] for item in payload]
+
+    assert "Compra Cartao" not in descricoes
+    assert "Despesa Normal" in descricoes
+
+    fatura = next(item for item in payload if item["item_tipo"] == "fatura_cartao")
+    assert fatura["descricao"] == "Fatura Cartao Visa"
+    assert fatura["conta_id"] == cartao_id
+    assert fatura["valor"] == 200.0
+    assert fatura["tipo"] == "saida"
+    assert fatura["status_liquidacao"] == "previsto"
+    assert fatura["data_vencimento"] == "2026-03-28"
+    assert fatura["fatura_conta_id"] == cartao_id
+    assert fatura["fatura_competencia_ano"] == 2026
+    assert fatura["fatura_competencia_mes"] == 3
+    assert fatura["fatura_total_itens"] == 1

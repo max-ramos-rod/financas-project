@@ -25,6 +25,14 @@ const dataFechamentoReal = ref('')
 const dataVencimentoReal = ref('')
 const observacaoCiclo = ref('')
 
+type Aba = 'ajuste' | 'pagamento'
+const abaAtiva = ref<Aba>('ajuste')
+
+// Modal de exclusão
+const modalExcluirAberta = ref(false)
+const transacaoParaExcluir = ref<{ id: number; descricao: string; valor: number } | null>(null)
+const excluindo = ref(false)
+
 const contasPagamento = computed(() =>
   contas.value.filter((c) => c.ativa && c.tipo !== 'cartao_credito' && c.id !== contaId)
 )
@@ -61,7 +69,7 @@ const opcoesCiclo = computed(() => {
     const { ano, mes } = deslocarMes(baseAno, baseMes, deslocamento)
     return {
       chave: chaveCiclo(ano, mes),
-      label: `${formatarMesAno(ano, mes)}${deslocamento === 0 ? ' (fatura atual)' : ''}`,
+      label: `${formatarMesAno(ano, mes)}${deslocamento === 0 ? ' (atual)' : ''}`,
     }
   }).reverse()
 })
@@ -72,6 +80,43 @@ const cicloAtualSelecionado = computed(() =>
     faturaAtualReferencia.value.competencia_mes
   ))
 )
+
+const novaTransacao = () => {
+  router.push({
+    path: '/transacoes/nova',
+    query: {
+      conta_id: contaId,
+      ano: faturaSelecionada.value?.competencia_ano,
+      mes: faturaSelecionada.value?.competencia_mes,
+      tipo: 'saida',
+    },
+  })
+}
+
+const abrirModalExcluir = (id: number, descricao: string, valor: number) => {
+  transacaoParaExcluir.value = { id, descricao, valor }
+  modalExcluirAberta.value = true
+}
+
+const fecharModalExcluir = () => {
+  modalExcluirAberta.value = false
+  transacaoParaExcluir.value = null
+}
+
+const confirmarExclusao = async () => {
+  if (!transacaoParaExcluir.value) return
+  excluindo.value = true
+  try {
+    await api.delete(`/transacoes/${transacaoParaExcluir.value.id}`)
+    await carregarFaturaSelecionada(true)
+    fecharModalExcluir()
+  } catch (err: any) {
+    error.value = err?.response?.data?.detail || 'Erro ao excluir transação.'
+    fecharModalExcluir()
+  } finally {
+    excluindo.value = false
+  }
+}
 
 const aplicarFaturaNaTela = (resumo: FaturaResumo) => {
   faturaSelecionada.value = resumo
@@ -196,181 +241,340 @@ onMounted(carregar)
 </script>
 
 <template>
-  <div class="min-h-screen bg-base-200 p-6">
-    <div class="max-w-6xl mx-auto space-y-6">
-      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+  <div class="min-h-screen bg-base-200 p-4 md:p-6">
+    <div class="max-w-3xl mx-auto space-y-4">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold">Fatura do Cartao</h1>
-          <p class="text-sm text-gray-500">Escolha o ciclo para conciliar, ajustar datas e pagar faturas anteriores.</p>
+          <h1 class="text-xl font-bold">Fatura do Cartão</h1>
+          <p class="text-xs text-base-content/50">Concilie, ajuste datas e pague faturas</p>
         </div>
-        <button class="btn btn-ghost" @click="router.push('/contas')">Voltar</button>
+        <button class="btn btn-ghost btn-sm" @click="router.push('/contas')">← Voltar</button>
       </div>
 
-      <div v-if="loading" class="text-center py-10">
+      <!-- Loading -->
+      <div v-if="loading" class="flex justify-center py-16">
         <span class="loading loading-spinner loading-lg"></span>
       </div>
 
       <template v-else>
-        <div v-if="error" class="alert alert-error"><span>{{ error }}</span></div>
-        <div v-if="success" class="alert alert-success"><span>{{ success }}</span></div>
 
-        <div class="card bg-base-100 shadow">
-          <div class="card-body">
-            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 md:items-end">
-              <div>
-                <label class="label"><span class="label-text">Ciclo da fatura</span></label>
-                <select v-model="cicloSelecionado" class="select select-bordered w-full" @change="carregarFaturaSelecionada()">
+        <!-- Alertas -->
+        <div v-if="error" class="alert alert-error py-2 text-sm"><span>{{ error }}</span></div>
+        <div v-if="success" class="alert alert-success py-2 text-sm"><span>{{ success }}</span></div>
+
+        <!-- Seletor de ciclo -->
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-4">
+            <div class="flex gap-2 items-end">
+              <div class="flex-1">
+                <label class="label py-0 pb-1">
+                  <span class="label-text text-xs font-medium text-base-content/60 uppercase tracking-wide">Ciclo da fatura</span>
+                </label>
+                <select
+                  v-model="cicloSelecionado"
+                  class="select select-bordered select-sm w-full"
+                  @change="carregarFaturaSelecionada()"
+                >
                   <option v-for="opcao in opcoesCiclo" :key="opcao.chave" :value="opcao.chave">
                     {{ opcao.label }}
                   </option>
                 </select>
               </div>
-              <button class="btn btn-outline" :disabled="carregandoFatura" @click="carregarFaturaSelecionada()">
-                <span v-if="carregandoFatura" class="loading loading-spinner loading-sm"></span>
-                <span v-else>Recarregar</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div
-          v-if="faturaSelecionada"
-          class="card bg-base-100 shadow"
-          :class="(faturaSelecionada.valor_a_pagar || 0) > 0 ? 'border border-error/20' : 'border border-success/20'"
-        >
-          <div class="card-body">
-            <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h2 class="card-title">
-                  {{ cicloAtualSelecionado ? 'Fatura Atual' : 'Fatura do Ciclo Selecionado' }}
-                </h2>
-                <p class="text-sm text-gray-500">
-                  Use esta visao para conferir os lancamentos do periodo e corrigir datas reais do ciclo.
-                </p>
-              </div>
-              <span class="badge" :class="(faturaSelecionada.valor_a_pagar || 0) > 0 ? 'badge-error' : 'badge-success'">
-                {{ (faturaSelecionada.valor_a_pagar || 0) > 0 ? 'A pagar' : 'Quitada' }}
-              </span>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-              <div class="rounded-box bg-base-200 p-4">
-                <p class="text-sm text-gray-500">Periodo do ciclo</p>
-                <p class="font-semibold">{{ formatarData(faturaSelecionada.periodo_inicio) }} - {{ formatarData(faturaSelecionada.periodo_fim) }}</p>
-                <p class="text-xs text-gray-500 mt-1">Fechamento: {{ formatarData(faturaSelecionada.data_fechamento_fatura) }}</p>
-              </div>
-              <div class="rounded-box bg-base-200 p-4">
-                <p class="text-sm text-gray-500">Vencimento</p>
-                <p class="font-semibold">{{ formatarData(faturaSelecionada.data_vencimento_fatura) }}</p>
-                <p class="text-xs text-gray-500 mt-1">{{ faturaSelecionada.total_itens }} item(ns)</p>
-              </div>
-              <div
-                class="rounded-box p-4"
-                :class="(faturaSelecionada.valor_a_pagar || 0) > 0 ? 'bg-error text-error-content' : 'bg-success text-success-content'"
+              <button
+                class="btn btn-outline btn-sm"
+                :disabled="carregandoFatura"
+                @click="carregarFaturaSelecionada()"
               >
-                <p class="text-sm opacity-80">Total do ciclo</p>
-                <p class="text-3xl font-bold">{{ formatarMoeda(faturaSelecionada.valor_total) }}</p>
-                <p class="text-xs opacity-80 mt-2">Pago: {{ formatarMoeda(faturaSelecionada.valor_pago || 0) }}</p>
-                <p class="text-xs opacity-80">A pagar: {{ formatarMoeda(faturaSelecionada.valor_a_pagar || 0) }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="faturaSelecionada" class="card bg-base-100 shadow">
-          <div class="card-body">
-            <h2 class="card-title">Ajuste do Ciclo Selecionado</h2>
-            <p class="text-sm text-gray-500">
-              Registre aqui excecoes do mes, como feriados, fins de semana ou mudancas operacionais do emissor.
-            </p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="label"><span class="label-text">Fechamento previsto</span></label>
-                <input :value="faturaSelecionada.data_fechamento_prevista" type="date" class="input input-bordered w-full" disabled />
-              </div>
-              <div>
-                <label class="label"><span class="label-text">Vencimento previsto</span></label>
-                <input :value="faturaSelecionada.data_vencimento_prevista" type="date" class="input input-bordered w-full" disabled />
-              </div>
-              <div>
-                <label class="label"><span class="label-text">Fechamento real do ciclo</span></label>
-                <input v-model="dataFechamentoReal" type="date" class="input input-bordered w-full" />
-              </div>
-              <div>
-                <label class="label"><span class="label-text">Vencimento real da fatura</span></label>
-                <input v-model="dataVencimentoReal" type="date" class="input input-bordered w-full" />
-              </div>
-            </div>
-            <div>
-              <label class="label"><span class="label-text">Observacao do ciclo</span></label>
-              <textarea
-                v-model="observacaoCiclo"
-                class="textarea textarea-bordered w-full"
-                rows="3"
-                placeholder="Ex.: banco postergou vencimento por feriado nacional."
-              ></textarea>
-            </div>
-            <div class="flex flex-col md:flex-row gap-3 md:justify-end">
-              <button class="btn btn-ghost" :disabled="salvandoCiclo" @click="limparAjusteCiclo">
-                Limpar ajuste
-              </button>
-              <button class="btn btn-secondary" :disabled="salvandoCiclo" @click="salvarAjusteCiclo">
-                <span v-if="salvandoCiclo" class="loading loading-spinner loading-sm"></span>
-                <span v-else>Salvar ajuste do ciclo</span>
+                <span v-if="carregandoFatura" class="loading loading-spinner loading-xs"></span>
+                <span v-else>↺</span>
               </button>
             </div>
           </div>
         </div>
 
-        <div v-if="faturaSelecionada" class="card bg-base-100 shadow">
-          <div class="card-body">
-            <h2 class="card-title">Pagamento do Ciclo</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="label"><span class="label-text">Conta de pagamento</span></label>
-                <select v-model.number="contaPagamentoId" class="select select-bordered w-full">
-                  <option :value="null">Selecione</option>
-                  <option v-for="conta in contasPagamento" :key="conta.id" :value="conta.id">
-                    {{ conta.nome }} ({{ formatarMoeda(conta.saldo) }})
-                  </option>
-                </select>
+        <template v-if="faturaSelecionada">
+
+          <!-- Resumo da fatura -->
+          <div
+            class="card shadow-sm"
+            :class="(faturaSelecionada.valor_a_pagar || 0) > 0 ? 'bg-error text-error-content' : 'bg-success text-success-content'"
+          >
+            <div class="card-body p-4">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <p class="text-xs font-medium opacity-70 uppercase tracking-wide">
+                    {{ cicloAtualSelecionado ? 'Fatura Atual' : 'Ciclo Selecionado' }}
+                  </p>
+                  <p class="text-3xl font-bold mt-0.5">{{ formatarMoeda(faturaSelecionada.valor_total) }}</p>
+                  <p class="text-xs opacity-70 mt-1">
+                    {{ faturaSelecionada.total_itens }} item(ns) &nbsp;·&nbsp;
+                    Venc. {{ formatarData(faturaSelecionada.data_vencimento_fatura) }}
+                  </p>
+                </div>
+                <span
+                  class="badge badge-lg"
+                  :class="(faturaSelecionada.valor_a_pagar || 0) > 0 ? 'badge-error border-error-content/30' : 'badge-success border-success-content/30'"
+                >
+                  {{ (faturaSelecionada.valor_a_pagar || 0) > 0 ? 'A pagar' : 'Quitada' }}
+                </span>
+              </div>
+              <div class="divider my-1 opacity-30"></div>
+              <div class="grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <p class="opacity-60">Período</p>
+                  <p class="font-medium">{{ formatarData(faturaSelecionada.periodo_inicio) }}</p>
+                  <p class="font-medium">{{ formatarData(faturaSelecionada.periodo_fim) }}</p>
+                </div>
+                <div>
+                  <p class="opacity-60">Fechamento</p>
+                  <p class="font-medium">{{ formatarData(faturaSelecionada.data_fechamento_fatura) }}</p>
+                </div>
+                <div>
+                  <p class="opacity-60">Pago / A pagar</p>
+                  <p class="font-medium">{{ formatarMoeda(faturaSelecionada.valor_pago || 0) }}</p>
+                  <p class="font-medium">{{ formatarMoeda(faturaSelecionada.valor_a_pagar || 0) }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Abas: Ajuste do Ciclo | Pagamento -->
+          <div class="card bg-base-100 shadow-sm">
+            <div class="border-b border-base-200">
+              <div role="tablist" class="tabs tabs-bordered px-4">
+                <button
+                  role="tab"
+                  class="tab text-sm"
+                  :class="abaAtiva === 'ajuste' ? 'tab-active font-semibold' : ''"
+                  @click="abaAtiva = 'ajuste'"
+                >
+                  Ajuste do Ciclo
+                </button>
+                <button
+                  role="tab"
+                  class="tab gap-2 text-sm"
+                  :class="abaAtiva === 'pagamento' ? 'tab-active font-semibold' : ''"
+                  @click="abaAtiva = 'pagamento'"
+                >
+                  Pagamento
+                  <span
+                    v-if="(faturaSelecionada.valor_a_pagar || 0) > 0"
+                    class="badge badge-xs badge-error"
+                  >!</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Aba: Ajuste do Ciclo -->
+            <div v-if="abaAtiva === 'ajuste'" class="card-body p-4 space-y-3">
+              <p class="text-xs text-base-content/50">
+                Registre exceções do mês: feriados, fins de semana ou mudanças operacionais do emissor.
+              </p>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="label py-0 pb-1"><span class="label-text text-xs">Fechamento previsto</span></label>
+                  <input :value="faturaSelecionada.data_fechamento_prevista" type="date" class="input input-bordered input-sm w-full" disabled />
+                </div>
+                <div>
+                  <label class="label py-0 pb-1"><span class="label-text text-xs">Vencimento previsto</span></label>
+                  <input :value="faturaSelecionada.data_vencimento_prevista" type="date" class="input input-bordered input-sm w-full" disabled />
+                </div>
+                <div>
+                  <label class="label py-0 pb-1"><span class="label-text text-xs">Fechamento real</span></label>
+                  <input v-model="dataFechamentoReal" type="date" class="input input-bordered input-sm w-full" />
+                </div>
+                <div>
+                  <label class="label py-0 pb-1"><span class="label-text text-xs">Vencimento real</span></label>
+                  <input v-model="dataVencimentoReal" type="date" class="input input-bordered input-sm w-full" />
+                </div>
               </div>
               <div>
-                <label class="label"><span class="label-text">Data de pagamento</span></label>
-                <input v-model="dataPagamento" type="date" class="input input-bordered w-full" />
+                <label class="label py-0 pb-1"><span class="label-text text-xs">Observação</span></label>
+                <textarea
+                  v-model="observacaoCiclo"
+                  class="textarea textarea-bordered textarea-sm w-full"
+                  rows="2"
+                  placeholder="Ex.: banco postergou vencimento por feriado nacional."
+                ></textarea>
               </div>
-              <div class="flex items-end">
-                <button class="btn btn-primary w-full" :disabled="pagando || !faturaSelecionada || (faturaSelecionada.valor_a_pagar || 0) === 0" @click="pagarFatura">
-                  <span v-if="pagando" class="loading loading-spinner loading-sm"></span>
-                  <span v-else>Pagar</span>
+              <div class="flex gap-2 justify-end pt-1">
+                <button class="btn btn-ghost btn-sm" :disabled="salvandoCiclo" @click="limparAjusteCiclo">
+                  Limpar
+                </button>
+                <button class="btn btn-secondary btn-sm" :disabled="salvandoCiclo" @click="salvarAjusteCiclo">
+                  <span v-if="salvandoCiclo" class="loading loading-spinner loading-xs"></span>
+                  <span v-else>Salvar ajuste</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Aba: Pagamento -->
+            <div v-if="abaAtiva === 'pagamento'" class="card-body p-4 space-y-3">
+              <p class="text-xs text-base-content/50">
+                {{ (faturaSelecionada.valor_a_pagar || 0) > 0
+                  ? `Valor em aberto: ${formatarMoeda(faturaSelecionada.valor_a_pagar || 0)}`
+                  : 'Esta fatura já está quitada.' }}
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label class="label py-0 pb-1"><span class="label-text text-xs">Conta de pagamento</span></label>
+                  <select v-model.number="contaPagamentoId" class="select select-bordered select-sm w-full">
+                    <option :value="null">Selecione</option>
+                    <option v-for="conta in contasPagamento" :key="conta.id" :value="conta.id">
+                      {{ conta.nome }} ({{ formatarMoeda(conta.saldo) }})
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label class="label py-0 pb-1"><span class="label-text text-xs">Data de pagamento</span></label>
+                  <input v-model="dataPagamento" type="date" class="input input-bordered input-sm w-full" />
+                </div>
+              </div>
+              <div class="flex justify-end pt-1">
+                <button
+                  class="btn btn-primary btn-sm"
+                  :disabled="pagando || (faturaSelecionada.valor_a_pagar || 0) === 0"
+                  @click="pagarFatura"
+                >
+                  <span v-if="pagando" class="loading loading-spinner loading-xs"></span>
+                  <span v-else>Confirmar pagamento</span>
                 </button>
               </div>
             </div>
           </div>
-        </div>
 
-        <div v-if="faturaSelecionada" class="card bg-base-100 shadow">
-          <div class="card-body">
-            <h2 class="card-title">Lancamentos do Ciclo</h2>
-            <div v-if="faturaSelecionada.itens.length === 0" class="text-gray-500 py-6">Nenhum item neste ciclo.</div>
-            <div v-else class="space-y-2">
-              <div v-for="item in faturaSelecionada.itens" :key="item.transacao_id" class="border rounded-lg p-3 flex items-center justify-between">
+          <!-- Lista de lançamentos -->
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+              <div class="flex items-center justify-between mb-3">
                 <div>
-                  <p class="font-medium">{{ item.descricao }}</p>
-                  <p class="text-xs text-gray-500">
-                    {{ formatarData(item.data) }}
-                    <span v-if="item.data_vencimento"> | Venc: {{ formatarData(item.data_vencimento) }}</span>
-                    <span> | {{ item.status_liquidacao }}</span>
+                  <p class="font-semibold text-sm">Lançamentos do Ciclo</p>
+                  <p class="text-xs text-base-content/40">
+                    {{ faturaSelecionada.itens.length === 0 ? 'Nenhum lançamento' : `${faturaSelecionada.itens.length} lançamento(s)` }}
                   </p>
                 </div>
-                <p class="font-bold" :class="item.status_liquidacao === 'liquidado' ? 'text-success' : 'text-error'">
-                  {{ formatarMoeda(item.valor_efetivo) }}
-                </p>
+                <button class="btn btn-primary btn-sm" @click="novaTransacao">+ Nova transação</button>
               </div>
+
+              <div v-if="faturaSelecionada.itens.length === 0" class="text-center py-10 text-base-content/30 text-sm">
+                Nenhum lançamento neste ciclo.
+              </div>
+
+              <template v-else>
+
+                <!-- Desktop: tabela nativa -->
+                <div class="hidden md:block overflow-x-auto">
+                  <table class="table table-sm w-full">
+                    <thead>
+                      <tr class="text-xs text-base-content/40 uppercase tracking-wide border-b border-base-200">
+                        <th class="font-medium pl-0">Descrição</th>
+                        <th class="font-medium">Data</th>
+                        <th class="font-medium">Vencimento</th>
+                        <th class="font-medium">Status</th>
+                        <th class="font-medium text-right pr-0">Valor</th>
+                        <th class="w-8"></th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-200">
+                      <tr
+                        v-for="item in faturaSelecionada.itens"
+                        :key="item.transacao_id"
+                        class="hover:bg-base-50"
+                      >
+                        <td class="pl-0 font-medium text-sm max-w-[200px] truncate">{{ item.descricao }}</td>
+                        <td class="text-sm text-base-content/60 whitespace-nowrap">{{ formatarData(item.data) }}</td>
+                        <td class="text-sm text-base-content/60 whitespace-nowrap">
+                          {{ item.data_vencimento ? formatarData(item.data_vencimento) : '—' }}
+                        </td>
+                        <td>
+                          <span
+                            class="badge badge-sm whitespace-nowrap"
+                            :class="item.status_liquidacao === 'liquidado' ? 'badge-success' : 'badge-warning'"
+                          >{{ item.status_liquidacao }}</span>
+                        </td>
+                        <td class="text-right pr-0 font-bold text-sm whitespace-nowrap"
+                          :class="item.status_liquidacao === 'liquidado' ? 'text-success' : 'text-error'"
+                        >
+                          {{ formatarMoeda(item.valor_efetivo) }}
+                        </td>
+                        <td class="pr-0">
+                          <button
+                            class="btn btn-ghost btn-xs text-error opacity-30 hover:opacity-100"
+                            @click="abrirModalExcluir(item.transacao_id, item.descricao, item.valor_efetivo)"
+                          >✕</button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Mobile: cards por item -->
+                <div class="md:hidden divide-y divide-base-200">
+                  <div
+                    v-for="item in faturaSelecionada.itens"
+                    :key="item.transacao_id"
+                    class="py-3 flex items-start justify-between gap-3"
+                  >
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium truncate">{{ item.descricao }}</p>
+                      <p class="text-xs text-base-content/50 mt-0.5">
+                        {{ formatarData(item.data) }}
+                        <span v-if="item.data_vencimento"> · Venc. {{ formatarData(item.data_vencimento) }}</span>
+                      </p>
+                        <span
+                          class="badge badge-sm whitespace-nowrap"
+                          :class="item.status_liquidacao === 'liquidado' ? 'badge-success' : 'badge-warning'"
+                        >{{ item.status_liquidacao }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <p
+                        class="text-sm font-bold"
+                        :class="item.status_liquidacao === 'liquidado' ? 'text-success' : 'text-error'"
+                      >
+                        {{ formatarMoeda(item.valor_efetivo) }}
+                      </p>
+                      <button
+                        class="btn btn-ghost btn-xs text-error opacity-30 hover:opacity-100"
+                        @click="abrirModalExcluir(item.transacao_id, item.descricao, item.valor_efetivo)"
+                      >✕</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Rodapé total -->
+                <div class="flex justify-between items-center pt-3 mt-1 border-t border-base-200">
+                  <span class="text-xs text-base-content/40">Total do ciclo</span>
+                  <span class="text-base font-bold">{{ formatarMoeda(faturaSelecionada.valor_total) }}</span>
+                </div>
+
+              </template>
             </div>
           </div>
-        </div>
+
+        </template>
       </template>
     </div>
   </div>
+
+  <!-- Modal de confirmação de exclusão -->
+  <dialog :open="modalExcluirAberta" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box">
+      <h3 class="font-bold text-base">Excluir transação?</h3>
+      <div v-if="transacaoParaExcluir" class="mt-3 rounded-lg bg-base-200 p-3">
+        <p class="text-sm font-medium">{{ transacaoParaExcluir.descricao }}</p>
+        <p class="text-sm text-error font-bold mt-0.5">{{ formatarMoeda(transacaoParaExcluir.valor) }}</p>
+      </div>
+      <p class="text-xs text-base-content/50 mt-3">Esta ação não pode ser desfeita.</p>
+      <div class="modal-action mt-4">
+        <button class="btn btn-ghost btn-sm" :disabled="excluindo" @click="fecharModalExcluir">Cancelar</button>
+        <button class="btn btn-error btn-sm" :disabled="excluindo" @click="confirmarExclusao">
+          <span v-if="excluindo" class="loading loading-spinner loading-xs"></span>
+          <span v-else>Excluir</span>
+        </button>
+      </div>
+    </div>
+    <div class="modal-backdrop bg-black/40" @click="fecharModalExcluir"></div>
+  </dialog>
 </template>
