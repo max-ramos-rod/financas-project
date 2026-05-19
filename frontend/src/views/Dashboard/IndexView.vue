@@ -40,16 +40,6 @@ const transacoesMesAtual = computed(() => {
   })
 })
 
-const transacoesMesAnterior = computed(() => {
-  const { mes, ano } = getMesAnoOffset(mesAtual, anoAtual, -1)
-  return transacoes.value.filter(t => {
-    const data = parseDate(t.data)
-    return data.getMonth() + 1 === mes &&
-           data.getFullYear() === ano &&
-           t.status_liquidacao !== 'cancelado'
-  })
-})
-
 const saldoTotal = computed(() =>
   contas.value
     .filter(c => c.ativa)
@@ -89,22 +79,6 @@ const qtdReceitas = computed(() =>
 const qtdDespesas = computed(() =>
   transacoesMesAtual.value.filter(t => t.tipo === 'saida').length
 )
-
-const saldoMesAnterior = computed(() => {
-  const receitas = transacoesMesAnterior.value
-    .filter(t => t.tipo === 'entrada')
-    .reduce((s, t) => s + t.valor, 0)
-  const despesas = transacoesMesAnterior.value
-    .filter(t => t.tipo === 'saida')
-    .reduce((s, t) => s + t.valor, 0)
-  return receitas - despesas
-})
-
-const percentualVsMesAnterior = computed(() => {
-  if (saldoMesAnterior.value === 0) return null
-  const delta = ((saldoTotal.value - (saldoTotal.value - saldoMes.value + saldoMesAnterior.value)) / Math.abs(saldoTotal.value - saldoMes.value + saldoMesAnterior.value || 1)) * 100
-  return Number.isFinite(delta) ? delta : null
-})
 
 const despesasPorCategoria = computed(() => {
   const grupos: Record<string, number> = {}
