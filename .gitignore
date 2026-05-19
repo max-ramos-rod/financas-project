@@ -50,3 +50,8 @@ certbot/
 ############################
 .DS_Store
 Thumbs.db
+
+############################
+# Claude Code local notes
+############################
+CLAUDE.local.md

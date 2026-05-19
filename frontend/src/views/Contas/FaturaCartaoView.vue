@@ -450,16 +450,18 @@ onMounted(carregar)
             <div class="card-body p-4">
               <div class="flex items-center justify-between mb-3">
                 <div>
-                  <p class="font-semibold text-sm">Lançamentos do Ciclo</p>
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <p class="font-semibold text-sm">LanÃ§amentos do Ciclo</p>
                   <p class="text-xs text-base-content/40">
-                    {{ faturaSelecionada.itens.length === 0 ? 'Nenhum lançamento' : `${faturaSelecionada.itens.length} lançamento(s)` }}
+                    {{ faturaSelecionada.itens.length === 0 ? 'Nenhum lanÃ§amento' : `${faturaSelecionada.itens.length} lanÃ§amento(s)` }}
                   </p>
                 </div>
-                <button class="btn btn-primary btn-sm" @click="novaTransacao">+ Nova transação</button>
+                <button class="btn btn-primary btn-sm" @click="novaTransacao">+ Nova transaÃ§Ã£o</button>
               </div>
 
               <div v-if="faturaSelecionada.itens.length === 0" class="text-center py-10 text-base-content/30 text-sm">
-                Nenhum lançamento neste ciclo.
+                Nenhum lanÃ§amento neste ciclo.
               </div>
 
               <template v-else>
@@ -469,7 +471,7 @@ onMounted(carregar)
                   <table class="table table-sm w-full">
                     <thead>
                       <tr class="text-xs text-base-content/40 uppercase tracking-wide border-b border-base-200">
-                        <th class="font-medium pl-0">Descrição</th>
+                        <th class="font-medium pl-0">DescriÃ§Ã£o</th>
                         <th class="font-medium">Data</th>
                         <th class="font-medium">Vencimento</th>
                         <th class="font-medium">Status</th>
@@ -486,7 +488,7 @@ onMounted(carregar)
                         <td class="pl-0 font-medium text-sm max-w-[200px] truncate">{{ item.descricao }}</td>
                         <td class="text-sm text-base-content/60 whitespace-nowrap">{{ formatarData(item.data) }}</td>
                         <td class="text-sm text-base-content/60 whitespace-nowrap">
-                          {{ item.data_vencimento ? formatarData(item.data_vencimento) : '—' }}
+                          {{ item.data_vencimento ? formatarData(item.data_vencimento) : 'â€”' }}
                         </td>
                         <td>
                           <span
@@ -503,7 +505,7 @@ onMounted(carregar)
                           <button
                             class="btn btn-ghost btn-xs text-error opacity-30 hover:opacity-100"
                             @click="abrirModalExcluir(item.transacao_id, item.descricao, item.valor_efetivo)"
-                          >✕</button>
+                          >âœ•</button>
                         </td>
                       </tr>
                     </tbody>
@@ -521,7 +523,7 @@ onMounted(carregar)
                       <p class="text-sm font-medium truncate">{{ item.descricao }}</p>
                       <p class="text-xs text-base-content/50 mt-0.5">
                         {{ formatarData(item.data) }}
-                        <span v-if="item.data_vencimento"> · Venc. {{ formatarData(item.data_vencimento) }}</span>
+                        <span v-if="item.data_vencimento"> Â· Venc. {{ formatarData(item.data_vencimento) }}</span>
                       </p>
                         <span
                           class="badge badge-sm whitespace-nowrap"
@@ -538,21 +540,18 @@ onMounted(carregar)
                       <button
                         class="btn btn-ghost btn-xs text-error opacity-30 hover:opacity-100"
                         @click="abrirModalExcluir(item.transacao_id, item.descricao, item.valor_efetivo)"
-                      >✕</button>
+                      >âœ•</button>
                     </div>
                   </div>
                 </div>
 
-                <!-- Rodapé total -->
+                <!-- RodapÃ© total -->
                 <div class="flex justify-between items-center pt-3 mt-1 border-t border-base-200">
                   <span class="text-xs text-base-content/40">Total do ciclo</span>
                   <span class="text-base font-bold">{{ formatarMoeda(faturaSelecionada.valor_total) }}</span>
                 </div>
 
               </template>
-            </div>
-          </div>
-
         </template>
       </template>
     </div>

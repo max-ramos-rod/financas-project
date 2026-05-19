@@ -204,6 +204,7 @@ const salvarCategoria = async () => {
 
 const resetarFormularioParaNovoCadastro = () => {
   const primeiraAtiva = contas.value.find((c) => c.ativa)
+
   form.value = {
     conta_id: primeiraAtiva?.id ?? null,
     categoria_id: null,
