@@ -193,7 +193,7 @@ onMounted(() => {
               <input
                 v-model="filtros.busca"
                 type="text"
-                placeholder="🔍 Buscar por nome ou descrição..."
+                placeholder="Buscar por nome ou descrição..."
                 class="input input-bordered w-full"
               />
             </div>

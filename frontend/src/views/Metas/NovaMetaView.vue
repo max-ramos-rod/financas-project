@@ -367,7 +367,7 @@ onMounted(() => {
     <!-- Modal de Erro -->
     <div v-if="showErrorModal" class="modal modal-open">
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">❗ Erro ao salvar</h3>
+        <h3 class="font-bold text-lg mb-4">Erro ao salvar</h3>
         <div class="space-y-2 text-sm text-gray-700">
           <p v-for="(m, i) in errorMessages" :key="i">• {{ m }}</p>
         </div>

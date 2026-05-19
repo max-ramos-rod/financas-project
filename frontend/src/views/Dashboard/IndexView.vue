@@ -23,6 +23,7 @@ const anoAtual = new Date().getFullYear()
 const mesOrcamentoSelecionado = ref(mesAtual)
 
 const nomesMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+const nomesMesesLongos = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
 const getMesAnoOffset = (mesBase: number, anoBase: number, offset: number) => {
   const data = new Date(anoBase, mesBase - 1 + offset, 1)
@@ -35,6 +36,16 @@ const transacoesMesAtual = computed(() => {
 
     return data.getMonth() + 1 === mesAtual &&
            data.getFullYear() === anoAtual &&
+           t.status_liquidacao !== 'cancelado'
+  })
+})
+
+const transacoesMesAnterior = computed(() => {
+  const { mes, ano } = getMesAnoOffset(mesAtual, anoAtual, -1)
+  return transacoes.value.filter(t => {
+    const data = parseDate(t.data)
+    return data.getMonth() + 1 === mes &&
+           data.getFullYear() === ano &&
            t.status_liquidacao !== 'cancelado'
   })
 })
@@ -70,6 +81,30 @@ const despesasMes = computed(() =>
 )
 
 const saldoMes = computed(() => receitasMes.value - despesasMes.value)
+
+// Deltas para KPIs
+const qtdReceitas = computed(() =>
+  transacoesMesAtual.value.filter(t => t.tipo === 'entrada').length
+)
+const qtdDespesas = computed(() =>
+  transacoesMesAtual.value.filter(t => t.tipo === 'saida').length
+)
+
+const saldoMesAnterior = computed(() => {
+  const receitas = transacoesMesAnterior.value
+    .filter(t => t.tipo === 'entrada')
+    .reduce((s, t) => s + t.valor, 0)
+  const despesas = transacoesMesAnterior.value
+    .filter(t => t.tipo === 'saida')
+    .reduce((s, t) => s + t.valor, 0)
+  return receitas - despesas
+})
+
+const percentualVsMesAnterior = computed(() => {
+  if (saldoMesAnterior.value === 0) return null
+  const delta = ((saldoTotal.value - (saldoTotal.value - saldoMes.value + saldoMesAnterior.value)) / Math.abs(saldoTotal.value - saldoMes.value + saldoMesAnterior.value || 1)) * 100
+  return Number.isFinite(delta) ? delta : null
+})
 
 const despesasPorCategoria = computed(() => {
   const grupos: Record<string, number> = {}
@@ -129,6 +164,13 @@ const topDespesas = computed(() =>
     .filter(t => t.tipo === 'saida')
     .sort((a, b) => b.valor - a.valor)
     .slice(0, 5)
+)
+
+const transacoesRecentes = computed(() =>
+  [...transacoes.value]
+    .filter(t => t.status_liquidacao !== 'cancelado')
+    .sort((a, b) => parseDate(b.data).getTime() - parseDate(a.data).getTime())
+    .slice(0, 6)
 )
 
 const fluxoFinanceiroPorMes = (mes: number, ano: number) => {
@@ -199,6 +241,47 @@ const formatarMoeda = (valor: number): string =>
     currency: 'BRL'
   }).format(valor)
 
+const formatarData = (data: string): string => {
+  const d = parseDate(data)
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+const labelStatusTransacao = (t: Transacao): string => {
+  if (t.status_liquidacao === 'liquidado') return t.tipo === 'entrada' ? LABELS.recebido : LABELS.pago
+  if (t.status_liquidacao === 'atrasado') return LABELS.st_atrasado
+  return LABELS.st_previsto
+}
+
+const corStatusTransacao = (t: Transacao): string => {
+  if (t.status_liquidacao === 'liquidado') return 'badge-success'
+  if (t.status_liquidacao === 'atrasado') return 'badge-error'
+  return 'badge-warning'
+}
+
+// Subtítulos descritivos dos cards
+const subtituloOrcamento = computed(() => {
+  const total = orcamentoComparativo.value.length
+  const estourados = orcamentosEstourados.value.length
+  if (total === 0) return 'Sem planejamento neste mês'
+  if (estourados === 0) return `${total} ${total === 1 ? 'categoria planejada' : 'categorias planejadas'}`
+  return `${estourados} ${estourados === 1 ? 'orçamento estourado' : 'orçamentos estourados'} em ${nomesMesesLongos[mesOrcamentoSelecionado.value - 1]}`
+})
+
+const subtituloMetas = computed(() => {
+  const n = metasEmAndamento.value.length
+  if (n === 0) return 'Nenhuma meta em andamento'
+  return `${n} ${n === 1 ? 'meta ativa' : 'metas ativas'}`
+})
+
+const subtituloCategorias = computed(() => {
+  return `${nomesMesesLongos[mesAtual - 1]} · ${anoAtual}`
+})
+
+const horaAtualizacao = computed(() => {
+  const agora = new Date()
+  return `${nomesMesesLongos[mesAtual - 1].toLowerCase()} ${anoAtual} · atualizado às ${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`
+})
+
 const fetchDados = async () => {
   loading.value = true
 
@@ -231,13 +314,14 @@ onMounted(fetchDados)
   <div class="min-h-screen bg-base-200">
 
     <!-- Loading skeleton -->
-    <div v-if="loading" class="container mx-auto px-4 py-6">
+    <div v-if="loading" class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+      <div class="skeleton h-10 w-48 mb-6 rounded"></div>
       <div class="grid grid-cols-12 gap-5">
         <div class="col-span-12 skeleton h-28 rounded-box"></div>
-        <div class="col-span-6 lg:col-span-3 skeleton h-24 rounded-box"></div>
-        <div class="col-span-6 lg:col-span-3 skeleton h-24 rounded-box"></div>
-        <div class="col-span-6 lg:col-span-3 skeleton h-24 rounded-box"></div>
-        <div class="col-span-6 lg:col-span-3 skeleton h-24 rounded-box"></div>
+        <div class="col-span-6 lg:col-span-3 skeleton h-28 rounded-box"></div>
+        <div class="col-span-6 lg:col-span-3 skeleton h-28 rounded-box"></div>
+        <div class="col-span-6 lg:col-span-3 skeleton h-28 rounded-box"></div>
+        <div class="col-span-6 lg:col-span-3 skeleton h-28 rounded-box"></div>
         <div class="col-span-12 lg:col-span-7 skeleton h-72 rounded-box"></div>
         <div class="col-span-12 lg:col-span-5 skeleton h-72 rounded-box"></div>
         <div class="col-span-12 lg:col-span-7 skeleton h-72 rounded-box"></div>
@@ -246,86 +330,136 @@ onMounted(fetchDados)
     </div>
 
     <!-- Main grid -->
-    <div v-else class="container mx-auto px-4 py-6">
-      <div class="grid grid-cols-12 gap-5">
+    <div v-else class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+
+      <!-- Page header -->
+      <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between mb-5 lg:mb-6">
+        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight">Visão geral</h1>
+        <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/40">
+          {{ horaAtualizacao }}
+        </p>
+      </div>
+
+      <div class="grid grid-cols-12 gap-4 lg:gap-5">
 
         <!-- Hero stripe -->
         <div class="col-span-12 card bg-base-100 shadow-sm">
-          <div class="card-body py-5">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center">
-              <div class="flex-shrink-0">
-                <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Saldo Total</p>
-                <p class="text-4xl font-bold tracking-tight tabular-nums">
-                  {{ formatarMoeda(saldoTotal) }}
-                </p>
-              </div>
+          <div class="card-body p-5 lg:py-5">
+            <!-- Mobile: stack vertical; Desktop: régua horizontal -->
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:gap-6">
 
-              <div class="hidden lg:block w-px h-12 bg-base-300 mx-2"></div>
-
-              <div class="flex gap-8">
+              <!-- Saldo total + pill (mobile: pill abaixo do saldo) -->
+              <div class="flex items-start justify-between gap-3 lg:block lg:flex-shrink-0">
                 <div>
-                  <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Conta corrente</p>
-                  <p class="text-xl font-semibold tabular-nums">{{ formatarMoeda(saldoContaCorrente) }}</p>
+                  <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.saldo_total }}</p>
+                  <p class="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums mt-0.5">
+                    {{ formatarMoeda(saldoTotal) }}
+                  </p>
                 </div>
-                <div>
-                  <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Investimentos</p>
-                  <p class="text-xl font-semibold tabular-nums">{{ formatarMoeda(saldoInvestimento) }}</p>
+                <div
+                  v-if="saldoMes !== 0"
+                  :class="['badge', 'badge-sm', 'gap-1', 'font-mono', 'tabular-nums', 'text-[10px]', 'lg:hidden', saldoMes >= 0 ? 'badge-success' : 'badge-error']"
+                >
+                  {{ saldoMes >= 0 ? '+' : '' }}{{ formatarMoeda(saldoMes) }}
                 </div>
               </div>
 
-              <div class="flex-1"></div>
+              <div class="hidden lg:block w-px h-12 bg-base-300"></div>
 
-              <div :class="['badge', 'badge-lg', saldoMes >= 0 ? 'badge-success' : 'badge-error', 'font-semibold', 'tabular-nums', 'gap-1']">
+              <!-- Breakdown: mobile 2 colunas em grid, desktop flex -->
+              <div class="grid grid-cols-2 gap-4 lg:flex lg:gap-8 pt-4 lg:pt-0 border-t lg:border-t-0 border-base-300">
+                <div>
+                  <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/50">Conta corrente</p>
+                  <p class="text-lg sm:text-xl font-semibold tabular-nums mt-0.5">{{ formatarMoeda(saldoContaCorrente) }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/50">Investimentos</p>
+                  <p class="text-lg sm:text-xl font-semibold tabular-nums mt-0.5">{{ formatarMoeda(saldoInvestimento) }}</p>
+                </div>
+              </div>
+
+              <div class="hidden lg:block flex-1"></div>
+
+              <!-- Pill desktop only -->
+              <div
+                v-if="saldoMes !== 0"
+                :class="['hidden', 'lg:inline-flex', 'badge', 'badge-lg', 'gap-1', 'font-mono', 'tabular-nums', 'text-[11px]', saldoMes >= 0 ? 'badge-success' : 'badge-error']"
+              >
                 {{ saldoMes >= 0 ? '+' : '' }}{{ formatarMoeda(saldoMes) }} este mês
               </div>
 
-              <router-link to="/transacoes/nova" class="btn btn-primary btn-sm w-full lg:w-auto">
-                {{ LABELS.nova_transacao }}
-              </router-link>
+              <!-- Ações: mobile fullwidth com flex 1:1, desktop auto -->
+              <div class="flex gap-2 w-full lg:w-auto">
+                <router-link to="/contas" class="btn btn-ghost btn-sm flex-1 lg:flex-none">
+                  Ver contas
+                </router-link>
+                <router-link to="/transacoes/nova" class="btn btn-primary btn-sm flex-1 lg:flex-none">
+                  {{ LABELS.nova_transacao }}
+                </router-link>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- KPI: Receitas do mês -->
         <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
-          <div class="card-body py-4">
-            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">{{ LABELS.receitas_do_mes }}</p>
+          <div class="card-body py-4 gap-1">
+            <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.receitas_do_mes }}</p>
             <p class="text-2xl font-bold text-success tabular-nums">{{ formatarMoeda(receitasMes) }}</p>
+            <p class="text-[11px] font-mono text-base-content/40 mt-0.5">
+              {{ qtdReceitas }} {{ qtdReceitas === 1 ? 'lançamento' : 'lançamentos' }}
+            </p>
           </div>
         </div>
 
         <!-- KPI: Despesas do mês -->
         <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
-          <div class="card-body py-4">
-            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">{{ LABELS.despesas_do_mes }}</p>
+          <div class="card-body py-4 gap-1">
+            <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.despesas_do_mes }}</p>
             <p class="text-2xl font-bold text-error tabular-nums">{{ formatarMoeda(despesasMes) }}</p>
+            <p class="text-[11px] font-mono text-base-content/40 mt-0.5">
+              {{ qtdDespesas }} {{ qtdDespesas === 1 ? 'lançamento' : 'lançamentos' }}
+            </p>
           </div>
         </div>
 
         <!-- KPI: Saldo do mês -->
         <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
-          <div class="card-body py-4">
-            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">{{ LABELS.saldo_do_mes }}</p>
+          <div class="card-body py-4 gap-1">
+            <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.saldo_do_mes }}</p>
             <p :class="['text-2xl', 'font-bold', 'tabular-nums', saldoMes >= 0 ? 'text-success' : 'text-error']">
               {{ formatarMoeda(saldoMes) }}
             </p>
-            <p class="text-xs opacity-50 mt-1">{{ saldoMes >= 0 ? LABELS.resultado_positivo : LABELS.resultado_negativo }}</p>
+            <p class="text-[11px] font-mono text-base-content/40 mt-0.5">
+              {{ saldoMes >= 0 ? LABELS.resultado_positivo : LABELS.resultado_negativo }}
+            </p>
           </div>
         </div>
 
         <!-- KPI: Cartão em aberto -->
         <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
-          <div class="card-body py-4">
-            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">{{ LABELS.cartao_em_aberto }}</p>
+          <div class="card-body py-4 gap-1">
+            <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.cartao_em_aberto }}</p>
             <p class="text-2xl font-bold text-error tabular-nums">{{ formatarMoeda(debitoFaturaAtualCartoes) }}</p>
+            <p class="text-[11px] font-mono text-base-content/40 mt-0.5">
+              Próximo fechamento
+            </p>
           </div>
         </div>
 
         <!-- Charts row 1 — Fluxo Financeiro -->
         <div class="col-span-12 lg:col-span-7 card bg-base-100 shadow-sm">
           <div class="card-body">
-            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Fluxo Financeiro</p>
-            <p class="text-xs opacity-40 mb-1">Mês anterior, atual e próximo para leitura de tendência.</p>
+            <div class="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">Fluxo Financeiro</p>
+                <p class="text-lg font-semibold tracking-tight mt-1">Anterior, atual, próximo</p>
+              </div>
+              <div class="hidden md:flex gap-3 text-[11px] font-mono text-base-content/50 items-center">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm bg-success"></span>Entradas</span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm bg-error"></span>Saídas</span>
+              </div>
+            </div>
             <FluxoFinanceiroChart :dadosMeses="fluxoFinanceiroComparativo" />
           </div>
         </div>
@@ -333,35 +467,51 @@ onMounted(fetchDados)
         <!-- Charts row 1 — Despesas por Categoria -->
         <div class="col-span-12 lg:col-span-5 card bg-base-100 shadow-sm">
           <div class="card-body">
-            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Despesas por Categoria</p>
-            <p class="text-xs opacity-40 mb-1">Categorias com maior peso no mês atual.</p>
-            <DespesasCategoriaChart :dados="despesasPorCategoria" />
+            <div class="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">Despesas por Categoria</p>
+                <p class="text-lg font-semibold tracking-tight mt-1">{{ subtituloCategorias }}</p>
+              </div>
+              <router-link to="/relatorios" class="text-[11px] font-mono text-primary hover:underline shrink-0">
+                Ver tudo →
+              </router-link>
+            </div>
+
+            <EmptyState
+              v-if="despesasPorCategoria.length === 0"
+              variant="zero-state"
+              title="Sem despesas neste mês."
+              description="As categorias com maior peso aparecem aqui assim que houver lançamentos."
+            >
+              <template #icon><TrendingDown /></template>
+            </EmptyState>
+
+            <DespesasCategoriaChart v-else :dados="despesasPorCategoria" />
           </div>
         </div>
 
         <!-- Charts row 2 — Orçamento × Gasto -->
         <div class="col-span-12 lg:col-span-7 card bg-base-100 shadow-sm">
           <div class="card-body">
-            <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between mb-2">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
               <div>
-                <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Orçamento × Gasto</p>
-                <p class="text-xs opacity-40">Compare o planejado com o realizado.</p>
+                <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">Orçamento × Gasto</p>
+                <p class="text-lg font-semibold tracking-tight mt-1">{{ subtituloOrcamento }}</p>
               </div>
-              <div class="w-full max-w-xs">
-                <label class="label py-1"><span class="label-text text-xs">{{ LABELS.mes_de_referencia }}</span></label>
+              <div class="w-full sm:max-w-[180px]">
                 <select v-model.number="mesOrcamentoSelecionado" class="select select-bordered select-sm w-full">
-                  <option :value="1">Jan</option>
-                  <option :value="2">Fev</option>
-                  <option :value="3">Mar</option>
-                  <option :value="4">Abr</option>
-                  <option :value="5">Mai</option>
-                  <option :value="6">Jun</option>
-                  <option :value="7">Jul</option>
-                  <option :value="8">Ago</option>
-                  <option :value="9">Set</option>
-                  <option :value="10">Out</option>
-                  <option :value="11">Nov</option>
-                  <option :value="12">Dez</option>
+                  <option :value="1">Janeiro</option>
+                  <option :value="2">Fevereiro</option>
+                  <option :value="3">Março</option>
+                  <option :value="4">Abril</option>
+                  <option :value="5">Maio</option>
+                  <option :value="6">Junho</option>
+                  <option :value="7">Julho</option>
+                  <option :value="8">Agosto</option>
+                  <option :value="9">Setembro</option>
+                  <option :value="10">Outubro</option>
+                  <option :value="11">Novembro</option>
+                  <option :value="12">Dezembro</option>
                 </select>
               </div>
             </div>
@@ -398,16 +548,41 @@ onMounted(fetchDados)
         <!-- Charts row 2 — Metas + Maiores Despesas (stacked in right column) -->
         <div class="col-span-12 lg:col-span-5 flex flex-col gap-5">
 
-          <div v-if="metasEmAndamento.length" class="card bg-base-100 shadow-sm">
+          <div class="card bg-base-100 shadow-sm">
             <div class="card-body">
-              <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Metas Financeiras</p>
-              <div class="mt-2 space-y-3">
+              <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">Metas em andamento</p>
+                  <p class="text-lg font-semibold tracking-tight mt-1">{{ subtituloMetas }}</p>
+                </div>
+                <router-link to="/metas" class="text-[11px] font-mono text-primary hover:underline shrink-0">
+                  Gerenciar →
+                </router-link>
+              </div>
+
+              <EmptyState
+                v-if="metasEmAndamento.length === 0"
+                variant="zero-state"
+                title="Sem metas ativas."
+                description="Defina o que você quer alcançar e acompanhe o progresso."
+              >
+                <template #actions>
+                  <router-link to="/metas" class="btn btn-primary btn-sm">Criar meta</router-link>
+                </template>
+              </EmptyState>
+
+              <div v-else class="space-y-4">
                 <div v-for="meta in metasEmAndamento.slice(0, 3)" :key="meta.id">
-                  <div class="mb-1 flex justify-between text-xs">
-                    <span>{{ meta.nome }}</span>
-                    <span>{{ getPercentualMeta(meta).toFixed(0) }}%</span>
+                  <div class="flex justify-between items-baseline mb-1.5">
+                    <span class="text-sm font-medium">{{ meta.nome }}</span>
+                    <span class="text-[11px] font-mono tabular-nums text-base-content/50">
+                      {{ getPercentualMeta(meta).toFixed(0) }}%
+                    </span>
                   </div>
-                  <progress class="progress progress-primary w-full" :value="getPercentualMeta(meta)" max="100"></progress>
+                  <div class="text-[11px] font-mono tabular-nums text-base-content/40 mb-1.5">
+                    {{ formatarMoeda(meta.valor_atual) }} / {{ formatarMoeda(meta.valor_alvo) }}
+                  </div>
+                  <progress class="progress progress-primary w-full h-1.5" :value="getPercentualMeta(meta)" max="100"></progress>
                 </div>
               </div>
             </div>
@@ -415,7 +590,10 @@ onMounted(fetchDados)
 
           <div class="card bg-base-100 shadow-sm">
             <div class="card-body">
-              <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Maiores Despesas</p>
+              <div class="mb-4">
+                <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">Maiores Despesas</p>
+                <p class="text-lg font-semibold tracking-tight mt-1">Top 5 do mês</p>
+              </div>
 
               <EmptyState
                 v-if="topDespesas.length === 0"
@@ -428,17 +606,92 @@ onMounted(fetchDados)
                 </template>
               </EmptyState>
 
-              <div v-else class="mt-2 space-y-2">
+              <div v-else class="space-y-3">
                 <div v-for="t in topDespesas" :key="t.id" class="flex justify-between gap-3 text-sm">
-                  <span class="truncate opacity-80">{{ t.descricao }}</span>
+                  <span class="truncate text-base-content/80">{{ t.descricao }}</span>
                   <span class="whitespace-nowrap font-semibold text-error tabular-nums">
-                    {{ formatarMoeda(t.valor) }}
+                    − {{ formatarMoeda(t.valor).replace('R$\u00A0', '') }}
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
+        </div>
+
+        <!-- Transações recentes (faixa cheia) -->
+        <div class="col-span-12 card bg-base-100 shadow-sm">
+          <div class="card-body">
+            <div class="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">Transações recentes</p>
+                <p class="text-lg font-semibold tracking-tight mt-1">
+                  {{ transacoesRecentes.length === 0 ? 'Sem lançamentos' : `Últimos ${transacoesRecentes.length} lançamentos` }}
+                </p>
+              </div>
+              <router-link to="/transacoes" class="text-[11px] font-mono text-primary hover:underline shrink-0">
+                Ver todas →
+              </router-link>
+            </div>
+
+            <EmptyState
+              v-if="transacoesRecentes.length === 0"
+              variant="first-time"
+              title="Sua primeira transação aparece aqui."
+              description="Lance uma entrada, saída ou saldo inicial para começar."
+            >
+              <template #actions>
+                <router-link to="/transacoes/nova" class="btn btn-primary btn-sm">{{ LABELS.nova_transacao }}</router-link>
+              </template>
+            </EmptyState>
+
+            <!-- Mobile: linha 1 (data, desc, valor) + linha 2 (categoria · status). Desktop: tudo em uma linha. -->
+            <div v-else class="divide-y divide-base-300">
+              <div
+                v-for="t in transacoesRecentes"
+                :key="t.id"
+                class="py-3 sm:grid sm:grid-cols-[60px_1fr_auto_auto] sm:gap-4 sm:items-center text-sm"
+              >
+                <!-- Mobile layout -->
+                <div class="flex items-start justify-between gap-3 sm:hidden">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] font-mono tabular-nums text-base-content/40 shrink-0">{{ formatarData(t.data) }}</span>
+                      <span :class="['badge', 'badge-xs', corStatusTransacao(t)]">
+                        {{ labelStatusTransacao(t) }}
+                      </span>
+                    </div>
+                    <p class="truncate font-medium mt-1">{{ t.descricao }}</p>
+                    <p class="text-xs text-base-content/40 truncate">
+                      {{ categorias.find(c => c.id === t.categoria_id)?.nome || LABELS.sem_categoria }}
+                    </p>
+                  </div>
+                  <span
+                    :class="['font-semibold', 'tabular-nums', 'whitespace-nowrap', 'shrink-0', t.tipo === 'entrada' ? 'text-success' : 'text-error']"
+                  >
+                    {{ t.tipo === 'entrada' ? '+ ' : '− ' }}{{ formatarMoeda(t.valor).replace('R$\u00A0', '') }}
+                  </span>
+                </div>
+
+                <!-- Desktop layout -->
+                <span class="hidden sm:inline text-[11px] font-mono tabular-nums text-base-content/40">{{ formatarData(t.data) }}</span>
+                <div class="hidden sm:block min-w-0">
+                  <p class="truncate font-medium">{{ t.descricao }}</p>
+                  <p class="text-xs text-base-content/40 truncate">
+                    {{ categorias.find(c => c.id === t.categoria_id)?.nome || LABELS.sem_categoria }}
+                  </p>
+                </div>
+                <span :class="['hidden', 'sm:inline-flex', 'badge', 'badge-sm', corStatusTransacao(t)]">
+                  {{ labelStatusTransacao(t) }}
+                </span>
+                <span
+                  :class="['hidden', 'sm:inline', 'font-semibold', 'tabular-nums', 'whitespace-nowrap', t.tipo === 'entrada' ? 'text-success' : 'text-error']"
+                >
+                  {{ t.tipo === 'entrada' ? '+ ' : '− ' }}{{ formatarMoeda(t.valor).replace('R$\u00A0', '') }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
