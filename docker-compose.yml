@@ -50,6 +50,8 @@ services:
 
 volumes:
   financas_pgdata:
+    external: true
+    name: financas-project_pgdata
 
 networks:
   app_network:
