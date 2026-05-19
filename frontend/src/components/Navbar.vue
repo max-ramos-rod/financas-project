@@ -137,7 +137,7 @@ onMounted(() => {
 <template>
   <nav class="navbar bg-primary text-primary-content shadow-lg sticky top-0 z-40">
     <div class="navbar-start">
-      <Lockup size="sm" to="/dashboard" class="btn btn-ghost" />
+      <Lockup size="sm" to="/dashboard" inverted />
     </div>
     <div class="flex items-stretch">
     </div>

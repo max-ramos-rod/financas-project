@@ -99,11 +99,6 @@ const abrirModalExcluir = (id: number, descricao: string, valor: number) => {
   modalExcluirAberta.value = true
 }
 
-const fecharModalExcluir = () => {
-  modalExcluirAberta.value = false
-  transacaoParaExcluir.value = null
-}
-
 const confirmarExclusao = async () => {
   if (!transacaoParaExcluir.value) return
   excluindo.value = true
@@ -558,23 +553,17 @@ onMounted(carregar)
     </div>
   </div>
 
-  <!-- Modal de confirmação de exclusão -->
-  <dialog :open="modalExcluirAberta" class="modal modal-bottom sm:modal-middle">
-    <div class="modal-box">
-      <h3 class="font-bold text-base">Excluir transação?</h3>
-      <div v-if="transacaoParaExcluir" class="mt-3 rounded-lg bg-base-200 p-3">
-        <p class="text-sm font-medium">{{ transacaoParaExcluir.descricao }}</p>
-        <p class="text-sm text-error font-bold mt-0.5">{{ formatarMoeda(transacaoParaExcluir.valor) }}</p>
-      </div>
-      <p class="text-xs text-base-content/50 mt-3">Esta ação não pode ser desfeita.</p>
-      <div class="modal-action mt-4">
-        <button class="btn btn-ghost btn-sm" :disabled="excluindo" @click="fecharModalExcluir">Cancelar</button>
-        <button class="btn btn-error btn-sm" :disabled="excluindo" @click="confirmarExclusao">
-          <span v-if="excluindo" class="loading loading-spinner loading-xs"></span>
-          <span v-else>Excluir</span>
-        </button>
-      </div>
-    </div>
-    <div class="modal-backdrop bg-black/40" @click="fecharModalExcluir"></div>
-  </dialog>
+<ConfirmModal
+  v-model:open="modalExcluirAberta"
+  severity="simple"
+  title="Excluir transação?"
+  description="Esta ação não pode ser desfeita."
+  :impacts="transacaoParaExcluir
+    ? [`${transacaoParaExcluir.descricao} — ${formatarMoeda(transacaoParaExcluir.valor)}`]
+    : []"
+  confirm-label="Excluir"
+  cancel-label="Cancelar"
+  @confirm="confirmarExclusao"
+  @cancel="transacaoParaExcluir = null"
+/>
 </template>
