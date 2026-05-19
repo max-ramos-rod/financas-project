@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import type { Delegacao, DelegacaoContextOption } from '@/types'
+import Lockup from './Lockup.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -135,9 +136,7 @@ onMounted(() => {
 <template>
   <nav class="navbar bg-primary text-primary-content shadow-lg sticky top-0 z-40">
     <div class="navbar-start">
-      <button @click="navegarPara('dashboard')" class="btn btn-ghost text-xl font-bold">
-        Finanças
-      </button>
+      <Lockup size="sm" to="/dashboard" class="btn btn-ghost" />
     </div>
     <div class="flex items-stretch">
     </div>

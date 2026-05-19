@@ -55,3 +55,9 @@ Thumbs.db
 # Claude Code local notes
 ############################
 CLAUDE.local.md
+
+############################
+# Design handoff (material de referência local)
+############################
+frontend/handoff/
+handoff/

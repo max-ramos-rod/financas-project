@@ -1,0 +1,109 @@
+/* ============================================================================
+ * Design tokens · Finanças Cristãs · v1
+ * ----------------------------------------------------------------------------
+ * Variáveis CSS de cor, espaçamento e tipografia.
+ * Espelha o tema DaisyUI do tailwind.config.js para uso direto em estilo inline
+ * ou em components que precisam de granularidade que o Tailwind não oferece
+ * (gradientes, sombras compostas, transições).
+ *
+ * Importar UMA VEZ no main.ts depois do tailwind:
+ *   import './assets/style.css'
+ *   import './assets/tokens.css'
+ * ========================================================================== */
+
+:root {
+  /* === MARCA ===================================================== */
+  --brand:        #1F5C3A;
+  --brand-focus:  #155F3C;
+  --brand-tint:   rgba(31, 92, 58, 0.08);
+
+  /* === BASES ===================================================== */
+  --bg:           #f3f3ef;   /* base-200 · página */
+  --surface:      #ffffff;   /* base-100 · cards */
+  --paper-2:      #e6e6df;   /* base-300 · pressed, dividers fortes */
+
+  /* === TINTA (hierarquia via cor, não opacidade) ================= */
+  --ink:          #1f1f1c;   /* base-content · texto principal */
+  --ink-2:        #3d3d39;   /* texto secundário */
+  --ink-3:        #82827a;   /* labels, ajudas, meta */
+
+  /* === LINHAS ==================================================== */
+  --rule:         #d8d8d0;   /* borda padrão · 1px */
+  --rule-2:       #ebebe3;   /* divider sutil dentro de cards */
+
+  /* === STATUS ==================================================== */
+  --ok:           #2d7d4a;   /* receitas, sucesso */
+  --ok-tint:      rgba(45, 125, 74, 0.08);
+  --warn:         #b57e2d;   /* previsto, atenção */
+  --warn-tint:    rgba(181, 126, 45, 0.10);
+  --crit:         #b53d2c;   /* despesas, erro, destrutivo */
+  --crit-tint:    rgba(181, 61, 44, 0.08);
+
+  /* === RAIO ====================================================== */
+  --r-xs:  4px;
+  --r-sm:  6px;
+  --r-md:  8px;
+  --r-lg:  10px;
+  --r-xl:  14px;
+  --r-2xl: 20px;
+  --r-pill: 999px;
+
+  /* === SOMBRA ==================================================== */
+  --shadow-card:   0 1px 0 rgba(255,255,255,0.5) inset, 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-lifted: 0 1px 0 rgba(255,255,255,0.5) inset, 0 10px 40px rgba(0,0,0,0.06);
+  --shadow-modal:  0 20px 60px rgba(0,0,0,0.25);
+
+  /* === TIPOGRAFIA ================================================ */
+  --font-sans: "Geist", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Escala (espelha tailwind.config.js fontSize) */
+  --t-label:   11px;
+  --t-meta:    13px;
+  --t-body:    15px;
+  --t-lg:      18px;
+  --t-xl:      22px;
+  --t-2xl:     28px;
+  --t-3xl:     36px;
+  --t-display: 56px;
+  --t-mega:    96px;
+
+  /* === ESPAÇAMENTO =============================================== */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* === FEATURES ================================================== */
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Carga das fontes via link no index.html é preferível, mas se quiser
+ * declarar via CSS, descomente:
+ *
+ * @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+ */
+
+/* Garante números tabulares em valores monetários */
+.tabular,
+[data-value="currency"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Helper classes para hierarquia de tinta (substituem opacity-*) */
+.text-ink   { color: var(--ink); }
+.text-ink-2 { color: var(--ink-2); }
+.text-ink-3 { color: var(--ink-3); }
+.text-brand { color: var(--brand); }
+.text-ok    { color: var(--ok); }
+.text-warn  { color: var(--warn); }
+.text-crit  { color: var(--crit); }
