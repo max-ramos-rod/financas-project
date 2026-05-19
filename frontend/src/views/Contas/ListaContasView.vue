@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Conta } from '@/types'
 import { formatDateBR } from '@/utils/date'
+import { LABELS, labelTipoConta } from '@/utils/strings'
 
 const router = useRouter()
 
@@ -143,17 +144,6 @@ const formatarMoeda = (valor: number): string => {
   }).format(valor)
 }
 
-const formatarTipo = (tipo: string): string => {
-  const tipos: Record<string, string> = {
-    carteira: '👛 Carteira',
-    conta_corrente: '🏦 Conta Corrente',
-    poupanca: '💰 Poupanca',
-    cartao_credito: '💳 Cartao de Credito',
-    investimento: '📈 Investimento',
-    outro: '📌 Outro',
-  }
-  return tipos[tipo] || tipo
-}
 
 const formatarData = (valor?: string | null): string => {
   if (!valor) return '-'
@@ -176,12 +166,12 @@ onMounted(() => {
 <template>
   <div class="min-h-screen bg-base-200">
     <!-- Header -->
-    <div class="bg-white shadow">
+    <div class="bg-base-100 shadow">
       <div class="container mx-auto px-4 py-4">
         <div class="flex justify-between items-center">
-          <h1 class="text-2xl font-bold">💳 Minhas Contas</h1>
+          <h1 class="text-2xl font-bold">Minhas Contas</h1>
           <button @click="novaConta" class="btn btn-primary">
-            ➕ Nova Conta
+            Nova Conta
           </button>
         </div>
       </div>
@@ -197,7 +187,7 @@ onMounted(() => {
     <div v-else class="container mx-auto px-4 py-8">
       
       <!-- Filtros -->
-      <div class="card bg-white shadow-md mb-6">
+      <div class="card bg-base-100 shadow-md mb-6">
         <div class="card-body">
           <div class="flex justify-between items-center mb-4">
             <h3 class="card-title">Filtros</h3>
@@ -212,7 +202,7 @@ onMounted(() => {
               <input
                 v-model="filtros.busca"
                 type="text"
-                placeholder="🔍 Buscar por nome..."
+                placeholder="Buscar por nome..."
                 class="input input-bordered w-full"
               />
             </div>
@@ -221,12 +211,12 @@ onMounted(() => {
             <div>
               <select v-model="filtros.tipo" class="select select-bordered w-full">
                 <option value="todas">Todos os tipos</option>
-                <option value="carteira">👛 Carteira</option>
-                <option value="conta_corrente">🏦 Conta Corrente</option>
-                <option value="poupanca">💰 Poupanca</option>
-                <option value="cartao_credito">💳 Cartao de Credito</option>
-                <option value="investimento">📈 Investimento</option>
-                <option value="outro">📌 Outro</option>
+                <option value="carteira">{{ LABELS.conta_carteira }}</option>
+                <option value="conta_corrente">{{ LABELS.conta_corrente }}</option>
+                <option value="poupanca">{{ LABELS.conta_poupanca }}</option>
+                <option value="cartao_credito">{{ LABELS.conta_cartao }}</option>
+                <option value="investimento">{{ LABELS.conta_investimento }}</option>
+                <option value="outro">{{ LABELS.conta_outro }}</option>
               </select>
             </div>
 
@@ -234,8 +224,8 @@ onMounted(() => {
             <div>
               <select v-model="filtros.status" class="select select-bordered w-full">
                 <option value="todas">Todas</option>
-                <option value="ativas">✅ Ativas</option>
-                <option value="inativas">❌ Inativas</option>
+                <option value="ativas">Ativas</option>
+                <option value="inativas">Inativas</option>
               </select>
             </div>
           </div>
@@ -244,28 +234,28 @@ onMounted(() => {
 
       <!-- Resumo -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Saldo Total</p>
             <p class="text-2xl font-bold text-success">{{ formatarMoeda(totais.saldoTotal) }}</p>
           </div>
         </div>
 
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Contas Ativas</p>
             <p class="text-2xl font-bold text-info">{{ totais.ativas }}</p>
           </div>
         </div>
 
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Saldo Ativas</p>
             <p class="text-2xl font-bold">{{ formatarMoeda(totais.saldoAtivas) }}</p>
           </div>
         </div>
 
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Inativas</p>
             <p class="text-2xl font-bold text-warning">{{ totais.inativas }}</p>
@@ -274,9 +264,8 @@ onMounted(() => {
       </div>
 
       <!-- Lista de Contas -->
-      <div v-if="contasFiltradas.length === 0" class="card bg-white shadow-md">
+      <div v-if="contasFiltradas.length === 0" class="card bg-base-100 shadow-md">
         <div class="card-body text-center py-16">
-          <div class="text-6xl mb-4">💳</div>
           <p class="text-xl font-semibold mb-2">Nenhuma conta encontrada</p>
           <p class="text-gray-500 mb-6">
             {{ filtros.tipo !== 'todas' || filtros.busca || filtros.status !== 'todas'
@@ -284,7 +273,7 @@ onMounted(() => {
               : 'Adicione sua primeira conta' }}
           </p>
           <button @click="novaConta" class="btn btn-primary">
-            ➕ Nova Conta
+            Nova Conta
           </button>
         </div>
       </div>
@@ -294,7 +283,7 @@ onMounted(() => {
         <div
           v-for="conta in contasFiltradas"
           :key="conta.id"
-          class="card bg-white shadow-md hover:shadow-lg transition-shadow"
+          class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow"
           :style="{ borderLeft: `5px solid ${conta.cor}` }"
         >
           <div class="card-body">
@@ -302,19 +291,15 @@ onMounted(() => {
             <div class="flex justify-between items-start mb-4">
               <div class="flex-1">
                 <h3 class="card-title text-lg">{{ conta.nome }}</h3>
-                <p class="text-sm text-gray-500 mt-1">{{ formatarTipo(conta.tipo) }}</p>
+                <p class="text-sm text-gray-500 mt-1">{{ labelTipoConta(conta.tipo) }}</p>
                 <p v-if="conta.tipo === 'cartao_credito'" class="text-xs text-gray-500">
                   Fecha dia {{ conta.dia_fechamento ?? '-' }} | Vence dia {{ conta.dia_vencimento ?? '-' }}
                 </p>
               </div>
 
               <!-- Status Badge -->
-              <div v-if="conta.ativa" class="badge badge-success">
-                ✅ Ativa
-              </div>
-              <div v-else class="badge badge-ghost">
-                ❌ Inativa
-              </div>
+              <div v-if="conta.ativa" class="badge badge-success">Ativa</div>
+              <div v-else class="badge badge-ghost">Inativa</div>
             </div>
 
             <!-- Saldo -->
@@ -356,19 +341,19 @@ onMounted(() => {
                 @click="abrirFatura(conta.id)"
                 class="btn btn-sm btn-ghost"
               >
-                💳 Fatura
+                Fatura
               </button>
               <button
                 @click="editarConta(conta.id)"
                 class="btn btn-sm btn-ghost"
               >
-                ✏️ Editar
+                Editar
               </button>
               <button
                 @click="abrirModalDelete(conta)"
                 class="btn btn-sm btn-ghost text-error"
               >
-                🗑️ Deletar
+                Deletar
               </button>
             </div>
           </div>
@@ -387,9 +372,7 @@ onMounted(() => {
       class="modal modal-open"
     >
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">
-          🗑️ Excluir Conta
-        </h3>
+        <h3 class="font-bold text-lg mb-4">Excluir Conta</h3>
         <p class="py-4 text-gray-600">
           Tem certeza que deseja excluir a conta <strong>"{{ contaADeletar?.nome }}"</strong>?
         </p>
@@ -397,7 +380,7 @@ onMounted(() => {
           Saldo atual: <strong>{{ formatarMoeda(contaADeletar?.saldo || 0) }}</strong>
         </p>
         <p class="text-sm text-error font-semibold">
-          ⚠️ Esta acao nao pode ser desfeita!
+          Esta ação não pode ser desfeita!
         </p>
 
         <div class="modal-action gap-2 mt-6">
@@ -422,7 +405,7 @@ onMounted(() => {
     <!-- Modal de Erro -->
     <div v-if="showErrorModal" class="modal modal-open">
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">❗ Erro</h3>
+        <h3 class="font-bold text-lg mb-4">Erro</h3>
         <div class="space-y-2 text-sm text-gray-700">
           <p v-for="(m, i) in errorMessages" :key="i">• {{ m }}</p>
         </div>

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import api from '@/services/api'
 import type { Delegacao } from '@/types'
+import { labelStatusDelegacao, corStatusDelegacao } from '@/utils/strings'
 
 const loading = ref(false)
 const error = ref('')
@@ -48,7 +49,7 @@ const revogar = async (delegacaoId: number) => {
   success.value = ''
   try {
     await api.post(`/delegacoes/${delegacaoId}/revoke`)
-    success.value = 'Delegacao revogada com sucesso.'
+    success.value = 'Delegação revogada com sucesso.'
     await carregarConvites()
   } catch (err: any) {
     error.value = err?.response?.data?.detail || 'Falha ao revogar delegacao.'
@@ -64,7 +65,7 @@ onMounted(() => {
   <div class="min-h-screen bg-base-200 p-6">
     <div class="max-w-6xl mx-auto space-y-6">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold">Convites e Delegacoes</h1>
+        <h1 class="text-2xl font-bold">Convites e Delegações</h1>
         <button class="btn btn-outline btn-sm" :disabled="loading" @click="carregarConvites">
           Atualizar
         </button>
@@ -95,11 +96,11 @@ onMounted(() => {
               >
                 <div>
                   <p class="font-medium">{{ item.owner?.nome || 'Usuario' }}</p>
-                  <p class="text-xs opacity-70">{{ item.owner?.email }}</p>
+                  <p class="text-xs opacity-70">{{ item.owner?.email ?? '' }}</p>
                   <p class="text-xs mt-1">Criado em {{ formatDate(item.created_at) }}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                  <span class="badge badge-outline">{{ item.status }}</span>
+                  <span :class="['badge', 'badge-' + corStatusDelegacao(item.status)]">{{ labelStatusDelegacao(item.status) }}</span>
                   <button
                     v-if="item.status === 'pending'"
                     class="btn btn-primary btn-sm"
@@ -123,7 +124,7 @@ onMounted(() => {
         <section class="card bg-base-100 shadow">
           <div class="card-body">
             <h2 class="card-title text-lg">Enviados</h2>
-            <p class="text-sm opacity-70">Convites que voce enviou para outros e-mails.</p>
+            <p class="text-sm opacity-70">Convites que você enviou para outros e-mails.</p>
 
             <div v-if="convitesEnviados.length === 0" class="text-sm opacity-60 mt-4">
               Nenhum convite enviado.
@@ -137,11 +138,11 @@ onMounted(() => {
               >
                 <div>
                   <p class="font-medium">{{ item.invited_email }}</p>
-                  <p class="text-xs opacity-70">Permissao: {{ item.can_write ? 'Leitura e escrita' : 'Somente leitura' }}</p>
+                  <p class="text-xs opacity-70">Permissão: {{ item.can_write ? 'Leitura e escrita' : 'Somente leitura' }}</p>
                   <p class="text-xs mt-1">Criado em {{ formatDate(item.created_at) }}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                  <span class="badge badge-outline">{{ item.status }}</span>
+                  <span :class="['badge', 'badge-' + corStatusDelegacao(item.status)]">{{ labelStatusDelegacao(item.status) }}</span>
                   <button
                     v-if="item.status !== 'revoked'"
                     class="btn btn-ghost btn-sm text-error"

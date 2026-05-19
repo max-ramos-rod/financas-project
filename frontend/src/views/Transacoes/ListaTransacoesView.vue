@@ -6,6 +6,7 @@ import type { Categoria, Conta, Transacao } from '@/types'
 import { parseDate, formatDateBR, formatDateForInput } from '@/utils/date'
 import { TransacoesLoadControl } from './transacoesLoadControl'
 import { buscarTransacoesFiltradas, type FiltrosTransacoes } from './transacoesFetch'
+import { LABELS } from '@/utils/strings'
 
 const router = useRouter()
 const route = useRoute()
@@ -272,10 +273,10 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <div class="bg-white shadow">
+    <div class="bg-base-100 shadow">
       <div class="container mx-auto px-4 py-4 flex items-center justify-between">
-        <h1 class="text-2xl font-bold">Transacoes</h1>
-        <button @click="novaTransacao" class="btn btn-primary">Nova transacao</button>
+        <h1 class="text-2xl font-bold">{{ LABELS.transacoes }}</h1>
+        <button @click="novaTransacao" class="btn btn-primary">{{ LABELS.nova_transacao }}</button>
       </div>
     </div>
 
@@ -286,7 +287,7 @@ onMounted(async () => {
     <div v-else class="container mx-auto px-4 py-6 space-y-6">
 
 
-      <div class="card bg-white shadow">
+      <div class="card bg-base-100 shadow">
         <div class="card-body">
 
           <!-- Mobile: retratil -->
@@ -299,11 +300,11 @@ onMounted(async () => {
 
               <!-- SEU GRID DE FILTROS -->
               <div class="grid grid-cols-1 gap-3">
-                <input v-model="filtros.busca" class="input input-bordered lg:col-span-2" placeholder="Buscar descricao" />
+                <input v-model="filtros.busca" class="input input-bordered lg:col-span-2" placeholder="Buscar descrição" />
                 <select v-model="filtros.tipo" class="select select-bordered">
                   <option value="todas">Todos tipos</option>
-                  <option value="entrada">Entradas</option>
-                  <option value="saida">Saidas</option>
+                  <option value="entrada">{{ LABELS.entradas }}</option>
+                  <option value="saida">{{ LABELS.saidas }}</option>
                 </select>
                 <select v-model="filtros.status_liquidacao" class="select select-bordered">
                   <option value="todos">Todos status</option>
@@ -315,12 +316,12 @@ onMounted(async () => {
                 <select v-model="filtros.fixa" class="select select-bordered">
                   <option value="todas">Fixas e nao fixas</option>
                   <option value="fixas">Apenas fixas</option>
-                  <option value="nao_fixas">Apenas nao fixas</option>
+                  <option value="nao_fixas">Apenas não fixas</option>
                 </select>
                 <select v-model="filtros.orcamento" class="select select-bordered">
-                  <option value="todos">Orcamento (todos)</option>
-                  <option value="fora">Fora do orcamento</option>
-                  <option value="dentro">Dentro do orcamento</option>
+                  <option value="todos">Orçamento (todos)</option>
+                  <option value="fora">Fora do orçamento</option>
+                  <option value="dentro">Dentro do orçamento</option>
                 </select>
                 <div class="flex gap-2">
                   <select v-model="filtros.valor_modo" class="select select-bordered w-1/2">
@@ -428,7 +429,7 @@ onMounted(async () => {
 
         <!-- ===== PRIMEIRA LINHA ===== -->
 
-        <div class="card bg-white shadow">
+        <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Recebidas</p>
             <p class="text-3xl text-success font-bold">
@@ -437,7 +438,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="card bg-white shadow">
+        <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">A receber</p>
             <p class="text-3xl text-warning font-medium">
@@ -446,7 +447,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="card bg-white shadow">
+        <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Total das Entradas</p>
             <p class="text-3xl font-bold">
@@ -455,7 +456,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="card bg-white shadow">
+        <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Fatura cartão</p>
             <p class="text-3xl text-error font-bold">
@@ -466,7 +467,7 @@ onMounted(async () => {
 
         <!-- ===== SEGUNDA LINHA ===== -->
 
-        <div class="card bg-white shadow">
+        <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Pagas</p>
             <p class="text-3xl text-base-content">
@@ -475,7 +476,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="card bg-white shadow">
+        <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">A pagar</p>
             <p class="text-3xl text-warning font-bold">
@@ -484,7 +485,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="card bg-white shadow">
+        <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Total das Saídas</p>
             <p class="text-3xl font-bold">
@@ -493,7 +494,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Saldo Projetado</p>
               <p :class="[
@@ -507,24 +508,23 @@ onMounted(async () => {
 
       </div>
 
-      <div class="card bg-white shadow">
+      <div class="card bg-base-100 shadow">
         <div class="card-body">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="card-title">Lista de transacoes</h2>
+            <h2 class="card-title">Lista de {{ LABELS.transacoes.toLowerCase() }}</h2>
             <div role="tablist" class="tabs tabs-boxed">
-              <a role="tab" class="tab" :class="{ 'tab-active': filtros.tipo === 'todas' }" @click="setTipoAba('todas')">Todas</a>
-              <a role="tab" class="tab" :class="{ 'tab-active': filtros.tipo === 'entrada' }" @click="setTipoAba('entrada')">Entradas</a>
-              <a role="tab" class="tab" :class="{ 'tab-active': filtros.tipo === 'saida' }" @click="setTipoAba('saida')">Saidas</a>
+              <a role="tab" class="tab" :class="{ 'tab-active': filtros.tipo === 'todas' }" @click="setTipoAba('todas')">{{ LABELS.todas }}</a>
+              <a role="tab" class="tab" :class="{ 'tab-active': filtros.tipo === 'entrada' }" @click="setTipoAba('entrada')">{{ LABELS.entradas }}</a>
+              <a role="tab" class="tab" :class="{ 'tab-active': filtros.tipo === 'saida' }" @click="setTipoAba('saida')">{{ LABELS.saidas }}</a>
             </div>
           </div>
           <div v-if="transacoesFiltradas.length === 0" class="text-center py-16">
-            <div class="text-6xl mb-4">📭</div>
-            <p class="text-3xl font-semibold mb-2">Nenhuma transacao encontrada</p>
-            <p class="text-gray-500 mb-6">
-              Ajuste os filtros ou adicione uma nova transacao.
+            <p class="text-3xl font-semibold mb-2">Nenhuma transação encontrada</p>
+            <p class="opacity-50 mb-6">
+              Ajuste os filtros ou adicione uma nova transação.
             </p>
             <button @click="novaTransacao" class="btn btn-primary">
-              Nova transacao
+              {{ LABELS.nova_transacao }}
             </button>
           </div>
           <div v-else class="space-y-2">
@@ -547,7 +547,7 @@ onMounted(async () => {
                           : 'badge-error'
                     ]"
                   >
-                    {{ isFaturaCartao(t) ? 'Fatura' : t.tipo === 'entrada' ? 'Entrada' : 'Saida' }}
+                    {{ isFaturaCartao(t) ? 'Fatura' : t.tipo === 'entrada' ? 'Entrada' : 'Saída' }}
                   </span>
                   <p class="font-medium">
                     {{ t.descricao }}
@@ -557,7 +557,7 @@ onMounted(async () => {
                 <!-- Conta / categoria -->
                 <p class="text-xs opacity-50">
                   <template v-if="isFaturaCartao(t)">
-                    {{ getContaNome(t.conta_id) }} - {{ t.fatura_total_itens || 0 }} lancamento(s)
+                    {{ getContaNome(t.conta_id) }} - {{ t.fatura_total_itens || 0 }} lançamento(s)
                   </template>
                   <template v-else>
                     {{ getContaNome(t.conta_id) }} - {{ getCategoriaNome(t.categoria_id) }}
@@ -567,7 +567,7 @@ onMounted(async () => {
                 <!-- Datas -->
                 <p class="text-xs opacity-50">
                   <template v-if="isFaturaCartao(t) && t.fatura_periodo_inicio && t.fatura_periodo_fim">
-                    Periodo {{ formatarData(t.fatura_periodo_inicio) }} ate {{ formatarData(t.fatura_periodo_fim) }}
+                    Período {{ formatarData(t.fatura_periodo_inicio) }} até {{ formatarData(t.fatura_periodo_fim) }}
                   </template>
                   <template v-else>
                     {{ formatarData(t.data) }}

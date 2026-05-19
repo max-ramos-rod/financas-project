@@ -6,6 +6,7 @@ import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import type { Delegacao, DelegacaoContextOption } from '@/types'
 import Lockup from './Lockup.vue'
+import { LABELS } from '@/utils/strings'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -13,13 +14,13 @@ const authStore = useAuthStore()
 type NavIconKey = 'dashboard' | 'transacoes' | 'contas' | 'metas' | 'orcamentos' | 'categorias' | 'relatorios'
 
 const navItems: Array<{ rota: string; label: string; icon: NavIconKey }> = [
-  { rota: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { rota: 'transacoes', label: 'Transacoes', icon: 'transacoes' },
-  { rota: 'contas', label: 'Contas', icon: 'contas' },
-  { rota: 'metas', label: 'Metas', icon: 'metas' },
-  { rota: 'orcamentos', label: 'Orcamentos', icon: 'orcamentos' },
-  { rota: 'categorias', label: 'Categorias', icon: 'categorias' },
-  { rota: 'relatorios', label: 'Relatorios', icon: 'relatorios' },
+  { rota: 'dashboard', label: LABELS.dashboard, icon: 'dashboard' },
+  { rota: 'transacoes', label: LABELS.transacoes, icon: 'transacoes' },
+  { rota: 'contas', label: LABELS.contas, icon: 'contas' },
+  { rota: 'metas', label: LABELS.metas, icon: 'metas' },
+  { rota: 'orcamentos', label: LABELS.orcamentos, icon: 'orcamentos' },
+  { rota: 'categorias', label: LABELS.categorias, icon: 'categorias' },
+  { rota: 'relatorios', label: LABELS.relatorios, icon: 'relatorios' },
 ]
 
 const iconPaths: Record<NavIconKey, string> = {
@@ -160,7 +161,7 @@ onMounted(() => {
             </button>
           </li>
           <div class="dropdown dropdown-end">
-            <div tabindex="0" role="button" class="btn btn-sm btn-ghost">Gestão</div>
+            <div tabindex="0" role="button" class="btn btn-sm btn-ghost">{{ LABELS.gestao }}</div>
             <ul tabindex="0" class="dropdown-content menu bg-base-100 text-base-content rounded-box z-50 mt-3 w-60 p-2 shadow-lg">
                 <li v-for="item in navItemsGestao" :key="item.rota">
                   <a @click="navegarPara(item.rota)" :class="{ 'menu-active': rotaAtiva === item.rota }">
@@ -180,7 +181,7 @@ onMounted(() => {
       <div class="hidden lg:flex items-center gap-2">
         <div class="dropdown dropdown-end">
           <div tabindex="0" role="button" class="btn btn-sm btn-ghost">
-            Colaboração
+            {{ LABELS.colaboracao }}
             <span v-if="pendingInviteCount" class="badge badge-warning badge-sm">{{ pendingInviteCount }}</span>
           </div>
           <ul tabindex="0" class="dropdown-content menu bg-base-100 text-base-content rounded-box z-50 mt-3 w-60 p-2 shadow-lg">
@@ -214,7 +215,7 @@ onMounted(() => {
                   class="select select-bordered select-sm w-full text-base-content"
                 >
                   <option v-for="ctx in contextOptions" :key="ctx.user_id" :value="String(ctx.user_id)">
-                    {{ ctx.nome }}{{ ctx.is_owner ? ' (Meu espaco)' : '' }}
+                    {{ ctx.nome }}{{ ctx.is_owner ? ` (${LABELS.meu_espaco})` : '' }}
                   </option>
                 </select>
               </div>
@@ -231,7 +232,7 @@ onMounted(() => {
           </svg>
         </label>
         <ul tabindex="0" class="dropdown-content menu p-4 shadow bg-base-100 text-base-content rounded-box w-72 z-50">
-          <li class="menu-title"><span>Navegacao</span></li>
+          <li class="menu-title"><span>Navegação</span></li>
           <li v-for="item in navItemsPrincipais" :key="item.rota">
             <a @click="navegarParaMobile(item.rota)">
               <svg class="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -240,7 +241,7 @@ onMounted(() => {
               {{ item.label }}
             </a>
           </li>
-          <li class="menu-title mt-2"><span>Gestao</span></li>
+          <li class="menu-title mt-2"><span>{{ LABELS.gestao }}</span></li>
           <li v-for="item in navItemsGestao" :key="`mobile-${item.rota}`">
             <a @click="navegarParaMobile(item.rota)">
               <svg class="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -249,7 +250,7 @@ onMounted(() => {
               {{ item.label }}
             </a>
           </li>
-          <li class="menu-title mt-2"><span>Colaboracao</span></li>
+          <li class="menu-title mt-2"><span>{{ LABELS.colaboracao }}</span></li>
           <li>
             <a @click="irParaConvidarMobile">Convidar</a>
           </li>
@@ -267,7 +268,7 @@ onMounted(() => {
               class="select select-bordered w-full"
             >
               <option v-for="ctx in contextOptions" :key="ctx.user_id" :value="String(ctx.user_id)">
-                {{ ctx.nome }}{{ ctx.is_owner ? ' (Meu espaco)' : '' }}
+                {{ ctx.nome }}{{ ctx.is_owner ? ` (${LABELS.meu_espaco})` : '' }}
               </option>
             </select>
           </li>

@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 import type { Conta, Transacao, Meta, Categoria, Orcamento } from '@/types'
 import { parseDate } from '@/utils/date'
+import { LABELS } from '@/utils/strings'
 
 import FluxoFinanceiroChart from '@/components/charts/FluxoFinanceiroChart.vue'
 import DespesasCategoriaChart from '@/components/charts/DespesasCategoriaChart.vue'
@@ -250,7 +251,7 @@ onMounted(fetchDados)
               </p>
             </div>
             <router-link to="/transacoes/nova" class="btn btn-secondary btn-sm w-full md:w-auto">
-              Nova transacao
+              {{ LABELS.nova_transacao }}
             </router-link>
           </div>
 
@@ -269,23 +270,23 @@ onMounted(fetchDados)
 
       <div class="stats stats-vertical gap-4 shadow-sm lg:stats-horizontal">
         <div class="stat bg-base-100 rounded-box">
-          <div class="stat-title">Receitas do mes</div>
+          <div class="stat-title">{{ LABELS.receitas_do_mes }}</div>
           <div class="stat-value text-success">{{ formatarMoeda(receitasMes) }}</div>
         </div>
         <div class="stat bg-base-100 rounded-box">
-          <div class="stat-title">Despesas do mes</div>
+          <div class="stat-title">{{ LABELS.despesas_do_mes }}</div>
           <div class="stat-value text-error">{{ formatarMoeda(despesasMes) }}</div>
         </div>
         <div class="stat bg-base-100 rounded-box">
-          <div class="stat-title">Cartao em aberto</div>
+          <div class="stat-title">{{ LABELS.cartao_em_aberto }}</div>
           <div class="stat-value text-error">{{ formatarMoeda(debitoFaturaAtualCartoes) }}</div>
         </div>
         <div class="stat bg-base-100 rounded-box">
-          <div class="stat-title">Saldo do mes</div>
+          <div class="stat-title">{{ LABELS.saldo_do_mes }}</div>
           <div :class="['stat-value', saldoMes >= 0 ? 'text-success' : 'text-error']">
             {{ formatarMoeda(saldoMes) }}
           </div>
-          <div class="stat-desc">{{ saldoMes >= 0 ? 'Resultado positivo no periodo' : 'Atencao ao fluxo do periodo' }}</div>
+          <div class="stat-desc">{{ saldoMes >= 0 ? LABELS.resultado_positivo : LABELS.resultado_negativo }}</div>
         </div>
       </div>
 
@@ -294,7 +295,7 @@ onMounted(fetchDados)
           <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h3 class="text-sm uppercase opacity-60 tracking-wide">Fluxo Financeiro</h3>
-              <p class="text-xs opacity-50">Mes anterior, atual e proximo para leitura de tendencia.</p>
+              <p class="text-xs opacity-50">Mês anterior, atual e próximo para leitura de tendência.</p>
             </div>
           </div>
           <FluxoFinanceiroChart :dadosMeses="fluxoFinanceiroComparativo" />
@@ -317,12 +318,12 @@ onMounted(fetchDados)
         <div class="card-body">
           <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <h3 class="text-sm uppercase opacity-60 tracking-wide">Orcamento x Gasto</h3>
-              <p class="text-xs opacity-50">Compare rapidamente o planejado com o realizado.</p>
+              <h3 class="text-sm uppercase opacity-60 tracking-wide">Orçamento × Gasto</h3>
+              <p class="text-xs opacity-50">Compare o planejado com o realizado.</p>
             </div>
 
             <div class="w-full max-w-xs">
-              <label class="label py-1"><span class="label-text text-xs">Mes de referencia</span></label>
+              <label class="label py-1"><span class="label-text text-xs">{{ LABELS.mes_de_referencia }}</span></label>
               <select v-model.number="mesOrcamentoSelecionado" class="select select-bordered select-sm w-full">
                 <option :value="1">Jan</option>
                 <option :value="2">Fev</option>
@@ -341,7 +342,7 @@ onMounted(fetchDados)
           </div>
 
           <div v-if="orcamentoComparativo.length === 0" class="py-4 text-center text-sm opacity-50">
-            Nenhum orcamento cadastrado para o mes selecionado.
+            Nenhum orçamento cadastrado para o mês selecionado.
           </div>
 
           <template v-else>
@@ -349,7 +350,7 @@ onMounted(fetchDados)
 
             <div v-if="orcamentosEstourados.length" class="alert alert-warning mt-4">
               <div>
-                <p class="font-semibold">Atencao: orcamentos estourados</p>
+                <p class="font-semibold">Atenção: orçamentos estourados</p>
                 <ul class="mt-2 space-y-1 text-sm">
                   <li v-for="item in orcamentosEstourados" :key="item.categoria">
                     {{ item.categoria }}: {{ formatarMoeda(item.gasto - item.planejado) }} acima do planejado
