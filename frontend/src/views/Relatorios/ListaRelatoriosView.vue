@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue'
 import api from '@/services/api'
 import type { DREMensal } from '@/types'
+import EmptyState from '@/components/EmptyState.vue'
+import { RefreshCw } from '@lucide/vue'
 
 const loading = ref(false)
 const erro = ref('')
@@ -51,8 +53,8 @@ const exportarCsv = async () => {
     link.click()
     link.remove()
     window.URL.revokeObjectURL(url)
-  } catch (error: any) {
-    alert(error?.response?.data?.detail || 'Erro ao exportar CSV')
+  } catch {
+    erro.value = 'Não foi possível exportar o CSV. Tente de novo.'
   }
 }
 
@@ -75,8 +77,8 @@ const exportarPdf = async () => {
     link.click()
     link.remove()
     window.URL.revokeObjectURL(url)
-  } catch (error: any) {
-    alert(error?.response?.data?.detail || 'Erro ao exportar PDF')
+  } catch {
+    erro.value = 'Não foi possível exportar o PDF. Tente de novo.'
   }
 }
 
@@ -87,16 +89,16 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <div class="bg-white shadow">
+    <div class="bg-base-100 shadow">
       <div class="container mx-auto px-4 py-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 class="text-2xl font-bold">Relatorios</h1>
-          <p class="text-sm text-gray-500">DRE mensal: Entradas, Saidas, Resultado e Pago x Previsto</p>
+          <h1 class="text-2xl font-bold">Relatórios</h1>
+          <p class="text-sm text-gray-500">DRE mensal: Entradas, Saídas, Resultado e Pago × Previsto</p>
         </div>
 
         <div class="flex flex-wrap items-end gap-2">
           <div>
-            <label class="label pb-1"><span class="label-text">Mes</span></label>
+            <label class="label pb-1"><span class="label-text">Mês</span></label>
             <select v-model.number="filtros.mes" class="select select-bordered">
               <option :value="1">Jan</option>
               <option :value="2">Fev</option>
@@ -124,7 +126,17 @@ onMounted(() => {
     </div>
 
     <div class="container mx-auto px-4 py-6 space-y-6">
-      <div v-if="erro" class="alert alert-error">{{ erro }}</div>
+      <EmptyState
+        v-if="!loading && erro"
+        variant="error"
+        title="Não foi possível carregar."
+        :description="erro"
+      >
+        <template #icon><RefreshCw /></template>
+        <template #actions>
+          <button class="btn btn-primary btn-sm" @click="carregarDre">Tentar de novo</button>
+        </template>
+      </EmptyState>
 
       <div v-if="loading" class="text-center py-16">
         <span class="loading loading-spinner loading-lg"></span>
@@ -132,19 +144,19 @@ onMounted(() => {
 
       <template v-else-if="dre">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="card bg-white shadow">
+          <div class="card bg-base-100 shadow">
             <div class="card-body">
               <p class="text-xs uppercase opacity-70">Entradas (Total)</p>
               <p class="text-3xl text-success font-bold">{{ formatarMoeda(dre.entradas_total) }}</p>
             </div>
           </div>
-          <div class="card bg-white shadow">
+          <div class="card bg-base-100 shadow">
             <div class="card-body">
-              <p class="text-xs uppercase opacity-70">Saidas (Total)</p>
+              <p class="text-xs uppercase opacity-70">Saídas (Total)</p>
               <p class="text-3xl text-error font-bold">{{ formatarMoeda(dre.saidas_total) }}</p>
             </div>
           </div>
-          <div class="card bg-white shadow">
+          <div class="card bg-base-100 shadow">
             <div class="card-body">
               <p class="text-xs uppercase opacity-70">Resultado (Total)</p>
               <p :class="['text-3xl font-bold', dre.resultado_total >= 0 ? 'text-success' : 'text-error']">
@@ -154,7 +166,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="card bg-white shadow">
+        <div class="card bg-base-100 shadow">
           <div class="card-body">
             <h2 class="card-title">Pago x Previsto</h2>
             <div class="overflow-x-auto">
@@ -181,7 +193,7 @@ onMounted(() => {
                     <td class="text-right">{{ formatarMoeda(dre.resultado_previsto) }}</td>
                   </tr>
                   <tr class="font-semibold">
-                    <td>Total do periodo</td>
+                    <td>Total do período</td>
                     <td class="text-right">{{ formatarMoeda(dre.entradas_total) }}</td>
                     <td class="text-right">{{ formatarMoeda(dre.saidas_total) }}</td>
                     <td class="text-right">{{ formatarMoeda(dre.resultado_total) }}</td>
@@ -193,7 +205,7 @@ onMounted(() => {
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div class="card bg-white shadow">
+          <div class="card bg-base-100 shadow">
             <div class="card-body">
               <h2 class="card-title">Entradas por categoria</h2>
               <div class="overflow-x-auto">
@@ -206,7 +218,7 @@ onMounted(() => {
                   </thead>
                   <tbody>
                     <tr v-if="dre.entradas_por_categoria.length === 0">
-                      <td colspan="2" class="text-center opacity-60">Sem entradas no periodo</td>
+                      <td colspan="2" class="text-center opacity-60">Sem entradas no período</td>
                     </tr>
                     <tr v-for="item in dre.entradas_por_categoria" :key="`in-${item.categoria_id ?? 'none'}-${item.categoria_nome}`">
                       <td>{{ item.categoria_nome }}</td>
@@ -218,9 +230,9 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="card bg-white shadow">
+          <div class="card bg-base-100 shadow">
             <div class="card-body">
-              <h2 class="card-title">Saidas por categoria</h2>
+              <h2 class="card-title">Saídas por categoria</h2>
               <div class="overflow-x-auto">
                 <table class="table table-zebra">
                   <thead>
@@ -231,7 +243,7 @@ onMounted(() => {
                   </thead>
                   <tbody>
                     <tr v-if="dre.saidas_por_categoria.length === 0">
-                      <td colspan="2" class="text-center opacity-60">Sem saidas no periodo</td>
+                      <td colspan="2" class="text-center opacity-60">Sem saídas no período</td>
                     </tr>
                     <tr v-for="item in dre.saidas_por_categoria" :key="`out-${item.categoria_id ?? 'none'}-${item.categoria_nome}`">
                       <td>{{ item.categoria_nome }}</td>

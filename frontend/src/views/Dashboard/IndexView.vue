@@ -4,6 +4,8 @@ import api from '@/services/api'
 import type { Conta, Transacao, Meta, Categoria, Orcamento } from '@/types'
 import { parseDate } from '@/utils/date'
 import { LABELS } from '@/utils/strings'
+import EmptyState from '@/components/EmptyState.vue'
+import { Calendar, TrendingDown } from '@lucide/vue'
 
 import FluxoFinanceiroChart from '@/components/charts/FluxoFinanceiroChart.vue'
 import DespesasCategoriaChart from '@/components/charts/DespesasCategoriaChart.vue'
@@ -341,9 +343,17 @@ onMounted(fetchDados)
             </div>
           </div>
 
-          <div v-if="orcamentoComparativo.length === 0" class="py-4 text-center text-sm opacity-50">
-            Nenhum orçamento cadastrado para o mês selecionado.
-          </div>
+          <EmptyState
+            v-if="orcamentoComparativo.length === 0"
+            variant="zero-state"
+            title="Você ainda não planejou este mês."
+            description="Crie orçamentos por categoria para acompanhar o realizado."
+          >
+            <template #icon><Calendar /></template>
+            <template #actions>
+              <router-link to="/orcamentos" class="btn btn-primary btn-sm">Ir para orçamentos</router-link>
+            </template>
+          </EmptyState>
 
           <template v-else>
             <OrcamentoComparativoChart :dados="orcamentoComparativo" />
@@ -366,9 +376,16 @@ onMounted(fetchDados)
         <div class="card-body">
           <h3 class="mb-2 text-sm uppercase tracking-wide opacity-60">Maiores Despesas</h3>
 
-          <div v-if="topDespesas.length === 0" class="py-4 text-center text-sm opacity-50">
-            Nenhuma despesa relevante este mes
-          </div>
+          <EmptyState
+            v-if="topDespesas.length === 0"
+            variant="filtered"
+            title="Sem despesas este mês."
+          >
+            <template #icon><TrendingDown /></template>
+            <template #actions>
+              <router-link to="/transacoes" class="btn btn-ghost btn-sm">Ver transações</router-link>
+            </template>
+          </EmptyState>
 
           <div v-else class="space-y-2">
             <div v-for="t in topDespesas" :key="t.id" class="flex justify-between gap-3 text-sm">

@@ -7,6 +7,8 @@ import { parseDate, formatDateBR, formatDateForInput } from '@/utils/date'
 import { TransacoesLoadControl } from './transacoesLoadControl'
 import { buscarTransacoesFiltradas, type FiltrosTransacoes } from './transacoesFetch'
 import { LABELS } from '@/utils/strings'
+import EmptyState from '@/components/EmptyState.vue'
+import { List, Filter } from '@lucide/vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -245,6 +247,20 @@ const limparFiltros = () => {
 const setTipoAba = (tipo: 'todas' | 'entrada' | 'saida') => {
   filtros.value.tipo = tipo
 }
+
+const temFiltrosAtivos = computed(() => {
+  const f = filtros.value
+  const d = filtrosPadrao()
+  return (
+    f.tipo !== d.tipo ||
+    f.status_liquidacao !== d.status_liquidacao ||
+    f.busca !== d.busca ||
+    f.conta_id !== d.conta_id ||
+    f.categoria_id !== d.categoria_id ||
+    f.fixa !== d.fixa ||
+    f.orcamento !== d.orcamento
+  )
+})
 
 watch(
   filtros,
@@ -518,14 +534,29 @@ onMounted(async () => {
               <a role="tab" class="tab" :class="{ 'tab-active': filtros.tipo === 'saida' }" @click="setTipoAba('saida')">{{ LABELS.saidas }}</a>
             </div>
           </div>
-          <div v-if="transacoesFiltradas.length === 0" class="text-center py-16">
-            <p class="text-3xl font-semibold mb-2">Nenhuma transação encontrada</p>
-            <p class="opacity-50 mb-6">
-              Ajuste os filtros ou adicione uma nova transação.
-            </p>
-            <button @click="novaTransacao" class="btn btn-primary">
-              {{ LABELS.nova_transacao }}
-            </button>
+          <div v-if="transacoesFiltradas.length === 0" class="py-4">
+            <EmptyState
+              v-if="temFiltrosAtivos"
+              variant="filtered"
+              title="Nenhuma transação encontrada."
+              description="Tente ajustar os filtros para ver mais resultados."
+            >
+              <template #icon><Filter /></template>
+              <template #actions>
+                <button class="btn btn-ghost btn-sm" @click="limparFiltros">Limpar filtros</button>
+              </template>
+            </EmptyState>
+            <EmptyState
+              v-else
+              variant="first-time"
+              title="Ainda nada por aqui."
+              description="Sua primeira transação aparece quando você lança uma entrada, pagamento ou saldo inicial."
+            >
+              <template #icon><List /></template>
+              <template #actions>
+                <button class="btn btn-primary btn-sm" @click="novaTransacao">{{ LABELS.nova_transacao }}</button>
+              </template>
+            </EmptyState>
           </div>
           <div v-else class="space-y-2">
 

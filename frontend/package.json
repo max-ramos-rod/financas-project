@@ -10,6 +10,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@lucide/vue": "^1.16.0",
     "apexcharts": "^5.5.0",
     "axios": "^1.6.5",
     "pinia": "^2.1.7",

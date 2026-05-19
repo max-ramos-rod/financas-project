@@ -3,6 +3,8 @@ import { onMounted, ref } from 'vue'
 import api from '@/services/api'
 import type { Delegacao } from '@/types'
 import { labelStatusDelegacao, corStatusDelegacao } from '@/utils/strings'
+import EmptyState from '@/components/EmptyState.vue'
+import { Users } from '@lucide/vue'
 
 const loading = ref(false)
 const error = ref('')
@@ -126,9 +128,17 @@ onMounted(() => {
             <h2 class="card-title text-lg">Enviados</h2>
             <p class="text-sm opacity-70">Convites que você enviou para outros e-mails.</p>
 
-            <div v-if="convitesEnviados.length === 0" class="text-sm opacity-60 mt-4">
-              Nenhum convite enviado.
-            </div>
+            <EmptyState
+              v-if="convitesEnviados.length === 0"
+              variant="zero-state"
+              title="Nenhum convite enviado."
+              description="Convide alguém para ver suas finanças ou colaborar com você."
+            >
+              <template #icon><Users /></template>
+              <template #actions>
+                <router-link to="/delegacoes/convidar" class="btn btn-primary btn-sm">Convidar alguém</router-link>
+              </template>
+            </EmptyState>
 
             <div v-else class="space-y-3 mt-2">
               <div
