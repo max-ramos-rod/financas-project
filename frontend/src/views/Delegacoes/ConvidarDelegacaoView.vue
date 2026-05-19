@@ -20,19 +20,15 @@ const enviarConvite = async () => {
       can_write: canWrite.value,
     })
 
-    const { has_account, email_sent } = response.data
+    const { has_account } = response.data
     success.value = has_account
-      ? 'Convite criado. O e-mail de confirmacao foi processado para o usuario.'
-      : 'Convite criado para novo e-mail. A pessoa podera confirmar e concluir cadastro pelo link.'
-
-    if (!email_sent) {
-      success.value += ' SMTP nao configurado no backend, entao o envio automatico nao ocorreu.'
-    }
+      ? 'Convite criado. O e-mail de confirmação foi enviado ao usuário.'
+      : 'Convite criado. A pessoa poderá confirmar e concluir o cadastro pelo link.'
 
     email.value = ''
     canWrite.value = true
   } catch (err: any) {
-    error.value = err?.response?.data?.detail || 'Nao foi possivel enviar o convite.'
+    error.value = err?.response?.data?.detail || 'Não foi possível enviar o convite.'
   } finally {
     loading.value = false
   }
@@ -46,7 +42,7 @@ const enviarConvite = async () => {
         <div class="card-body">
           <h1 class="card-title text-2xl">Convidar Acesso</h1>
           <p class="text-sm opacity-70">
-            Envie um convite para outro e-mail acessar seus dados financeiros com permissao controlada.
+            Envie um convite para outro e-mail acessar seus dados financeiros com permissão controlada.
           </p>
 
           <div v-if="error" class="alert alert-error mt-4">

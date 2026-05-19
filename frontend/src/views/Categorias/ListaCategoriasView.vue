@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '@/services/api'
 import type { Categoria } from '@/types'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const loading = ref(true)
 const salvando = ref(false)
@@ -103,12 +104,19 @@ const salvarCategoria = async () => {
   }
 }
 
-const excluirCategoria = async (categoria: Categoria) => {
+const categoriaAExcluir = ref<Categoria | null>(null)
+const showExcluirModal = ref(false)
+
+const iniciarExclusao = (categoria: Categoria) => {
   if (categoria.padrao) return
-  const confirmar = confirm(`Excluir categoria "${categoria.nome}"?`)
-  if (!confirmar) return
+  categoriaAExcluir.value = categoria
+  showExcluirModal.value = true
+}
+
+const confirmarExcluir = async () => {
+  if (!categoriaAExcluir.value) return
   try {
-    await api.delete(`/categorias/${categoria.id}`)
+    await api.delete(`/categorias/${categoriaAExcluir.value.id}`)
     await fetchCategorias()
   } catch (error: any) {
     erro.value = error?.response?.data?.detail || 'Erro ao excluir categoria'
@@ -120,7 +128,7 @@ onMounted(fetchCategorias)
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <div class="bg-white shadow">
+    <div class="bg-base-100 shadow">
       <div class="container mx-auto px-4 py-4 flex items-center justify-between">
         <h1 class="text-2xl font-bold">Categorias</h1>
         <button class="btn btn-primary" @click="abrirNovaCategoria">Nova categoria</button>
@@ -136,22 +144,22 @@ onMounted(fetchCategorias)
         <span>{{ erro }}</span>
       </div>
 
-      <div class="card bg-white shadow">
+      <div class="card bg-base-100 shadow">
         <div class="card-body">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input v-model="filtros.busca" class="input input-bordered md:col-span-2" placeholder="Buscar categoria" />
             <select v-model="filtros.tipo" class="select select-bordered">
               <option value="todas">Todos os tipos</option>
               <option value="entrada">Entrada</option>
-              <option value="saida">Saida</option>
-              <option value="transferencia">Transferencia</option>
+              <option value="saida">Saída</option>
+              <option value="transferencia">Transferência</option>
             </select>
           </div>
         </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="card bg-white shadow">
+        <div class="card bg-base-100 shadow">
           <div class="card-body">
             <h2 class="card-title">Minhas categorias</h2>
             <div v-if="minhasCategorias.length === 0" class="text-sm text-gray-500">Nenhuma categoria criada.</div>
@@ -164,17 +172,17 @@ onMounted(fetchCategorias)
                 </div>
                 <div class="flex gap-2">
                   <button class="btn btn-xs" @click="abrirEditarCategoria(c)">Editar</button>
-                  <button class="btn btn-xs btn-error" @click="excluirCategoria(c)">Excluir</button>
+                  <button class="btn btn-xs btn-error" @click="iniciarExclusao(c)">Excluir</button>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="card bg-white shadow">
+        <div class="card bg-base-100 shadow">
           <div class="card-body">
-            <h2 class="card-title">Categorias padrao</h2>
-            <div v-if="categoriasPadrao.length === 0" class="text-sm text-gray-500">Nenhuma categoria padrao encontrada.</div>
+            <h2 class="card-title">Categorias padrão</h2>
+            <div v-if="categoriasPadrao.length === 0" class="text-sm text-gray-500">Nenhuma categoria padrão encontrada.</div>
             <div v-else class="space-y-2">
               <div v-for="c in categoriasPadrao" :key="c.id" class="border rounded p-3 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -200,7 +208,7 @@ onMounted(fetchCategorias)
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="label"><span class="label-text">Icone</span></label>
+              <label class="label"><span class="label-text">Ícone</span></label>
               <input v-model="form.icone" class="input input-bordered w-full" />
             </div>
             <div>
@@ -212,8 +220,8 @@ onMounted(fetchCategorias)
             <label class="label"><span class="label-text">Tipo</span></label>
             <select v-model="form.tipo" class="select select-bordered w-full">
               <option value="entrada">Entrada</option>
-              <option value="saida">Saida</option>
-              <option value="transferencia">Transferencia</option>
+              <option value="saida">Saída</option>
+              <option value="transferencia">Transferência</option>
             </select>
           </div>
         </div>
@@ -228,5 +236,15 @@ onMounted(fetchCategorias)
         <button @click="fecharModal">close</button>
       </form>
     </div>
+
+    <ConfirmModal
+      v-model:open="showExcluirModal"
+      severity="simple"
+      :title="`Excluir '${categoriaAExcluir?.nome ?? ''}'?`"
+      description="Esta ação não pode ser desfeita."
+      confirm-label="Excluir"
+      cancel-label="Cancelar"
+      @confirm="confirmarExcluir"
+    />
   </div>
 </template>

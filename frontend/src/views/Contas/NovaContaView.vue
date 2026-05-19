@@ -8,6 +8,7 @@ const route = useRoute()
 
 // State
 const loading = ref(false)
+const erroSalvar = ref('')
 const editando = ref(false)
 const contaId = ref<number | null>(null)
 
@@ -37,11 +38,11 @@ const coresPredefinidas = [
 
 // Tipos de conta
 const tiposConta = [
-  { valor: 'carteira', label: 'Carteira', descricao: 'Dinheiro em mao' },
-  { valor: 'conta_corrente', label: 'Conta Corrente', descricao: 'Conta bancaria' },
-  { valor: 'poupanca', label: 'Poupanca', descricao: 'Conta de poupanca' },
-  { valor: 'cartao_credito', label: 'Cartao de Credito', descricao: 'Compras para fatura' },
-  { valor: 'investimento', label: 'Investimento', descricao: 'Aplicacoes financeiras' },
+  { valor: 'carteira', label: 'Carteira', descricao: 'Dinheiro em mão' },
+  { valor: 'conta_corrente', label: 'Conta Corrente', descricao: 'Conta bancária' },
+  { valor: 'poupanca', label: 'Poupança', descricao: 'Conta de poupança' },
+  { valor: 'cartao_credito', label: 'Cartão de Crédito', descricao: 'Compras para fatura' },
+  { valor: 'investimento', label: 'Investimento', descricao: 'Aplicações financeiras' },
   { valor: 'outro', label: 'Outro', descricao: 'Outra conta' },
 ]
 
@@ -89,7 +90,6 @@ const carregarConta = async () => {
     }
   } catch (error) {
     console.error('Erro ao carregar conta:', error)
-    alert('Erro ao carregar conta')
     router.back()
   }
 }
@@ -120,7 +120,7 @@ const salvar = async () => {
     router.push('/contas')
   } catch (error: any) {
     console.error('Erro ao salvar:', error)
-    alert(error.response?.data?.detail || 'Erro ao salvar conta')
+    erroSalvar.value = error.response?.data?.detail || 'Erro ao salvar conta'
   } finally {
     loading.value = false
   }
@@ -150,14 +150,14 @@ onMounted(() => {
 <template>
   <div class="min-h-screen bg-base-200">
     <!-- Header -->
-    <div class="bg-white shadow">
+    <div class="bg-base-100 shadow">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center gap-4">
           <button @click="cancelar" class="btn btn-ghost btn-sm">
             ← Voltar
           </button>
           <h1 class="text-2xl font-bold">
-            {{ editando ? '✏️ Editar Conta' : '➕ Nova Conta' }}
+            {{ editando ? 'Editar Conta' : 'Nova Conta' }}
           </h1>
         </div>
       </div>
@@ -166,7 +166,7 @@ onMounted(() => {
     <!-- Form -->
     <div class="container mx-auto px-4 py-8">
       <div class="max-w-2xl mx-auto">
-        <form @submit.prevent="salvar" class="card bg-white shadow-lg">
+        <form @submit.prevent="salvar" class="card bg-base-100 shadow-lg">
           <div class="card-body space-y-6">
             
             <!-- Nome -->
@@ -224,7 +224,7 @@ onMounted(() => {
                 />
               </div>
               <p v-if="isCartaoCredito" class="text-sm text-gray-500 mt-2">
-                Em cartao de credito o saldo inicial e fixo em <strong>R$ 0,00</strong>.
+                Em cartão de crédito o saldo inicial é fixo em <strong>R$ 0,00</strong>.
               </p>
               <p v-if="form.saldo !== null" class="text-sm text-gray-500 mt-2">
                 Saldo atual: <strong>{{ formatarMoeda(form.saldo) }}</strong>
@@ -280,7 +280,7 @@ onMounted(() => {
               <label class="flex items-center gap-3 cursor-pointer">
                 <input v-model="form.ativa" type="checkbox" class="checkbox" />
                 <div>
-                  <p class="font-medium">✅ Conta Ativa</p>
+                  <p class="font-medium">Conta Ativa</p>
                   <p class="text-sm text-gray-500">Marque para usar esta conta</p>
                 </div>
               </label>
@@ -301,10 +301,10 @@ onMounted(() => {
                       {{ tiposConta.find(t => t.valor === form.tipo)?.label || 'Tipo' }}
                     </p>
                   </div>
-                  <div v-if="form.ativa" class="badge badge-success">✅ Ativa</div>
-                  <div v-else class="badge badge-ghost">❌ Inativa</div>
+                  <div v-if="form.ativa" class="badge badge-success">Ativa</div>
+                  <div v-else class="badge badge-ghost">Inativa</div>
                 </div>
-                <div class="mt-4 p-3 rounded-lg bg-gray-50">
+                <div class="mt-4 p-3 rounded-lg bg-base-200">
                   <p class="text-sm text-gray-500 mb-1">Saldo</p>
                   <p class="text-3xl font-bold text-success">
                     {{ formatarMoeda(form.saldo) }}
@@ -313,7 +313,9 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Botoes -->
+            <div v-if="erroSalvar" class="alert alert-error"><span>{{ erroSalvar }}</span></div>
+
+            <!-- Botões -->
             <div class="card-actions justify-end pt-4 border-t">
               <button
                 type="button"

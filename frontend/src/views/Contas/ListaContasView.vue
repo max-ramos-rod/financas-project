@@ -5,6 +5,7 @@ import api from '@/services/api'
 import type { Conta } from '@/types'
 import { formatDateBR } from '@/utils/date'
 import { LABELS, labelTipoConta } from '@/utils/strings'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const router = useRouter()
 
@@ -366,42 +367,20 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Modal de Confirmacao de Delecao -->
-    <div
-      v-if="mostraModalDelete"
-      class="modal modal-open"
-    >
-      <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Excluir Conta</h3>
-        <p class="py-4 text-gray-600">
-          Tem certeza que deseja excluir a conta <strong>"{{ contaADeletar?.nome }}"</strong>?
-        </p>
-        <p class="text-sm text-gray-500 mb-4">
-          Saldo atual: <strong>{{ formatarMoeda(contaADeletar?.saldo || 0) }}</strong>
-        </p>
-        <p class="text-sm text-error font-semibold">
-          Esta ação não pode ser desfeita!
-        </p>
-
-        <div class="modal-action gap-2 mt-6">
-          <button
-            @click="fecharModalDelete"
-            class="btn btn-ghost"
-          >
-            Cancelar
-          </button>
-          <button
-            @click="deletarConta"
-            class="btn btn-error"
-          >
-            Excluir Conta
-          </button>
-        </div>
-      </div>
-      <form method="dialog" class="modal-backdrop">
-        <button @click="fecharModalDelete">close</button>
-      </form>
-    </div>
+    <ConfirmModal
+      v-model:open="mostraModalDelete"
+      severity="cascade"
+      :title="`Excluir a conta '${contaADeletar?.nome ?? ''}'?`"
+      description="Esta ação vai apagar a conta e tudo que está ligado a ela. Não é possível desfazer."
+      :impacts="[
+        `Saldo de ${formatarMoeda(contaADeletar?.saldo ?? 0)} será descartado`,
+        'Todas as transações da conta serão excluídas',
+        'Transferências vinculadas perderão a referência',
+      ]"
+      confirm-label="Excluir conta"
+      cancel-label="Manter conta"
+      @confirm="deletarConta"
+    />
     <!-- Modal de Erro -->
     <div v-if="showErrorModal" class="modal modal-open">
       <div class="modal-box">

@@ -8,6 +8,7 @@ import { TransacoesLoadControl } from './transacoesLoadControl'
 import { buscarTransacoesFiltradas, type FiltrosTransacoes } from './transacoesFetch'
 import { LABELS } from '@/utils/strings'
 import EmptyState from '@/components/EmptyState.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 import { List, Filter } from '@lucide/vue'
 
 const router = useRouter()
@@ -222,18 +223,35 @@ const duplicarTransacao = async (id: number) => {
   }
 }
 
-const deletarTransacao = async (id: number) => {
-  await api.delete(`/transacoes/${id}`)
+const transacaoADeletar = ref<Transacao | null>(null)
+const showDeleteModal = ref(false)
+const transacaoALiquidar = ref<Transacao | null>(null)
+const showLiquidarModal = ref(false)
+
+const iniciarDelecao = (t: Transacao) => {
+  transacaoADeletar.value = t
+  showDeleteModal.value = true
+}
+
+const confirmarDeletar = async () => {
+  if (!transacaoADeletar.value) return
+  await api.delete(`/transacoes/${transacaoADeletar.value.id}`)
   await fetchTransacoes()
 }
 
-const marcarComoLiquidado = async (t: Transacao) => {
+const iniciarLiquidacao = (t: Transacao) => {
   if (isContaCartaoCredito(t.conta_id)) return
   if (estaAtrasada(t)) {
-    await router.push({ path: `/transacoes/${t.id}/editar`, query: queryAtualDosFiltros() })
+    void router.push({ path: `/transacoes/${t.id}/editar`, query: queryAtualDosFiltros() })
     return
   }
-  await api.put(`/transacoes/${t.id}`, {
+  transacaoALiquidar.value = t
+  showLiquidarModal.value = true
+}
+
+const confirmarLiquidar = async () => {
+  if (!transacaoALiquidar.value) return
+  await api.put(`/transacoes/${transacaoALiquidar.value.id}`, {
     status_liquidacao: 'liquidado',
     data_liquidacao: formatDateForInput(new Date()),
   })
@@ -664,7 +682,7 @@ onMounted(async () => {
                   >
                     <button
                       class="btn btn-ghost btn-xs text-success opacity-70 hover:opacity-100"
-                      @click="marcarComoLiquidado(t)"
+                      @click="iniciarLiquidacao(t)"
                     >
                       Liquidar
                     </button>
@@ -673,7 +691,7 @@ onMounted(async () => {
                   <div v-if="!isFaturaCartao(t)" class="tooltip" data-tip="Excluir">
                     <button
                       class="btn btn-ghost btn-xs text-error opacity-40 hover:opacity-80"
-                      @click="deletarTransacao(t.id)"
+                      @click="iniciarDelecao(t)"
                     >
                       Excluir
                     </button>
@@ -691,6 +709,26 @@ onMounted(async () => {
       </div>
     </div>
   </div>
+
+  <ConfirmModal
+    v-model:open="showDeleteModal"
+    severity="simple"
+    :title="`Excluir '${transacaoADeletar?.descricao ?? ''}'?`"
+    description="Esta ação não pode ser desfeita."
+    confirm-label="Excluir"
+    cancel-label="Cancelar"
+    @confirm="confirmarDeletar"
+  />
+
+  <ConfirmModal
+    v-model:open="showLiquidarModal"
+    severity="simple"
+    :title="`Liquidar '${transacaoALiquidar?.descricao ?? ''}'?`"
+    description="A transação será marcada como paga com a data de hoje."
+    confirm-label="Confirmar liquidação"
+    cancel-label="Cancelar"
+    @confirm="confirmarLiquidar"
+  />
 </template>
 
 

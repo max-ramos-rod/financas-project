@@ -4,6 +4,7 @@ import api from '@/services/api'
 import type { Delegacao } from '@/types'
 import { labelStatusDelegacao, corStatusDelegacao } from '@/utils/strings'
 import EmptyState from '@/components/EmptyState.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 import { Users } from '@lucide/vue'
 
 const loading = ref(false)
@@ -32,6 +33,19 @@ const carregarConvites = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const delegacaoARevogar = ref<number | null>(null)
+const showRevogarModal = ref(false)
+
+const abrirRevogar = (delegacaoId: number) => {
+  delegacaoARevogar.value = delegacaoId
+  showRevogarModal.value = true
+}
+
+const confirmarRevogar = async () => {
+  if (delegacaoARevogar.value === null) return
+  await revogar(delegacaoARevogar.value)
 }
 
 const aceitar = async (delegacaoId: number) => {
@@ -113,7 +127,7 @@ onMounted(() => {
                   <button
                     v-if="item.status !== 'revoked'"
                     class="btn btn-ghost btn-sm text-error"
-                    @click="revogar(item.id)"
+                    @click="abrirRevogar(item.id)"
                   >
                     Revogar
                   </button>
@@ -156,7 +170,7 @@ onMounted(() => {
                   <button
                     v-if="item.status !== 'revoked'"
                     class="btn btn-ghost btn-sm text-error"
-                    @click="revogar(item.id)"
+                    @click="abrirRevogar(item.id)"
                   >
                     Revogar
                   </button>
@@ -168,4 +182,14 @@ onMounted(() => {
       </div>
     </div>
   </div>
+
+  <ConfirmModal
+    v-model:open="showRevogarModal"
+    severity="warn"
+    title="Revogar delegação?"
+    description="A pessoa perderá o acesso imediatamente. Você poderá convidar novamente depois."
+    confirm-label="Revogar acesso"
+    cancel-label="Cancelar"
+    @confirm="confirmarRevogar"
+  />
 </template>

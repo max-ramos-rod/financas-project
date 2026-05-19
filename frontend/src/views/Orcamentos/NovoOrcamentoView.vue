@@ -10,6 +10,7 @@ const route = useRoute()
 // State
 const loading = ref(false)
 const carregando = ref(true)
+const erro = ref('')
 const categorias = ref<Categoria[]>([])
 const editando = ref(false)
 const orcamentoId = ref<number | null>(null)
@@ -70,7 +71,6 @@ const carregarOrcamento = async () => {
     }
   } catch (error) {
     console.error('Erro ao carregar orçamento:', error)
-    alert('Erro ao carregar orçamento')
     router.back()
   }
 }
@@ -97,7 +97,7 @@ const salvar = async () => {
     router.push('/orcamentos')
   } catch (error: any) {
     console.error('Erro ao salvar:', error)
-    alert(error.response?.data?.detail || 'Erro ao salvar orçamento')
+    erro.value = error.response?.data?.detail || 'Erro ao salvar orçamento'
   } finally {
     loading.value = false
   }
@@ -143,14 +143,14 @@ onMounted(() => {
 <template>
   <div class="min-h-screen bg-base-200">
     <!-- Header -->
-    <div class="bg-white shadow">
+    <div class="bg-base-100 shadow">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center gap-4">
           <button @click="cancelar" class="btn btn-ghost btn-sm">
             ← Voltar
           </button>
           <h1 class="text-2xl font-bold">
-            {{ editando ? '✏️ Editar Orçamento' : '➕ Novo Orçamento' }}
+            {{ editando ? 'Editar Orçamento' : 'Novo Orçamento' }}
           </h1>
         </div>
       </div>
@@ -165,7 +165,7 @@ onMounted(() => {
     <!-- Form -->
     <div v-else class="container mx-auto px-4 py-8">
       <div class="max-w-2xl mx-auto">
-        <form @submit.prevent="salvar" class="card bg-white shadow-lg">
+        <form @submit.prevent="salvar" class="card bg-base-100 shadow-lg">
           <div class="card-body space-y-6">
             
             <!-- Categoria -->
@@ -257,6 +257,8 @@ onMounted(() => {
                 </div>
               </div>
             </div>
+
+            <div v-if="erro" class="alert alert-error"><span>{{ erro }}</span></div>
 
             <!-- Botões -->
             <div class="card-actions justify-end pt-4 border-t">

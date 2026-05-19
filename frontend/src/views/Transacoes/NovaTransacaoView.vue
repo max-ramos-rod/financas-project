@@ -11,6 +11,7 @@ const route = useRoute()
 const loading = ref(false)
 const duplicando = ref(false)
 const carregando = ref(true)
+const erroGeral = ref('')
 const contas = ref<Conta[]>([])
 const categorias = ref<Categoria[]>([])
 const metas = ref<Meta[]>([])
@@ -289,7 +290,7 @@ const salvar = async (destino: 'lista' | 'continuar' = 'lista') => {
 
     router.push({ path: '/transacoes', query: route.query })
   } catch (error: any) {
-    alert(error?.response?.data?.detail || 'Erro ao salvar transacao')
+    erroGeral.value = error?.response?.data?.detail || 'Erro ao salvar transação'
   } finally {
     loading.value = false
   }
@@ -307,7 +308,7 @@ const duplicarTransacaoAtual = async () => {
     await router.push({ path: `/transacoes/${novoId}/editar`, query: route.query })
     await carregarTransacao()
   } catch (error: any) {
-    alert(error?.response?.data?.detail || 'Erro ao duplicar transacao')
+    erroGeral.value = error?.response?.data?.detail || 'Erro ao duplicar transação'
   } finally {
     duplicando.value = false
   }
@@ -330,10 +331,10 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <div class="bg-white shadow">
+    <div class="bg-base-100 shadow">
       <div class="container mx-auto px-4 py-4 flex items-center gap-4">
         <button @click="cancelar" class="btn btn-ghost btn-sm">Voltar</button>
-        <h1 class="text-2xl font-bold">{{ editando ? 'Editar Transacao' : 'Nova Transacao' }}</h1>
+        <h1 class="text-2xl font-bold">{{ editando ? 'Editar Transação' : 'Nova Transação' }}</h1>
         <button
           v-if="editando && !editandoDizimo"
           type="button"
@@ -352,11 +353,11 @@ onMounted(() => {
     </div>
 
     <div v-else class="container mx-auto px-4 py-8">
-      <form @submit.prevent="salvar('lista')" class="card bg-white shadow-lg max-w-3xl mx-auto">
+      <form @submit.prevent="salvar('lista')" class="card bg-base-100 shadow-lg max-w-3xl mx-auto">
         <div class="card-body space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="md:col-span-2">
-              <label class="label"><span class="label-text font-semibold">Descricao *</span></label>
+              <label class="label"><span class="label-text font-semibold">Descrição *</span></label>
               <input v-model="form.descricao" class="input input-bordered w-full" required />
             </div>
             <div>
@@ -367,7 +368,7 @@ onMounted(() => {
               <label class="label"><span class="label-text font-semibold">Tipo *</span></label>
               <select v-model="form.tipo" class="select select-bordered w-full">
                 <option value="entrada">Entrada</option>
-                <option value="saida">Saida</option>
+                <option value="saida">Saída</option>
               </select>
             </div>
             <div>
@@ -385,7 +386,7 @@ onMounted(() => {
                 <option v-for="conta in contas.filter((c) => c.ativa)" :key="conta.id" :value="conta.id">{{ conta.nome }}</option>
               </select>
               <p v-if="isCartaoCredito && form.tipo === 'saida'" class="text-xs text-gray-500 mt-1">
-                Conta cartao: compra registrada para pagamento da fatura.
+                Conta cartão: compra registrada para pagamento da fatura.
               </p>
             </div>
             <div>
@@ -397,11 +398,11 @@ onMounted(() => {
                 <option value="cancelado">Cancelado</option>
               </select>
               <p v-if="statusBloqueado" class="text-xs text-gray-500 mt-1">
-                Para cartao de credito, o status inicial e sempre Fatura.
+                Para cartão de crédito, o status inicial é sempre Fatura.
               </p>
             </div>
             <div v-if="form.status_liquidacao === 'liquidado'">
-              <label class="label"><span class="label-text font-semibold">Data liquidacao</span></label>
+              <label class="label"><span class="label-text font-semibold">Data de liquidação</span></label>
               <input v-model="form.data_liquidacao" type="date" class="input input-bordered w-full" :required="editando" />
             </div>
             <div>
@@ -440,7 +441,7 @@ onMounted(() => {
           <div v-if="modoCristao && form.tipo === 'entrada'" class="divider">Dizimo</div>
           <div v-if="modoCristao && form.tipo === 'entrada'" class="flex items-center gap-4">
             <input v-model="form.tem_dizimo" type="checkbox" class="checkbox" />
-            <span>Gerar dizimo automatico</span>
+            <span>Gerar dízimo automático</span>
             <input v-if="form.tem_dizimo" v-model.number="form.percentual_dizimo" type="number" min="0" max="100" step="0.1" class="input input-bordered w-28" />
             <span v-if="form.tem_dizimo">{{ formatarMoeda(valorDizimo) }}</span>
           </div>
@@ -449,7 +450,7 @@ onMounted(() => {
             <label class="flex items-center gap-2"><input v-model="form.fixa" type="checkbox" class="checkbox" /> Fixa</label>
             <label class="flex items-center gap-2"><input v-model="form.recorrente" type="checkbox" class="checkbox" /> Recorrente</label>
             <label class="flex items-center gap-2"><input v-model="form.parcelado" type="checkbox" class="checkbox" /> Parcelado</label>
-            <label class="flex items-center gap-2"><input v-model="form.e_emprestimo" type="checkbox" class="checkbox" /> Emprestimo</label>
+            <label class="flex items-center gap-2"><input v-model="form.e_emprestimo" type="checkbox" class="checkbox" /> Empréstimo</label>
           </div>
 
           <div v-if="form.parcelado">
@@ -465,13 +466,15 @@ onMounted(() => {
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <textarea v-model="form.observacoes" class="textarea textarea-bordered w-full" rows="2" placeholder="Observacoes"></textarea>
+            <textarea v-model="form.observacoes" class="textarea textarea-bordered w-full" rows="2" placeholder="Observações"></textarea>
             <input v-model="form.tags" class="input input-bordered w-full" placeholder="Tags" />
           </div>
 
           <div class="alert">
             <span>Valor efetivo: <strong>{{ formatarMoeda(valorEfetivo) }}</strong></span>
           </div>
+
+          <div v-if="erroGeral" class="alert alert-error"><span>{{ erroGeral }}</span></div>
 
           <div class="card-actions justify-end border-t pt-4">
             <button type="button" @click="cancelar" class="btn btn-ghost" :disabled="loading">Cancelar</button>
@@ -489,11 +492,11 @@ onMounted(() => {
       <div class="space-y-3">
         <div>
           <label class="label"><span class="label-text">Nome</span></label>
-          <input v-model="formCategoria.nome" class="input input-bordered w-full" placeholder="Ex: Feira, Bonus, Farmacia" />
+          <input v-model="formCategoria.nome" class="input input-bordered w-full" placeholder="Ex: Feira, Bônus, Farmácia" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="label"><span class="label-text">Icone</span></label>
+            <label class="label"><span class="label-text">Ícone</span></label>
             <input v-model="formCategoria.icone" class="input input-bordered w-full" />
           </div>
           <div>
