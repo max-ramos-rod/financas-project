@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
+import { getChartTheme } from '@/utils/chartTheme'
 
 const ApexChart = defineAsyncComponent(() =>
   import('vue3-apexcharts')
@@ -21,92 +22,32 @@ const series = computed(() => [
   { name: 'A Receber', data: props.dadosMeses.map(item => item.aReceber) },
   { name: 'Pagas', data: props.dadosMeses.map(item => item.pagas) },
   { name: 'A Pagar', data: props.dadosMeses.map(item => item.aPagar) },
-  { name: 'Cartao', data: props.dadosMeses.map(item => item.cartao) }
+  { name: 'Cartão', data: props.dadosMeses.map(item => item.cartao) }
 ])
 
 const formatarMoeda = (valor: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(valor)
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
 
-const chartOptions = computed(() => ({
-  chart: {
-    type: 'bar',
-    stacked: true,
-    background: 'transparent',
-    toolbar: { show: false }
-  },
-
-  theme: { mode: 'dark' },
-
-  plotOptions: {
-    bar: {
-      borderRadius: 6,
-      columnWidth: '40%'
-    }
-  },
-
-  dataLabels: { enabled: false },
-
-  grid: {
-    borderColor: '#1F2933',
-    strokeDashArray: 4
-  },
-
-  xaxis: {
-    categories: props.dadosMeses.map(item => item.label),
-    labels: { style: { colors: '#9CA3AF' } },
-    axisBorder: { show: false },
-    axisTicks: { show: false }
-  },
-
-  yaxis: {
-    labels: {
-      formatter: (value: number) => formatarMoeda(value),
-      style: { colors: '#9CA3AF' }
-    }
-  },
-
-  legend: {
-    position: 'bottom',
-    labels: { colors: '#D1D5DB' }
-  },
-
-  tooltip: {
-    theme: 'dark',
-    y: {
-      formatter: (value: number) => formatarMoeda(value)
-    }
-  },
-
-  colors: [
-    '#22C55E',
-    '#F59E0B',
-    '#64748B',
-    '#F59E0B',
-    '#EF4444'
-  ],
-
-  responsive: [
-    {
-      breakpoint: 1024,
-      options: {
-        plotOptions: {
-          bar: { columnWidth: '48%' }
-        }
-      }
+const chartOptions = computed(() => {
+  const t = getChartTheme() as { [key: string]: any }
+  return {
+    ...t,
+    chart: { ...t.chart, type: 'bar', stacked: true },
+    plotOptions: { bar: { ...t.plotOptions?.bar, columnWidth: '40%' } },
+    xaxis: { ...t.xaxis, categories: props.dadosMeses.map(item => item.label) },
+    yaxis: {
+      ...t.yaxis,
+      labels: { ...t.yaxis?.labels, formatter: (value: number) => formatarMoeda(value) },
     },
-    {
-      breakpoint: 640,
-      options: {
-        plotOptions: {
-          bar: { columnWidth: '58%' }
-        }
-      }
-    }
-  ]
-}))
+    legend: { ...t.legend, position: 'bottom' },
+    tooltip: { ...t.tooltip, y: { formatter: (value: number) => formatarMoeda(value) } },
+    colors: ['#2d7d4a', '#b57e2d', '#82827a', '#b57e2d', '#b53d2c'],
+    responsive: [
+      { breakpoint: 1024, options: { plotOptions: { bar: { columnWidth: '48%' } } } },
+      { breakpoint: 640,  options: { plotOptions: { bar: { columnWidth: '58%' } } } },
+    ],
+  }
+})
 </script>
 
 <template>

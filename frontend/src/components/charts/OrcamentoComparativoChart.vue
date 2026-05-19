@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
+import { getChartTheme } from '@/utils/chartTheme'
 
 const ApexChart = defineAsyncComponent(() =>
   import('vue3-apexcharts')
@@ -10,20 +11,11 @@ const props = defineProps<{
 }>()
 
 const formatarMoeda = (valor: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(valor)
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
 
 const series = computed(() => [
-  {
-    name: 'Planejado',
-    data: props.dados.map(d => d.planejado)
-  },
-  {
-    name: 'Gasto',
-    data: props.dados.map(d => d.gasto)
-  }
+  { name: 'Planejado', data: props.dados.map(d => d.planejado) },
+  { name: 'Gasto',     data: props.dados.map(d => d.gasto) },
 ])
 
 const chartHeight = computed(() => {
@@ -38,70 +30,34 @@ const maxValor = computed(() => {
   return Math.ceil(max / magnitude) * magnitude
 })
 
-const chartOptions = computed(() => ({
-  chart: {
-    type: 'bar',
-    background: 'transparent',
-    toolbar: { show: false },
-    animations: { enabled: false }
-  },
-  theme: { mode: 'dark' },
-  plotOptions: {
-    bar: {
-      horizontal: true,
-      borderRadius: 6,
-      barHeight: '42%'
-    }
-  },
-  dataLabels: { enabled: false },
-  grid: {
-    borderColor: '#1F2933',
-    strokeDashArray: 4
-  },
-  xaxis: {
-    categories: props.dados.map(d => d.categoria),
-    min: 0,
-    max: maxValor.value,
-    tickAmount: 4,
-    labels: {
-      show: true,
-      formatter: (value: number) => Number(value).toLocaleString('pt-BR'),
-      style: { colors: '#9CA3AF' }
+const chartOptions = computed(() => {
+  const t = getChartTheme() as { [key: string]: any }
+  return {
+    ...t,
+    chart: { ...t.chart, type: 'bar', animations: { enabled: false } },
+    plotOptions: { bar: { ...t.plotOptions?.bar, horizontal: true, barHeight: '42%' } },
+    xaxis: {
+      ...t.xaxis,
+      categories: props.dados.map(d => d.categoria),
+      min: 0,
+      max: maxValor.value,
+      tickAmount: 4,
+      labels: {
+        ...t.xaxis?.labels,
+        show: true,
+        formatter: (value: number) => Number(value).toLocaleString('pt-BR'),
+      },
     },
-    axisBorder: { show: false },
-    axisTicks: { show: false }
-  },
-  yaxis: {
-    labels: { style: { colors: '#D1D5DB' } }
-  },
-  legend: {
-    position: 'bottom',
-    labels: { colors: '#D1D5DB' }
-  },
-  tooltip: {
-    theme: 'dark',
-    y: {
-      formatter: (value: number) => formatarMoeda(value)
-    }
-  },
-  colors: ['#3B82F6', '#EF4444'],
-  responsive: [
-    {
-      breakpoint: 1024,
-      options: {
-        plotOptions: { bar: { barHeight: '38%' } },
-        xaxis: { tickAmount: 3, max: maxValor.value }
-      }
-    },
-    {
-      breakpoint: 640,
-      options: {
-        plotOptions: { bar: { barHeight: '34%' } },
-        xaxis: { tickAmount: 2, max: maxValor.value }
-      }
-    }
-  ]
-}))
+    yaxis: { ...t.yaxis },
+    legend: { ...t.legend, position: 'bottom' },
+    tooltip: { ...t.tooltip, y: { formatter: (value: number) => formatarMoeda(value) } },
+    colors: ['#1F5C3A', '#b53d2c'],
+    responsive: [
+      { breakpoint: 1024, options: { plotOptions: { bar: { barHeight: '38%' } }, xaxis: { tickAmount: 3, max: maxValor.value } } },
+      { breakpoint: 640,  options: { plotOptions: { bar: { barHeight: '34%' } }, xaxis: { tickAmount: 2, max: maxValor.value } } },
+    ],
+  }
+})
 </script>
 
 <template>
