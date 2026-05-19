@@ -229,190 +229,218 @@ onMounted(fetchDados)
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <div v-if="loading" class="container mx-auto px-4 py-6 space-y-6">
-      <div class="skeleton h-40 w-full rounded-box"></div>
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div class="skeleton h-28 rounded-box"></div>
-        <div class="skeleton h-28 rounded-box"></div>
-        <div class="skeleton h-28 rounded-box"></div>
-        <div class="skeleton h-28 rounded-box"></div>
+
+    <!-- Loading skeleton -->
+    <div v-if="loading" class="container mx-auto px-4 py-6">
+      <div class="grid grid-cols-12 gap-5">
+        <div class="col-span-12 skeleton h-28 rounded-box"></div>
+        <div class="col-span-6 lg:col-span-3 skeleton h-24 rounded-box"></div>
+        <div class="col-span-6 lg:col-span-3 skeleton h-24 rounded-box"></div>
+        <div class="col-span-6 lg:col-span-3 skeleton h-24 rounded-box"></div>
+        <div class="col-span-6 lg:col-span-3 skeleton h-24 rounded-box"></div>
+        <div class="col-span-12 lg:col-span-7 skeleton h-72 rounded-box"></div>
+        <div class="col-span-12 lg:col-span-5 skeleton h-72 rounded-box"></div>
+        <div class="col-span-12 lg:col-span-7 skeleton h-72 rounded-box"></div>
+        <div class="col-span-12 lg:col-span-5 skeleton h-72 rounded-box"></div>
       </div>
-      <div class="skeleton h-80 w-full rounded-box"></div>
-      <div class="skeleton h-80 w-full rounded-box"></div>
-      <div class="skeleton h-72 w-full rounded-box"></div>
     </div>
 
-    <div v-else class="container mx-auto px-4 py-6 space-y-6">
-      <div class="card text-white shadow-xl" style="background: linear-gradient(135deg, #7C3AED, #5B21B6)">
-        <div class="card-body gap-4">
-          <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p class="text-sm opacity-80">Saldo Total</p>
-              <p class="text-4xl font-bold tracking-tight">
-                {{ formatarMoeda(saldoTotal) }}
-              </p>
-            </div>
-            <router-link to="/transacoes/nova" class="btn btn-secondary btn-sm w-full md:w-auto">
-              {{ LABELS.nova_transacao }}
-            </router-link>
-          </div>
+    <!-- Main grid -->
+    <div v-else class="container mx-auto px-4 py-6">
+      <div class="grid grid-cols-12 gap-5">
 
-          <div class="stats stats-vertical bg-white/10 text-white shadow-none md:stats-horizontal">
-            <div class="stat px-4 py-3">
-              <div class="stat-title text-white/70">Conta corrente</div>
-              <div class="stat-value text-xl">{{ formatarMoeda(saldoContaCorrente) }}</div>
-            </div>
-            <div class="stat px-4 py-3">
-              <div class="stat-title text-white/70">Investimentos</div>
-              <div class="stat-value text-xl">{{ formatarMoeda(saldoInvestimento) }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
+        <!-- Hero stripe -->
+        <div class="col-span-12 card bg-base-100 shadow-sm">
+          <div class="card-body py-5">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center">
+              <div class="flex-shrink-0">
+                <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Saldo Total</p>
+                <p class="text-4xl font-bold tracking-tight tabular-nums">
+                  {{ formatarMoeda(saldoTotal) }}
+                </p>
+              </div>
 
-      <div class="stats stats-vertical gap-4 shadow-sm lg:stats-horizontal">
-        <div class="stat bg-base-100 rounded-box">
-          <div class="stat-title">{{ LABELS.receitas_do_mes }}</div>
-          <div class="stat-value text-success">{{ formatarMoeda(receitasMes) }}</div>
-        </div>
-        <div class="stat bg-base-100 rounded-box">
-          <div class="stat-title">{{ LABELS.despesas_do_mes }}</div>
-          <div class="stat-value text-error">{{ formatarMoeda(despesasMes) }}</div>
-        </div>
-        <div class="stat bg-base-100 rounded-box">
-          <div class="stat-title">{{ LABELS.cartao_em_aberto }}</div>
-          <div class="stat-value text-error">{{ formatarMoeda(debitoFaturaAtualCartoes) }}</div>
-        </div>
-        <div class="stat bg-base-100 rounded-box">
-          <div class="stat-title">{{ LABELS.saldo_do_mes }}</div>
-          <div :class="['stat-value', saldoMes >= 0 ? 'text-success' : 'text-error']">
-            {{ formatarMoeda(saldoMes) }}
-          </div>
-          <div class="stat-desc">{{ saldoMes >= 0 ? LABELS.resultado_positivo : LABELS.resultado_negativo }}</div>
-        </div>
-      </div>
+              <div class="hidden lg:block w-px h-12 bg-base-300 mx-2"></div>
 
-      <div class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 class="text-sm uppercase opacity-60 tracking-wide">Fluxo Financeiro</h3>
-              <p class="text-xs opacity-50">Mês anterior, atual e próximo para leitura de tendência.</p>
+              <div class="flex gap-8">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Conta corrente</p>
+                  <p class="text-xl font-semibold tabular-nums">{{ formatarMoeda(saldoContaCorrente) }}</p>
+                </div>
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Investimentos</p>
+                  <p class="text-xl font-semibold tabular-nums">{{ formatarMoeda(saldoInvestimento) }}</p>
+                </div>
+              </div>
+
+              <div class="flex-1"></div>
+
+              <div :class="['badge', 'badge-lg', saldoMes >= 0 ? 'badge-success' : 'badge-error', 'font-semibold', 'tabular-nums', 'gap-1']">
+                {{ saldoMes >= 0 ? '+' : '' }}{{ formatarMoeda(saldoMes) }} este mês
+              </div>
+
+              <router-link to="/transacoes/nova" class="btn btn-primary btn-sm w-full lg:w-auto">
+                {{ LABELS.nova_transacao }}
+              </router-link>
             </div>
           </div>
-          <FluxoFinanceiroChart :dadosMeses="fluxoFinanceiroComparativo" />
         </div>
-      </div>
 
-      <div class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 class="text-sm uppercase opacity-60 tracking-wide">Despesas por Categoria</h3>
-              <p class="text-xs opacity-50">Categorias com maior peso no mes atual.</p>
-            </div>
+        <!-- KPI: Receitas do mês -->
+        <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
+          <div class="card-body py-4">
+            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">{{ LABELS.receitas_do_mes }}</p>
+            <p class="text-2xl font-bold text-success tabular-nums">{{ formatarMoeda(receitasMes) }}</p>
           </div>
-          <DespesasCategoriaChart :dados="despesasPorCategoria" />
         </div>
-      </div>
 
-      <div class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-          <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h3 class="text-sm uppercase opacity-60 tracking-wide">Orçamento × Gasto</h3>
-              <p class="text-xs opacity-50">Compare o planejado com o realizado.</p>
-            </div>
-
-            <div class="w-full max-w-xs">
-              <label class="label py-1"><span class="label-text text-xs">{{ LABELS.mes_de_referencia }}</span></label>
-              <select v-model.number="mesOrcamentoSelecionado" class="select select-bordered select-sm w-full">
-                <option :value="1">Jan</option>
-                <option :value="2">Fev</option>
-                <option :value="3">Mar</option>
-                <option :value="4">Abr</option>
-                <option :value="5">Mai</option>
-                <option :value="6">Jun</option>
-                <option :value="7">Jul</option>
-                <option :value="8">Ago</option>
-                <option :value="9">Set</option>
-                <option :value="10">Out</option>
-                <option :value="11">Nov</option>
-                <option :value="12">Dez</option>
-              </select>
-            </div>
+        <!-- KPI: Despesas do mês -->
+        <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
+          <div class="card-body py-4">
+            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">{{ LABELS.despesas_do_mes }}</p>
+            <p class="text-2xl font-bold text-error tabular-nums">{{ formatarMoeda(despesasMes) }}</p>
           </div>
+        </div>
 
-          <EmptyState
-            v-if="orcamentoComparativo.length === 0"
-            variant="zero-state"
-            title="Você ainda não planejou este mês."
-            description="Crie orçamentos por categoria para acompanhar o realizado."
-          >
-            <template #icon><Calendar /></template>
-            <template #actions>
-              <router-link to="/orcamentos" class="btn btn-primary btn-sm">Ir para orçamentos</router-link>
-            </template>
-          </EmptyState>
+        <!-- KPI: Saldo do mês -->
+        <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
+          <div class="card-body py-4">
+            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">{{ LABELS.saldo_do_mes }}</p>
+            <p :class="['text-2xl', 'font-bold', 'tabular-nums', saldoMes >= 0 ? 'text-success' : 'text-error']">
+              {{ formatarMoeda(saldoMes) }}
+            </p>
+            <p class="text-xs opacity-50 mt-1">{{ saldoMes >= 0 ? LABELS.resultado_positivo : LABELS.resultado_negativo }}</p>
+          </div>
+        </div>
 
-          <template v-else>
-            <OrcamentoComparativoChart :dados="orcamentoComparativo" />
+        <!-- KPI: Cartão em aberto -->
+        <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
+          <div class="card-body py-4">
+            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">{{ LABELS.cartao_em_aberto }}</p>
+            <p class="text-2xl font-bold text-error tabular-nums">{{ formatarMoeda(debitoFaturaAtualCartoes) }}</p>
+          </div>
+        </div>
 
-            <div v-if="orcamentosEstourados.length" class="alert alert-warning mt-4">
+        <!-- Charts row 1 — Fluxo Financeiro -->
+        <div class="col-span-12 lg:col-span-7 card bg-base-100 shadow-sm">
+          <div class="card-body">
+            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Fluxo Financeiro</p>
+            <p class="text-xs opacity-40 mb-1">Mês anterior, atual e próximo para leitura de tendência.</p>
+            <FluxoFinanceiroChart :dadosMeses="fluxoFinanceiroComparativo" />
+          </div>
+        </div>
+
+        <!-- Charts row 1 — Despesas por Categoria -->
+        <div class="col-span-12 lg:col-span-5 card bg-base-100 shadow-sm">
+          <div class="card-body">
+            <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Despesas por Categoria</p>
+            <p class="text-xs opacity-40 mb-1">Categorias com maior peso no mês atual.</p>
+            <DespesasCategoriaChart :dados="despesasPorCategoria" />
+          </div>
+        </div>
+
+        <!-- Charts row 2 — Orçamento × Gasto -->
+        <div class="col-span-12 lg:col-span-7 card bg-base-100 shadow-sm">
+          <div class="card-body">
+            <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between mb-2">
               <div>
-                <p class="font-semibold">Atenção: orçamentos estourados</p>
-                <ul class="mt-2 space-y-1 text-sm">
-                  <li v-for="item in orcamentosEstourados" :key="item.categoria">
-                    {{ item.categoria }}: {{ formatarMoeda(item.gasto - item.planejado) }} acima do planejado
-                  </li>
-                </ul>
+                <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Orçamento × Gasto</p>
+                <p class="text-xs opacity-40">Compare o planejado com o realizado.</p>
+              </div>
+              <div class="w-full max-w-xs">
+                <label class="label py-1"><span class="label-text text-xs">{{ LABELS.mes_de_referencia }}</span></label>
+                <select v-model.number="mesOrcamentoSelecionado" class="select select-bordered select-sm w-full">
+                  <option :value="1">Jan</option>
+                  <option :value="2">Fev</option>
+                  <option :value="3">Mar</option>
+                  <option :value="4">Abr</option>
+                  <option :value="5">Mai</option>
+                  <option :value="6">Jun</option>
+                  <option :value="7">Jul</option>
+                  <option :value="8">Ago</option>
+                  <option :value="9">Set</option>
+                  <option :value="10">Out</option>
+                  <option :value="11">Nov</option>
+                  <option :value="12">Dez</option>
+                </select>
               </div>
             </div>
-          </template>
-        </div>
-      </div>
 
-      <div class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-          <h3 class="mb-2 text-sm uppercase tracking-wide opacity-60">Maiores Despesas</h3>
+            <EmptyState
+              v-if="orcamentoComparativo.length === 0"
+              variant="zero-state"
+              title="Você ainda não planejou este mês."
+              description="Crie orçamentos por categoria para acompanhar o realizado."
+            >
+              <template #icon><Calendar /></template>
+              <template #actions>
+                <router-link to="/orcamentos" class="btn btn-primary btn-sm">Ir para orçamentos</router-link>
+              </template>
+            </EmptyState>
 
-          <EmptyState
-            v-if="topDespesas.length === 0"
-            variant="filtered"
-            title="Sem despesas este mês."
-          >
-            <template #icon><TrendingDown /></template>
-            <template #actions>
-              <router-link to="/transacoes" class="btn btn-ghost btn-sm">Ver transações</router-link>
+            <template v-else>
+              <OrcamentoComparativoChart :dados="orcamentoComparativo" />
+
+              <div v-if="orcamentosEstourados.length" class="alert alert-warning mt-4">
+                <div>
+                  <p class="font-semibold">Atenção: orçamentos estourados</p>
+                  <ul class="mt-2 space-y-1 text-sm">
+                    <li v-for="item in orcamentosEstourados" :key="item.categoria">
+                      {{ item.categoria }}: {{ formatarMoeda(item.gasto - item.planejado) }} acima do planejado
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </template>
-          </EmptyState>
-
-          <div v-else class="space-y-2">
-            <div v-for="t in topDespesas" :key="t.id" class="flex justify-between gap-3 text-sm">
-              <span class="truncate opacity-80">{{ t.descricao }}</span>
-              <span class="whitespace-nowrap font-semibold text-error">
-                {{ formatarMoeda(t.valor) }}
-              </span>
-            </div>
           </div>
         </div>
-      </div>
 
-      <div v-if="metasEmAndamento.length" class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-          <h3 class="text-sm uppercase opacity-60 tracking-wide">Metas Financeiras</h3>
+        <!-- Charts row 2 — Metas + Maiores Despesas (stacked in right column) -->
+        <div class="col-span-12 lg:col-span-5 flex flex-col gap-5">
 
-          <div class="mt-2 space-y-3">
-            <div v-for="meta in metasEmAndamento.slice(0, 3)" :key="meta.id">
-              <div class="mb-1 flex justify-between text-xs">
-                <span>{{ meta.nome }}</span>
-                <span>{{ getPercentualMeta(meta).toFixed(0) }}%</span>
+          <div v-if="metasEmAndamento.length" class="card bg-base-100 shadow-sm">
+            <div class="card-body">
+              <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Metas Financeiras</p>
+              <div class="mt-2 space-y-3">
+                <div v-for="meta in metasEmAndamento.slice(0, 3)" :key="meta.id">
+                  <div class="mb-1 flex justify-between text-xs">
+                    <span>{{ meta.nome }}</span>
+                    <span>{{ getPercentualMeta(meta).toFixed(0) }}%</span>
+                  </div>
+                  <progress class="progress progress-primary w-full" :value="getPercentualMeta(meta)" max="100"></progress>
+                </div>
               </div>
-
-              <progress class="progress progress-primary w-full" :value="getPercentualMeta(meta)" max="100"></progress>
             </div>
           </div>
+
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body">
+              <p class="text-[11px] font-mono uppercase tracking-widest opacity-50">Maiores Despesas</p>
+
+              <EmptyState
+                v-if="topDespesas.length === 0"
+                variant="filtered"
+                title="Sem despesas este mês."
+              >
+                <template #icon><TrendingDown /></template>
+                <template #actions>
+                  <router-link to="/transacoes" class="btn btn-ghost btn-sm">Ver transações</router-link>
+                </template>
+              </EmptyState>
+
+              <div v-else class="mt-2 space-y-2">
+                <div v-for="t in topDespesas" :key="t.id" class="flex justify-between gap-3 text-sm">
+                  <span class="truncate opacity-80">{{ t.descricao }}</span>
+                  <span class="whitespace-nowrap font-semibold text-error tabular-nums">
+                    {{ formatarMoeda(t.valor) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
+
       </div>
     </div>
   </div>
