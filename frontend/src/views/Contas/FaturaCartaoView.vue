@@ -105,10 +105,8 @@ const confirmarExclusao = async () => {
   try {
     await api.delete(`/transacoes/${transacaoParaExcluir.value.id}`)
     await carregarFaturaSelecionada(true)
-    fecharModalExcluir()
   } catch (err: any) {
     error.value = err?.response?.data?.detail || 'Erro ao excluir transação.'
-    fecharModalExcluir()
   } finally {
     excluindo.value = false
   }
