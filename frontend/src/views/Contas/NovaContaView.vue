@@ -177,7 +177,7 @@ onMounted(() => {
               <input
                 v-model="form.nome"
                 type="text"
-                placeholder="Ex: Meu Banco, Carteira, Poupanca..."
+                placeholder="Ex: Meu Banco, Carteira, Poupança..."
                 class="input input-bordered w-full"
                 required
               />

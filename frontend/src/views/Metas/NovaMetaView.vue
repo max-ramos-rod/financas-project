@@ -171,13 +171,13 @@ onMounted(() => {
 <template>
   <div class="min-h-screen bg-base-200">
     <!-- Header -->
-    <div class="bg-white shadow">
+    <div class="bg-base-100 shadow">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center gap-4">
           <button @click="cancelar" class="btn btn-ghost btn-sm">
             ← Voltar
           </button>
-          <h1 class="text-2xl font-bold">{{ editando ? '✏️ Editar Meta' : '➕ Nova Meta' }}</h1>
+          <h1 class="text-2xl font-bold">{{ editando ? 'Editar Meta' : 'Nova Meta' }}</h1>
         </div>
       </div>
     </div>
@@ -185,7 +185,7 @@ onMounted(() => {
     <!-- Form -->
     <div class="container mx-auto px-4 py-8">
       <div class="max-w-2xl mx-auto">
-        <form @submit.prevent="salvar" class="card bg-white shadow-lg">
+        <form @submit.prevent="salvar" class="card bg-base-100 shadow-lg">
           <div class="card-body space-y-6">
             <!-- Nome -->
             <div>
@@ -334,7 +334,7 @@ onMounted(() => {
               <label class="flex items-center gap-3 cursor-pointer">
                 <input v-model="form.concluida" type="checkbox" class="checkbox" />
                 <div>
-                  <p class="font-medium">✅ Marcar como Concluída</p>
+                  <p class="font-medium">Marcar como Concluída</p>
                   <p class="text-sm text-gray-500">Indique se esta meta já foi alcançada</p>
                 </div>
               </label>

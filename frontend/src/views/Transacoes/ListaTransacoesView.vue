@@ -466,7 +466,7 @@ onMounted(async () => {
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Recebidas</p>
-            <p class="text-3xl text-success font-bold">
+            <p class="text-3xl text-success font-bold tabular-nums">
               {{ formatarMoeda(totais.entradasLiquidadas) }}
             </p>
           </div>
@@ -475,7 +475,7 @@ onMounted(async () => {
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">A receber</p>
-            <p class="text-3xl text-warning font-medium">
+            <p class="text-3xl text-warning font-medium tabular-nums">
               {{ formatarMoeda(totais.aReceber) }}
             </p>
           </div>
@@ -484,7 +484,7 @@ onMounted(async () => {
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Total das Entradas</p>
-            <p class="text-3xl font-bold">
+            <p class="text-3xl font-bold tabular-nums">
               {{ formatarMoeda(totais.entradasLiquidadas + totais.aReceber) }}
             </p>
           </div>
@@ -493,7 +493,7 @@ onMounted(async () => {
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Fatura cartão</p>
-            <p class="text-3xl text-error font-bold">
+            <p class="text-3xl text-error font-bold tabular-nums">
               {{ formatarMoeda(totais.faturaCartaoEmAberto) }}
             </p>
           </div>
@@ -504,7 +504,7 @@ onMounted(async () => {
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Pagas</p>
-            <p class="text-3xl text-base-content">
+            <p class="text-3xl text-base-content tabular-nums">
               {{ formatarMoeda(totais.saidasLiquidadas) }}
             </p>
           </div>
@@ -513,7 +513,7 @@ onMounted(async () => {
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">A pagar</p>
-            <p class="text-3xl text-warning font-bold">
+            <p class="text-3xl text-warning font-bold tabular-nums">
               {{ formatarMoeda(totais.aPagar) }}
             </p>
           </div>
@@ -522,7 +522,7 @@ onMounted(async () => {
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Total das Saídas</p>
-            <p class="text-3xl font-bold">
+            <p class="text-3xl font-bold tabular-nums">
               {{ formatarMoeda(totais.saidasLiquidadas + totais.aPagar) }}
             </p>
           </div>
@@ -532,7 +532,7 @@ onMounted(async () => {
           <div class="card-body">
             <p class="text-xs opacity-70 uppercase">Saldo Projetado</p>
               <p :class="[
-                'text-3xl font-bold',
+                'text-3xl font-bold tabular-nums',
                 totais.saldoProjetado >= 0 ? 'text-success' : 'text-error'
               ]">
                 {{ formatarMoeda(totais.saldoProjetado) }}

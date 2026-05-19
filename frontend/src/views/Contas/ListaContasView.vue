@@ -238,7 +238,7 @@ onMounted(() => {
         <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Saldo Total</p>
-            <p class="text-2xl font-bold text-success">{{ formatarMoeda(totais.saldoTotal) }}</p>
+            <p class="text-2xl font-bold text-success tabular-nums">{{ formatarMoeda(totais.saldoTotal) }}</p>
           </div>
         </div>
 
@@ -252,7 +252,7 @@ onMounted(() => {
         <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Saldo Ativas</p>
-            <p class="text-2xl font-bold">{{ formatarMoeda(totais.saldoAtivas) }}</p>
+            <p class="text-2xl font-bold tabular-nums">{{ formatarMoeda(totais.saldoAtivas) }}</p>
           </div>
         </div>
 

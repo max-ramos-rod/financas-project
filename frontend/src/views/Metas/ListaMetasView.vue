@@ -157,12 +157,12 @@ onMounted(() => {
 <template>
   <div class="min-h-screen bg-base-200">
     <!-- Header -->
-    <div class="bg-white shadow">
+    <div class="bg-base-100 shadow">
       <div class="container mx-auto px-4 py-4">
         <div class="flex justify-between items-center">
-          <h1 class="text-2xl font-bold">🎯 Metas</h1>
+          <h1 class="text-2xl font-bold">Metas</h1>
           <button @click="novaMeta" class="btn btn-primary">
-            ➕ Nova Meta
+            Nova Meta
           </button>
         </div>
       </div>
@@ -178,7 +178,7 @@ onMounted(() => {
     <div v-else class="container mx-auto px-4 py-8">
       
       <!-- Filtros -->
-      <div class="card bg-white shadow-md mb-6">
+      <div class="card bg-base-100 shadow-md mb-6">
         <div class="card-body">
           <div class="flex justify-between items-center mb-4">
             <h3 class="card-title">Filtros</h3>
@@ -202,8 +202,8 @@ onMounted(() => {
             <div>
               <select v-model="filtros.status" class="select select-bordered w-full">
                 <option value="todas">Todas as Metas</option>
-                <option value="ativas">✏️ Ativas</option>
-                <option value="concluidas">✅ Concluídas</option>
+                <option value="ativas">Ativas</option>
+                <option value="concluidas">Concluídas</option>
               </select>
             </div>
           </div>
@@ -212,21 +212,21 @@ onMounted(() => {
 
       <!-- Resumo -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Total de Metas</p>
             <p class="text-2xl font-bold">{{ totais.total }}</p>
           </div>
         </div>
 
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Metas Ativas</p>
             <p class="text-2xl font-bold text-warning">{{ totais.ativas }}</p>
           </div>
         </div>
 
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Metas Concluídas</p>
             <p class="text-2xl font-bold text-success">{{ totais.concluidas }}</p>
@@ -235,17 +235,16 @@ onMounted(() => {
       </div>
 
       <!-- Lista de Metas -->
-      <div v-if="metasFiltradas.length === 0" class="card bg-white shadow-md">
+      <div v-if="metasFiltradas.length === 0" class="card bg-base-100 shadow-md">
         <div class="card-body text-center py-16">
-          <div class="text-6xl mb-4">🎯</div>
           <p class="text-xl font-semibold mb-2">Nenhuma meta encontrada</p>
-          <p class="text-gray-500 mb-6">
+          <p class="text-base-content/50 mb-6">
             {{ filtros.status !== 'todas' || filtros.busca
               ? 'Tente ajustar os filtros'
               : 'Adicione sua primeira meta de economias' }}
           </p>
           <button @click="novaMeta" class="btn btn-primary">
-            ➕ Nova Meta
+            Nova Meta
           </button>
         </div>
       </div>
@@ -255,7 +254,7 @@ onMounted(() => {
         <div
           v-for="meta in metasFiltradas"
           :key="meta.id"
-          class="card bg-white shadow-md hover:shadow-lg transition-shadow"
+          class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow"
           :style="{ borderTop: `4px solid ${meta.cor}` }"
         >
           <div class="card-body">
@@ -269,17 +268,13 @@ onMounted(() => {
               </div>
 
               <!-- Status Badge -->
-              <div v-if="meta.concluida" class="badge badge-success">
-                ✅ Concluída
-              </div>
-              <div v-else class="badge badge-warning">
-                ✏️ Ativa
-              </div>
+              <div v-if="meta.concluida" class="badge badge-success">Concluída</div>
+              <div v-else class="badge badge-warning">Ativa</div>
             </div>
 
             <!-- Datas -->
             <div class="flex justify-between text-sm text-gray-500 mb-4">
-              <span>📅 {{ formatarData(meta.data_inicio) }}</span>
+              <span>{{ formatarData(meta.data_inicio) }}</span>
               <span v-if="meta.data_fim">até {{ formatarData(meta.data_fim) }}</span>
             </div>
 
@@ -288,7 +283,7 @@ onMounted(() => {
               <div class="flex justify-between items-center mb-2">
                 <p class="text-sm font-semibold">Progresso</p>
                 <p class="text-sm font-bold">
-                  {{ formatarMoeda(meta.valor_atual) }} / {{ formatarMoeda(meta.valor_alvo) }}
+                  <span class="tabular-nums">{{ formatarMoeda(meta.valor_atual) }}</span> / <span class="tabular-nums">{{ formatarMoeda(meta.valor_alvo) }}</span>
                 </p>
               </div>
 
@@ -311,7 +306,7 @@ onMounted(() => {
             <!-- Falta -->
             <div v-if="!meta.concluida" class="alert alert-info mb-4 py-2">
               <div>
-                <p class="text-sm">Faltam: <strong>{{ formatarMoeda(meta.valor_alvo - meta.valor_atual) }}</strong></p>
+                <p class="text-sm">Faltam: <strong class="tabular-nums">{{ formatarMoeda(meta.valor_alvo - meta.valor_atual) }}</strong></p>
               </div>
             </div>
 
@@ -321,13 +316,13 @@ onMounted(() => {
                 @click="editarMeta(meta.id)"
                 class="btn btn-sm btn-ghost"
               >
-                ✏️ Editar
+                Editar
               </button>
               <button
                 @click="abrirModalDelete(meta)"
                 class="btn btn-sm btn-ghost text-error"
               >
-                🗑️ Deletar
+                Deletar
               </button>
             </div>
           </div>
@@ -346,7 +341,7 @@ onMounted(() => {
     >
       <div class="modal-box">
         <h3 class="font-bold text-lg mb-4">
-          🗑️ Excluir Meta
+          Excluir Meta
         </h3>
         <p class="py-4 text-gray-600">
           Tem certeza que deseja excluir a meta <strong>"{{ metaADeletar?.nome }}"</strong>?
@@ -355,7 +350,7 @@ onMounted(() => {
           Saldo atual: <strong>{{ formatarMoeda(metaADeletar?.valor_atual || 0) }}</strong>
         </p>
         <p class="text-sm text-error font-semibold">
-          ⚠️ Esta ação não pode ser desfeita!
+          Esta ação não pode ser desfeita.
         </p>
 
         <div class="modal-action gap-2 mt-6">
@@ -380,7 +375,7 @@ onMounted(() => {
     <!-- Modal de Erro -->
     <div v-if="showErrorModal" class="modal modal-open">
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">❗ Erro</h3>
+        <h3 class="font-bold text-lg mb-4">Erro</h3>
         <div class="space-y-2 text-sm text-gray-700">
           <p v-for="(m, i) in errorMessages" :key="i">• {{ m }}</p>
         </div>

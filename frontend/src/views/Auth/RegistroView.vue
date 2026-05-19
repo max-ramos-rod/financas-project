@@ -40,7 +40,7 @@ const handleRegister = async () => {
 </script>
 <template>
   <div class="min-h-screen bg-base-200 flex items-center justify-center py-8">
-    <div class="card w-full max-w-md bg-white shadow-xl">
+    <div class="card w-full max-w-md bg-base-100 shadow-xl">
       <div class="card-body">
         <h2 class="card-title text-3xl font-bold text-center mb-6">
           Criar Conta

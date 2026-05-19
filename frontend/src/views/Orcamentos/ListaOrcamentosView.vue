@@ -171,12 +171,12 @@ onMounted(() => {
 <template>
   <div class="min-h-screen bg-base-200">
     <!-- Header -->
-    <div class="bg-white shadow">
+    <div class="bg-base-100 shadow">
       <div class="container mx-auto px-4 py-4">
         <div class="flex justify-between items-center">
-          <h1 class="text-2xl font-bold">💼 Orçamentos</h1>
+          <h1 class="text-2xl font-bold">Orçamentos</h1>
           <button @click="novoOrcamento" class="btn btn-primary">
-            ➕ Novo Orçamento
+            Novo Orçamento
           </button>
         </div>
       </div>
@@ -192,9 +192,9 @@ onMounted(() => {
     <div v-else class="container mx-auto px-4 py-8">
       
       <!-- Filtros -->
-      <div class="card bg-white shadow-md mb-6">
+      <div class="card bg-base-100 shadow-md mb-6">
         <div class="card-body">
-          <h3 class="card-title mb-4">📅 Período</h3>
+          <h3 class="card-title mb-4">Período</h3>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Mês -->
             <div>
@@ -233,30 +233,30 @@ onMounted(() => {
 
       <!-- Resumo -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Planejado</p>
-            <p class="text-2xl font-bold text-info">{{ formatarMoeda(totais.planejado) }}</p>
+            <p class="text-2xl font-bold text-info tabular-nums">{{ formatarMoeda(totais.planejado) }}</p>
           </div>
         </div>
 
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Gasto</p>
-            <p class="text-2xl font-bold text-error">{{ formatarMoeda(totais.gasto) }}</p>
+            <p class="text-2xl font-bold text-error tabular-nums">{{ formatarMoeda(totais.gasto) }}</p>
           </div>
         </div>
 
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Restante</p>
-            <p :class="['text-2xl font-bold', totais.restante >= 0 ? 'text-success' : 'text-error']">
+            <p :class="['text-2xl font-bold tabular-nums', totais.restante >= 0 ? 'text-success' : 'text-error']">
               {{ formatarMoeda(totais.restante) }}
             </p>
           </div>
         </div>
 
-        <div class="card bg-white shadow-md">
+        <div class="card bg-base-100 shadow-md">
           <div class="card-body">
             <p class="text-sm text-gray-500">Utilizado</p>
             <p class="text-2xl font-bold">{{ totais.percentualGasto.toFixed(1) }}%</p>
@@ -265,15 +265,14 @@ onMounted(() => {
       </div>
 
       <!-- Lista de Orçamentos -->
-      <div v-if="orcamentosFiltrados.length === 0" class="card bg-white shadow-md">
+      <div v-if="orcamentosFiltrados.length === 0" class="card bg-base-100 shadow-md">
         <div class="card-body text-center py-16">
-          <div class="text-6xl mb-4">💼</div>
           <p class="text-xl font-semibold mb-2">Nenhum orçamento encontrado</p>
-          <p class="text-gray-500 mb-6">
+          <p class="text-base-content/50 mb-6">
             Crie seu primeiro orçamento para acompanhar seus gastos
           </p>
           <button @click="novoOrcamento" class="btn btn-primary">
-            ➕ Novo Orçamento
+            Novo Orçamento
           </button>
         </div>
       </div>
@@ -283,7 +282,7 @@ onMounted(() => {
         <div
           v-for="orcamento in orcamentosFiltrados"
           :key="orcamento.id"
-          class="card bg-white shadow-md hover:shadow-lg transition-shadow"
+          class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow"
         >
           <div class="card-body">
             <!-- Header -->
@@ -323,7 +322,7 @@ onMounted(() => {
                   {{ percentualOrcamento(orcamento).toFixed(1) }}%
                 </span>
               </div>
-              <div class="h-3 w-full rounded-full bg-gray-200 overflow-hidden">
+              <div class="h-3 w-full rounded-full bg-base-300 overflow-hidden">
                 <div
                   class="h-full transition-all duration-300"
                   :class="orcamento.valor_gasto > orcamento.valor_planejado ? 'bg-error' : 'bg-success'"
@@ -335,7 +334,7 @@ onMounted(() => {
             <!-- Alert se exceder -->
             <div v-if="orcamento.valor_gasto > orcamento.valor_planejado" class="alert alert-error alert-sm mb-4">
               <div class="text-xs">
-                ⚠️ Orçamento excedido em {{ formatarMoeda(orcamento.valor_gasto - orcamento.valor_planejado) }}
+                Orçamento excedido em <span class="tabular-nums">{{ formatarMoeda(orcamento.valor_gasto - orcamento.valor_planejado) }}</span>
               </div>
             </div>
 
@@ -345,13 +344,13 @@ onMounted(() => {
                 @click="editarOrcamento(orcamento.id)"
                 class="btn btn-sm btn-ghost"
               >
-                ✏️ Editar
+                Editar
               </button>
               <button
                 @click="abrirModalDelete(orcamento)"
                 class="btn btn-sm btn-ghost text-error"
               >
-                🗑️ Deletar
+                Deletar
               </button>
             </div>
           </div>
@@ -362,7 +361,7 @@ onMounted(() => {
     <!-- Modal de Confirmação de Deleção -->
     <div v-if="mostraModalDelete" class="modal modal-open">
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">🗑️ Excluir Orçamento</h3>
+        <h3 class="font-bold text-lg mb-4">Excluir Orçamento</h3>
         <p class="py-4 text-gray-600">
           Tem certeza que deseja excluir o orçamento de <strong>"{{ getCategoriaInfo(orcamentoADeletar?.categoria_id || 0).nome }}"</strong>?
         </p>
@@ -370,7 +369,7 @@ onMounted(() => {
           Valor planejado: <strong>{{ formatarMoeda(orcamentoADeletar?.valor_planejado || 0) }}</strong>
         </p>
         <p class="text-sm text-error font-semibold">
-          ⚠️ Esta ação não pode ser desfeita!
+          Esta ação não pode ser desfeita.
         </p>
 
         <div class="modal-action gap-2 mt-6">
