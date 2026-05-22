@@ -301,7 +301,7 @@ onMounted(carregar)
                   <p class="text-xs font-medium opacity-70 uppercase tracking-wide">
                     {{ cicloAtualSelecionado ? 'Fatura Atual' : 'Ciclo Selecionado' }}
                   </p>
-                  <p class="text-3xl font-bold mt-0.5">{{ formatarMoeda(faturaSelecionada.valor_total) }}</p>
+                  <p class="text-3xl font-bold mt-0.5 tabular-nums">{{ formatarMoeda(faturaSelecionada.valor_total) }}</p>
                   <p class="text-xs opacity-70 mt-1">
                     {{ faturaSelecionada.total_itens }} item(ns) &nbsp;·&nbsp;
                     Venc. {{ formatarData(faturaSelecionada.data_vencimento_fatura) }}
@@ -327,8 +327,8 @@ onMounted(carregar)
                 </div>
                 <div>
                   <p class="opacity-60">Pago / A pagar</p>
-                  <p class="font-medium">{{ formatarMoeda(faturaSelecionada.valor_pago || 0) }}</p>
-                  <p class="font-medium">{{ formatarMoeda(faturaSelecionada.valor_a_pagar || 0) }}</p>
+                  <p class="font-medium tabular-nums">{{ formatarMoeda(faturaSelecionada.valor_pago || 0) }}</p>
+                  <p class="font-medium tabular-nums">{{ formatarMoeda(faturaSelecionada.valor_a_pagar || 0) }}</p>
                 </div>
               </div>
             </div>
