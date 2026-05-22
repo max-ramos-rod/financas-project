@@ -20,6 +20,8 @@ class ContaCreate(ContaBase):
         if self.tipo == TipoConta.CARTAO_CREDITO:
             if self.dia_fechamento is None or self.dia_vencimento is None:
                 raise ValueError("Conta de cartao exige dia_fechamento e dia_vencimento.")
+            if self.dia_fechamento == self.dia_vencimento:
+                raise ValueError("Dia de fechamento e dia de vencimento nao podem ser iguais.")
         else:
             self.dia_fechamento = None
             self.dia_vencimento = None
@@ -35,6 +37,16 @@ class ContaUpdate(BaseModel):
     limite_credito: Optional[float] = Field(default=None, ge=0)
     cor: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$")
     ativa: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def validar_dias_cartao(self):
+        if (
+            self.dia_fechamento is not None
+            and self.dia_vencimento is not None
+            and self.dia_fechamento == self.dia_vencimento
+        ):
+            raise ValueError("Dia de fechamento e dia de vencimento nao podem ser iguais.")
+        return self
 
 class ContaResponse(ContaBase):
     id: int

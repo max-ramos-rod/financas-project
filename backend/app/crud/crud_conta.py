@@ -58,6 +58,8 @@ def atualizar_conta(db: Session, conta_id: int, user_id: int, conta_update: Cont
             dia_vencimento = update_data.get("dia_vencimento", db_conta.dia_vencimento)
             if dia_fechamento is None or dia_vencimento is None:
                 raise ValueError("Conta de cartao exige dia_fechamento e dia_vencimento.")
+            if dia_fechamento == dia_vencimento:
+                raise ValueError("Dia de fechamento e dia de vencimento nao podem ser iguais.")
         # Cartao de credito nao usa saldo manual.
         update_data["saldo"] = 0.0
 

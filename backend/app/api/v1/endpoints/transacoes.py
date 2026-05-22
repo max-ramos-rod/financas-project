@@ -339,6 +339,8 @@ def buscar_transacao(
 @router.post("", response_model=TransacaoResponse, status_code=status.HTTP_201_CREATED)
 def criar_transacao(
     transacao: TransacaoCreate,
+    fatura_periodo_inicio: date | None = Query(default=None),
+    fatura_periodo_fim: date | None = Query(default=None),
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context)
 ):
@@ -371,6 +373,12 @@ def criar_transacao(
     - Saída: R$ 500 (Dízimo, id=2, uuid=abc-123, e_dizimo=true)
     - Saldo: +R$ 4.500
     """
+    if fatura_periodo_inicio and fatura_periodo_fim:
+        if not (fatura_periodo_inicio <= transacao.data <= fatura_periodo_fim):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Data da transação deve estar entre {fatura_periodo_inicio.isoformat()} e {fatura_periodo_fim.isoformat()}.",
+            )
     try:
         nova_transacao = crud.criar_transacao(db, transacao, access_ctx.effective_user.id)
         return nova_transacao
@@ -409,6 +417,8 @@ def duplicar_transacao(
 def atualizar_transacao(
     transacao_id: int,
     transacao: TransacaoUpdate,
+    fatura_periodo_inicio: date | None = Query(default=None),
+    fatura_periodo_fim: date | None = Query(default=None),
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context)
 ):
@@ -420,6 +430,12 @@ def atualizar_transacao(
     - Para alterar o dízimo, edite a entrada original
     - Se a entrada tinha dízimo, o dízimo será atualizado automaticamente
     """
+    if fatura_periodo_inicio and fatura_periodo_fim and transacao.data is not None:
+        if not (fatura_periodo_inicio <= transacao.data <= fatura_periodo_fim):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Data da transação deve estar entre {fatura_periodo_inicio.isoformat()} e {fatura_periodo_fim.isoformat()}.",
+            )
     try:
         transacao_atualizada = crud.atualizar_transacao(
             db, transacao_id, access_ctx.effective_user.id, transacao

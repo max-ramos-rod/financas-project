@@ -54,6 +54,54 @@ def test_create_cartao_credito_forces_saldo_zero(client):
     assert payload["saldo"] == 0
 
 
+def test_create_cartao_credito_rejeita_dias_iguais(client):
+    headers = _auth_headers(client)
+
+    response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Cartao Dias Iguais",
+            "tipo": "cartao_credito",
+            "saldo": 0,
+            "dia_fechamento": 10,
+            "dia_vencimento": 10,
+            "cor": "#3B82F6",
+            "ativa": True,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_cartao_credito_rejeita_dias_iguais(client):
+    headers = _auth_headers(client)
+
+    create_response = client.post(
+        "/api/v1/contas",
+        headers=headers,
+        json={
+            "nome": "Cartao Para Update",
+            "tipo": "cartao_credito",
+            "saldo": 0,
+            "dia_fechamento": 5,
+            "dia_vencimento": 15,
+            "cor": "#3B82F6",
+            "ativa": True,
+        },
+    )
+    assert create_response.status_code == 201
+    conta_id = create_response.json()["id"]
+
+    update_response = client.put(
+        f"/api/v1/contas/{conta_id}",
+        headers=headers,
+        json={"dia_vencimento": 5},
+    )
+
+    assert update_response.status_code == 400
+
+
 def test_update_to_cartao_credito_forces_saldo_zero(client):
     headers = _auth_headers(client)
 
