@@ -69,6 +69,16 @@ def _criar_conta_cartao_custom(client, headers, nome: str, dia_fechamento: int, 
     return response.json()["id"]
 
 
+def _competencia_meses_atras(n: int) -> tuple[int, int]:
+    today = date.today()
+    month = today.month - n
+    year = today.year
+    while month <= 0:
+        month += 12
+        year -= 1
+    return year, month
+
+
 def _criar_conta_pagamento(client, headers, saldo: float = 5000.0):
     response = client.post(
         "/api/v1/contas",
@@ -355,12 +365,16 @@ def test_ajustar_ciclo_fatura_atual_aplica_datas_reais_e_observacao(client):
     assert fatura_inicial.status_code == 200
     payload_inicial = fatura_inicial.json()
 
+    data_fechamento_prevista = date.fromisoformat(payload_inicial["data_fechamento_prevista"])
+    data_fechamento_real = data_fechamento_prevista + timedelta(days=2)
+    data_vencimento_real = data_fechamento_prevista + timedelta(days=10)
+
     ajuste = client.put(
         f"/api/v1/contas/{conta_cartao_id}/fatura-atual/ajuste-ciclo",
         headers=headers,
         json={
-            "data_fechamento_real": "2026-04-22",
-            "data_vencimento_real": "2026-04-30",
+            "data_fechamento_real": data_fechamento_real.isoformat(),
+            "data_vencimento_real": data_vencimento_real.isoformat(),
             "observacao": "Postergado por feriado bancario.",
         },
     )
@@ -370,29 +384,35 @@ def test_ajustar_ciclo_fatura_atual_aplica_datas_reais_e_observacao(client):
     assert payload["competencia_ano"] == payload_inicial["competencia_ano"]
     assert payload["competencia_mes"] == payload_inicial["competencia_mes"]
     assert payload["data_fechamento_prevista"] == payload_inicial["data_fechamento_prevista"]
-    assert payload["data_fechamento_real"] == "2026-04-22"
-    assert payload["data_fechamento_fatura"] == "2026-04-22"
+    assert payload["data_fechamento_real"] == data_fechamento_real.isoformat()
+    assert payload["data_fechamento_fatura"] == data_fechamento_real.isoformat()
     assert payload["data_vencimento_prevista"] == payload_inicial["data_vencimento_prevista"]
-    assert payload["data_vencimento_fatura"] == "2026-04-30"
+    assert payload["data_vencimento_fatura"] == data_vencimento_real.isoformat()
     assert payload["observacao_ciclo"] == "Postergado por feriado bancario."
 
     contas = client.get("/api/v1/contas", headers=headers)
     assert contas.status_code == 200
     cartao = next(c for c in contas.json() if c["id"] == conta_cartao_id)
-    assert cartao["data_fechamento_fatura"] == "2026-04-22"
-    assert cartao["data_vencimento_fatura"] == "2026-04-30"
+    assert cartao["data_fechamento_fatura"] == data_fechamento_real.isoformat()
+    assert cartao["data_vencimento_fatura"] == data_vencimento_real.isoformat()
 
 
 def test_limpar_ajuste_ciclo_fatura_atual_retorna_para_datas_previstas(client):
     headers = _auth_headers(client)
     conta_cartao_id = _criar_conta_cartao(client, headers)
 
+    fatura_inicial = client.get(f"/api/v1/contas/{conta_cartao_id}/fatura-atual", headers=headers)
+    assert fatura_inicial.status_code == 200
+    data_fechamento_prevista = date.fromisoformat(fatura_inicial.json()["data_fechamento_prevista"])
+    data_fechamento_real = data_fechamento_prevista + timedelta(days=2)
+    data_vencimento_real = data_fechamento_prevista + timedelta(days=10)
+
     ajuste = client.put(
         f"/api/v1/contas/{conta_cartao_id}/fatura-atual/ajuste-ciclo",
         headers=headers,
         json={
-            "data_fechamento_real": "2026-04-22",
-            "data_vencimento_real": "2026-04-30",
+            "data_fechamento_real": data_fechamento_real.isoformat(),
+            "data_vencimento_real": data_vencimento_real.isoformat(),
             "observacao": "Excecao do mes.",
         },
     )
@@ -412,6 +432,12 @@ def test_ajuste_de_fechamento_real_inclui_compras_nos_dias_extras_do_ciclo(clien
     headers = _auth_headers(client)
     conta_cartao_id = _criar_conta_cartao(client, headers)
 
+    fatura_inicial = client.get(f"/api/v1/contas/{conta_cartao_id}/fatura-atual", headers=headers)
+    assert fatura_inicial.status_code == 200
+    data_fechamento_prevista = date.fromisoformat(fatura_inicial.json()["data_fechamento_prevista"])
+    data_transacao = data_fechamento_prevista + timedelta(days=1)
+    data_fechamento_real = data_fechamento_prevista + timedelta(days=2)
+
     fora_do_padrao = client.post(
         "/api/v1/transacoes",
         headers=headers,
@@ -420,7 +446,7 @@ def test_ajuste_de_fechamento_real_inclui_compras_nos_dias_extras_do_ciclo(clien
             "descricao": "Compra no dia extra do ciclo",
             "valor": 99.0,
             "tipo": "saida",
-            "data": "2026-04-21",
+            "data": data_transacao.isoformat(),
             "status_liquidacao": "previsto",
         },
     )
@@ -435,7 +461,7 @@ def test_ajuste_de_fechamento_real_inclui_compras_nos_dias_extras_do_ciclo(clien
         f"/api/v1/contas/{conta_cartao_id}/fatura-atual/ajuste-ciclo",
         headers=headers,
         json={
-            "data_fechamento_real": "2026-04-22",
+            "data_fechamento_real": data_fechamento_real.isoformat(),
             "observacao": "Fechamento atrasou por feriado.",
         },
     )
@@ -448,6 +474,13 @@ def test_ajustar_ciclo_antigo_por_competencia(client):
     headers = _auth_headers(client)
     conta_cartao_id = _criar_conta_cartao(client, headers)
 
+    year, month = _competencia_meses_atras(2)
+    dia_fechamento = 20  # matches _criar_conta_cartao
+    data_fechamento_prevista = date(year, month, dia_fechamento)
+    data_transacao = data_fechamento_prevista + timedelta(days=1)
+    data_fechamento_real = data_fechamento_prevista + timedelta(days=2)
+    data_vencimento_real = data_fechamento_prevista + timedelta(days=12)
+
     compra_dia_extra = client.post(
         "/api/v1/transacoes",
         headers=headers,
@@ -456,34 +489,34 @@ def test_ajustar_ciclo_antigo_por_competencia(client):
             "descricao": "Compra ciclo antigo ajustado",
             "valor": 125.0,
             "tipo": "saida",
-            "data": "2026-03-21",
+            "data": data_transacao.isoformat(),
             "status_liquidacao": "previsto",
         },
     )
     assert compra_dia_extra.status_code == 201
 
-    antes = client.get(f"/api/v1/contas/{conta_cartao_id}/faturas/2026/3", headers=headers)
+    antes = client.get(f"/api/v1/contas/{conta_cartao_id}/faturas/{year}/{month}", headers=headers)
     assert antes.status_code == 200
     assert "Compra ciclo antigo ajustado" not in [item["descricao"] for item in antes.json()["itens"]]
 
     ajuste = client.put(
-        f"/api/v1/contas/{conta_cartao_id}/faturas/2026/3/ajuste-ciclo",
+        f"/api/v1/contas/{conta_cartao_id}/faturas/{year}/{month}/ajuste-ciclo",
         headers=headers,
         json={
-            "data_fechamento_real": "2026-03-22",
-            "data_vencimento_real": "2026-04-01",
+            "data_fechamento_real": data_fechamento_real.isoformat(),
+            "data_vencimento_real": data_vencimento_real.isoformat(),
             "observacao": "Ajuste manual de fatura antiga.",
         },
     )
     assert ajuste.status_code == 200
     payload = ajuste.json()
 
-    assert payload["competencia_ano"] == 2026
-    assert payload["competencia_mes"] == 3
-    assert payload["data_fechamento_real"] == "2026-03-22"
-    assert payload["data_fechamento_fatura"] == "2026-03-22"
-    assert payload["data_vencimento_real"] == "2026-04-01"
-    assert payload["data_vencimento_fatura"] == "2026-04-01"
+    assert payload["competencia_ano"] == year
+    assert payload["competencia_mes"] == month
+    assert payload["data_fechamento_real"] == data_fechamento_real.isoformat()
+    assert payload["data_fechamento_fatura"] == data_fechamento_real.isoformat()
+    assert payload["data_vencimento_real"] == data_vencimento_real.isoformat()
+    assert payload["data_vencimento_fatura"] == data_vencimento_real.isoformat()
     assert payload["observacao_ciclo"] == "Ajuste manual de fatura antiga."
     assert "Compra ciclo antigo ajustado" in [item["descricao"] for item in payload["itens"]]
 
@@ -493,6 +526,11 @@ def test_pagar_fatura_antiga_por_competencia(client):
     conta_cartao_id = _criar_conta_cartao(client, headers)
     conta_pagamento_id = _criar_conta_pagamento(client, headers, saldo=1000.0)
 
+    year, month = _competencia_meses_atras(2)
+    dia_fechamento = 20  # matches _criar_conta_cartao
+    data_transacao = date(year, month, 10)  # safely within the cycle
+    data_pagamento = date(year, month, dia_fechamento) + timedelta(days=12)
+
     compra = client.post(
         "/api/v1/transacoes",
         headers=headers,
@@ -501,7 +539,7 @@ def test_pagar_fatura_antiga_por_competencia(client):
             "descricao": "Compra fatura antiga",
             "valor": 200.0,
             "tipo": "saida",
-            "data": "2026-03-10",
+            "data": data_transacao.isoformat(),
             "status_liquidacao": "previsto",
         },
     )
@@ -509,11 +547,11 @@ def test_pagar_fatura_antiga_por_competencia(client):
     transacao_id = compra.json()["id"]
 
     pagar = client.post(
-        f"/api/v1/contas/{conta_cartao_id}/faturas/2026/3/pagar",
+        f"/api/v1/contas/{conta_cartao_id}/faturas/{year}/{month}/pagar",
         headers=headers,
         json={
             "conta_pagamento_id": conta_pagamento_id,
-            "data_pagamento": "2026-04-01",
+            "data_pagamento": data_pagamento.isoformat(),
         },
     )
     assert pagar.status_code == 200
@@ -525,4 +563,4 @@ def test_pagar_fatura_antiga_por_competencia(client):
     assert transacoes.status_code == 200
     item = next(t for t in transacoes.json() if t["id"] == transacao_id)
     assert item["status_liquidacao"] == "liquidado"
-    assert item["data_liquidacao"] == "2026-04-01"
+    assert item["data_liquidacao"] == data_pagamento.isoformat()

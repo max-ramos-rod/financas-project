@@ -97,7 +97,6 @@ const editarMeta = (id: number) => {
 }
 
 const abrirModalDelete = (meta: Meta) => {
-  console.log("TESTANDO A PACIENCIA NA VIDA.")
   metaADeletar.value = meta
   mostraModalDelete.value = true
 }

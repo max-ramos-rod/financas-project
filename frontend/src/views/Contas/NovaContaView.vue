@@ -47,6 +47,14 @@ const tiposConta = [
 ]
 
 // Computed - Validacao
+const erroDiasFatura = computed(() => {
+  if (form.value.tipo !== 'cartao_credito') return ''
+  if (!form.value.dia_fechamento || !form.value.dia_vencimento) return ''
+  if (form.value.dia_fechamento === form.value.dia_vencimento)
+    return 'Dia de fechamento e dia de vencimento não podem ser iguais.'
+  return ''
+})
+
 const formValido = computed(() => {
   const base = (
     form.value.nome &&
@@ -55,7 +63,7 @@ const formValido = computed(() => {
   )
   if (!base) return false
   if (form.value.tipo === 'cartao_credito') {
-    return !!form.value.dia_fechamento && !!form.value.dia_vencimento
+    return !!form.value.dia_fechamento && !!form.value.dia_vencimento && !erroDiasFatura.value
   }
   return true
 })
@@ -231,25 +239,40 @@ onMounted(() => {
               </p>
             </div>
 
-            <div v-if="form.tipo === 'cartao_credito'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="label">
-                  <span class="label-text font-semibold">Dia Fechamento *</span>
-                </label>
-                <input v-model.number="form.dia_fechamento" type="number" min="1" max="31" class="input input-bordered w-full" />
+            <div v-if="form.tipo === 'cartao_credito'" class="space-y-3">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label class="label">
+                    <span class="label-text font-semibold">Dia Fechamento *</span>
+                  </label>
+                  <input
+                    v-model.number="form.dia_fechamento"
+                    type="number"
+                    min="1"
+                    max="31"
+                    :class="['input input-bordered w-full', erroDiasFatura ? 'input-error' : '']"
+                  />
+                </div>
+                <div>
+                  <label class="label">
+                    <span class="label-text font-semibold">Dia Vencimento *</span>
+                  </label>
+                  <input
+                    v-model.number="form.dia_vencimento"
+                    type="number"
+                    min="1"
+                    max="31"
+                    :class="['input input-bordered w-full', erroDiasFatura ? 'input-error' : '']"
+                  />
+                </div>
+                <div>
+                  <label class="label">
+                    <span class="label-text font-semibold">Limite Crédito</span>
+                  </label>
+                  <input v-model.number="form.limite_credito" type="number" min="0" step="0.01" class="input input-bordered w-full" />
+                </div>
               </div>
-              <div>
-                <label class="label">
-                  <span class="label-text font-semibold">Dia Vencimento *</span>
-                </label>
-                <input v-model.number="form.dia_vencimento" type="number" min="1" max="31" class="input input-bordered w-full" />
-              </div>
-              <div>
-                <label class="label">
-                  <span class="label-text font-semibold">Limite Credito</span>
-                </label>
-                <input v-model.number="form.limite_credito" type="number" min="0" step="0.01" class="input input-bordered w-full" />
-              </div>
+              <p v-if="erroDiasFatura" class="text-sm text-error">{{ erroDiasFatura }}</p>
             </div>
 
             <!-- Cor -->

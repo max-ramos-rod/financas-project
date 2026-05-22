@@ -63,9 +63,22 @@ const roundTo2 = (value: number | null | undefined): number => {
 
 const categoriasFiltradas = computed(() => categorias.value.filter((c) => c.tipo === form.value.tipo || c.tipo === null))
 
+const faturaPeriodoInicio = computed(() => route.query.periodo_inicio as string | undefined)
+const faturaPeriodoFim = computed(() => route.query.periodo_fim as string | undefined)
+
+const erroDataFatura = computed(() => {
+  if (!faturaPeriodoInicio.value || !faturaPeriodoFim.value || !form.value.data) return ''
+  if (form.value.data < faturaPeriodoInicio.value || form.value.data > faturaPeriodoFim.value) {
+    const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR')
+    return `Data deve estar entre ${fmt(faturaPeriodoInicio.value)} e ${fmt(faturaPeriodoFim.value)}.`
+  }
+  return ''
+})
+
 const formValido = computed(() => {
   const base = form.value.conta_id && form.value.descricao && form.value.valor && form.value.valor > 0 && form.value.data
   if (!base) return false
+  if (erroDataFatura.value) return false
   if (editando.value && form.value.status_liquidacao === 'liquidado' && !form.value.data_liquidacao) return false
   if (form.value.parcelado) {
     return !!form.value.total_parcelas && form.value.total_parcelas >= 2
@@ -266,6 +279,10 @@ const salvar = async (destino: 'lista' | 'continuar' = 'lista') => {
       meta_id: form.value.meta_id,
     }
 
+    const faturaParams = faturaPeriodoInicio.value && faturaPeriodoFim.value
+      ? { fatura_periodo_inicio: faturaPeriodoInicio.value, fatura_periodo_fim: faturaPeriodoFim.value }
+      : {}
+
     if (editando.value && transacaoId.value) {
       if (editandoDizimo.value) {
         const baixaDizimo = {
@@ -275,12 +292,12 @@ const salvar = async (destino: 'lista' | 'continuar' = 'lista') => {
               ? form.value.data_liquidacao
               : undefined,
         }
-        await api.put(`/transacoes/${transacaoId.value}`, baixaDizimo)
+        await api.put(`/transacoes/${transacaoId.value}`, baixaDizimo, { params: faturaParams })
       } else {
-        await api.put(`/transacoes/${transacaoId.value}`, dados)
+        await api.put(`/transacoes/${transacaoId.value}`, dados, { params: faturaParams })
       }
     } else {
-      await api.post('/transacoes', dados)
+      await api.post('/transacoes', dados, { params: faturaParams })
     }
 
     if (destino === 'continuar' && !editando.value) {
@@ -288,7 +305,14 @@ const salvar = async (destino: 'lista' | 'continuar' = 'lista') => {
       return
     }
 
-    router.push({ path: '/transacoes', query: route.query })
+    const faturaContaId = route.query.conta_id
+    const faturaAno = route.query.ano
+    const faturasMes = route.query.mes
+    if (faturaContaId && faturaAno && faturasMes) {
+      router.push({ path: `/contas/${faturaContaId}/fatura`, query: { ano: faturaAno, mes: faturasMes } })
+    } else {
+      router.push({ path: '/transacoes', query: route.query })
+    }
   } catch (error: any) {
     erroGeral.value = error?.response?.data?.detail || 'Erro ao salvar transação'
   } finally {
@@ -373,7 +397,13 @@ onMounted(() => {
             </div>
             <div>
               <label class="label"><span class="label-text font-semibold">Data *</span></label>
-              <input v-model="form.data" type="date" class="input input-bordered w-full" required />
+              <input
+                v-model="form.data"
+                type="date"
+                :class="['input input-bordered w-full', erroDataFatura ? 'input-error' : '']"
+                required
+              />
+              <p v-if="erroDataFatura" class="text-sm text-error mt-1">{{ erroDataFatura }}</p>
             </div>
             <div>
               <label class="label"><span class="label-text font-semibold">Vencimento</span></label>

@@ -5,6 +5,7 @@ import api from '@/services/api'
 import type { Conta, FaturaResumo } from '@/types'
 import { formatDateBR, formatDateForInput } from '@/utils/date'
 import ConfirmModal from '@/components/ConfirmModal.vue'
+import { Pencil } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -90,6 +91,21 @@ const novaTransacao = () => {
       ano: faturaSelecionada.value?.competencia_ano,
       mes: faturaSelecionada.value?.competencia_mes,
       tipo: 'saida',
+      periodo_inicio: faturaSelecionada.value?.periodo_inicio,
+      periodo_fim: faturaSelecionada.value?.periodo_fim,
+    },
+  })
+}
+
+const editarTransacao = (id: number) => {
+  router.push({
+    path: `/transacoes/${id}/editar`,
+    query: {
+      conta_id: contaId,
+      ano: faturaSelecionada.value?.competencia_ano,
+      mes: faturaSelecionada.value?.competencia_mes,
+      periodo_inicio: faturaSelecionada.value?.periodo_inicio,
+      periodo_fim: faturaSelecionada.value?.periodo_fim,
     },
   })
 }
@@ -468,7 +484,7 @@ onMounted(carregar)
                         <th class="font-medium">Vencimento</th>
                         <th class="font-medium">Status</th>
                         <th class="font-medium text-right pr-0">Valor</th>
-                        <th class="w-8"></th>
+                        <th class="w-16"></th>
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-base-200">
@@ -494,10 +510,16 @@ onMounted(carregar)
                           {{ formatarMoeda(item.valor_efetivo) }}
                         </td>
                         <td class="pr-0">
-                          <button
-                            class="btn btn-ghost btn-xs text-error opacity-30 hover:opacity-100"
-                            @click="abrirModalExcluir(item.transacao_id, item.descricao, item.valor_efetivo)"
-                          >×</button>
+                          <div class="flex items-center gap-1">
+                            <button
+                              class="btn btn-ghost btn-xs opacity-30 hover:opacity-100"
+                              @click="editarTransacao(item.transacao_id)"
+                            ><Pencil :size="12" /></button>
+                            <button
+                              class="btn btn-ghost btn-xs text-error opacity-30 hover:opacity-100"
+                              @click="abrirModalExcluir(item.transacao_id, item.descricao, item.valor_efetivo)"
+                            >×</button>
+                          </div>
                         </td>
                       </tr>
                     </tbody>
@@ -529,6 +551,10 @@ onMounted(carregar)
                       >
                         {{ formatarMoeda(item.valor_efetivo) }}
                       </p>
+                      <button
+                        class="btn btn-ghost btn-xs opacity-30 hover:opacity-100"
+                        @click="editarTransacao(item.transacao_id)"
+                      ><Pencil :size="12" /></button>
                       <button
                         class="btn btn-ghost btn-xs text-error opacity-30 hover:opacity-100"
                         @click="abrirModalExcluir(item.transacao_id, item.descricao, item.valor_efetivo)"

@@ -402,7 +402,7 @@ def duplicar_transacao(
         if not nova_transacao:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="TransaÃ§Ã£o nÃ£o encontrada"
+                detail="Transação não encontrada"
             )
 
         return nova_transacao
