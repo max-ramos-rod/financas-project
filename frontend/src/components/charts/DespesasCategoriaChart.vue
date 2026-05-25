@@ -30,16 +30,18 @@ const chartOptions = computed(() => {
     plotOptions: { bar: { ...t.plotOptions?.bar, horizontal: true, barHeight: '48%' } },
     xaxis: {
       ...t.xaxis,
-      categories: props.dados.map(d => d.nome),
       min: 0,
       tickAmount: 4,
       labels: {
         ...t.xaxis?.labels,
-        show: true,
-        formatter: (value: number) => Number(value).toLocaleString('pt-BR'),
+        formatter: (v: number | string) =>
+          `R$ ${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(Number(v))}`,
       },
     },
-    yaxis: { ...t.yaxis },
+    yaxis: {
+      ...t.yaxis,
+      categories: props.dados.map(d => d.nome),
+    },
     tooltip: {
       ...t.tooltip,
       x: { formatter: (_: unknown, opts: any) => props.dados[opts.dataPointIndex]?.nome || '' },

@@ -330,28 +330,26 @@ onMounted(fetchDados)
         <div class="col-span-12 card bg-base-100 shadow-sm">
           <div class="card-body p-5 lg:py-5">
             <!-- Mobile: stack vertical; Desktop: régua horizontal -->
-            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:gap-6">
+            <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:gap-6">
 
               <!-- Saldo total + pill (mobile: pill abaixo do saldo) -->
-              <div class="flex items-start justify-between gap-3 lg:block lg:flex-shrink-0">
-                <div>
-                  <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.saldo_total }}</p>
-                  <p class="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums mt-0.5">
-                    {{ formatarMoeda(saldoTotal) }}
-                  </p>
-                </div>
+              <div class="xl:flex-shrink-0">
+                <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.saldo_total }}</p>
+                <p class="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums mt-0.5">
+                  {{ formatarMoeda(saldoTotal) }}
+                </p>
                 <div
                   v-if="saldoMes !== 0"
-                  :class="['badge', 'badge-sm', 'gap-1', 'font-mono', 'tabular-nums', 'text-[10px]', 'lg:hidden', saldoMes >= 0 ? 'badge-success' : 'badge-error']"
+                  :class="['inline-flex', 'badge', 'badge-sm', 'gap-1', 'font-mono', 'tabular-nums', 'text-[10px]', 'mt-2', 'xl:hidden', saldoMes >= 0 ? 'badge-success' : 'badge-error']"
                 >
-                  {{ saldoMes >= 0 ? '+' : '' }}{{ formatarMoeda(saldoMes) }}
+                  {{ saldoMes >= 0 ? '+' : '' }}{{ formatarMoeda(saldoMes) }} este mês
                 </div>
               </div>
 
-              <div class="hidden lg:block w-px h-12 bg-base-300"></div>
+              <div class="hidden xl:block w-px h-12 bg-base-300"></div>
 
               <!-- Breakdown: mobile 2 colunas em grid, desktop flex -->
-              <div class="grid grid-cols-2 gap-4 lg:flex lg:gap-8 pt-4 lg:pt-0 border-t lg:border-t-0 border-base-300">
+              <div class="grid grid-cols-2 gap-4 xl:flex xl:gap-8 pt-4 xl:pt-0 border-t xl:border-t-0 border-base-300">
                 <div>
                   <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/50">Conta corrente</p>
                   <p class="text-lg sm:text-xl font-semibold tabular-nums mt-0.5">{{ formatarMoeda(saldoContaCorrente) }}</p>
@@ -362,22 +360,22 @@ onMounted(fetchDados)
                 </div>
               </div>
 
-              <div class="hidden lg:block flex-1"></div>
+              <div class="hidden xl:block flex-1"></div>
 
               <!-- Pill desktop only -->
               <div
                 v-if="saldoMes !== 0"
-                :class="['hidden', 'lg:inline-flex', 'badge', 'badge-lg', 'gap-1', 'font-mono', 'tabular-nums', 'text-[11px]', saldoMes >= 0 ? 'badge-success' : 'badge-error']"
+                :class="['hidden', 'xl:inline-flex', 'badge', 'badge-lg', 'gap-1', 'font-mono', 'tabular-nums', 'text-[11px]', 'whitespace-nowrap', saldoMes >= 0 ? 'badge-success' : 'badge-error']"
               >
                 {{ saldoMes >= 0 ? '+' : '' }}{{ formatarMoeda(saldoMes) }} este mês
               </div>
 
               <!-- Ações: mobile fullwidth com flex 1:1, desktop auto -->
-              <div class="flex gap-2 w-full lg:w-auto">
-                <router-link to="/contas" class="btn btn-ghost btn-sm flex-1 lg:flex-none">
+              <div class="flex gap-2 w-full xl:w-auto">
+                <router-link to="/contas" class="btn btn-ghost btn-sm flex-1 xl:flex-none whitespace-nowrap">
                   Ver contas
                 </router-link>
-                <router-link to="/transacoes/nova" class="btn btn-primary btn-sm flex-1 lg:flex-none">
+                <router-link to="/transacoes/nova" class="btn btn-primary btn-sm flex-1 xl:flex-none whitespace-nowrap">
                   {{ LABELS.nova_transacao }}
                 </router-link>
               </div>
@@ -389,7 +387,7 @@ onMounted(fetchDados)
         <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
           <div class="card-body py-4 gap-1">
             <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.receitas_do_mes }}</p>
-            <p class="text-2xl font-bold text-success tabular-nums">{{ formatarMoeda(receitasMes) }}</p>
+            <p class="text-lg sm:text-xl md:text-2xl font-bold text-success tabular-nums whitespace-nowrap">{{ formatarMoeda(receitasMes) }}</p>
             <p class="text-[11px] font-mono text-base-content/40 mt-0.5">
               {{ qtdReceitas }} {{ qtdReceitas === 1 ? 'lançamento' : 'lançamentos' }}
             </p>
@@ -400,7 +398,7 @@ onMounted(fetchDados)
         <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
           <div class="card-body py-4 gap-1">
             <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.despesas_do_mes }}</p>
-            <p class="text-2xl font-bold text-error tabular-nums">{{ formatarMoeda(despesasMes) }}</p>
+            <p class="text-lg sm:text-xl md:text-2xl font-bold text-error tabular-nums whitespace-nowrap">{{ formatarMoeda(despesasMes) }}</p>
             <p class="text-[11px] font-mono text-base-content/40 mt-0.5">
               {{ qtdDespesas }} {{ qtdDespesas === 1 ? 'lançamento' : 'lançamentos' }}
             </p>
@@ -411,7 +409,7 @@ onMounted(fetchDados)
         <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
           <div class="card-body py-4 gap-1">
             <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.saldo_do_mes }}</p>
-            <p :class="['text-2xl', 'font-bold', 'tabular-nums', saldoMes >= 0 ? 'text-success' : 'text-error']">
+            <p :class="['text-lg', 'sm:text-xl', 'md:text-2xl', 'font-bold', 'tabular-nums', 'whitespace-nowrap', saldoMes >= 0 ? 'text-success' : 'text-error']">
               {{ formatarMoeda(saldoMes) }}
             </p>
             <p class="text-[11px] font-mono text-base-content/40 mt-0.5">
@@ -424,7 +422,7 @@ onMounted(fetchDados)
         <div class="col-span-6 lg:col-span-3 card bg-base-100 shadow-sm">
           <div class="card-body py-4 gap-1">
             <p class="text-[11px] font-mono uppercase tracking-widest text-base-content/50">{{ LABELS.cartao_em_aberto }}</p>
-            <p class="text-2xl font-bold text-error tabular-nums">{{ formatarMoeda(debitoFaturaAtualCartoes) }}</p>
+            <p class="text-lg sm:text-xl md:text-2xl font-bold text-error tabular-nums whitespace-nowrap">{{ formatarMoeda(debitoFaturaAtualCartoes) }}</p>
             <p class="text-[11px] font-mono text-base-content/40 mt-0.5">
               Próximo fechamento
             </p>

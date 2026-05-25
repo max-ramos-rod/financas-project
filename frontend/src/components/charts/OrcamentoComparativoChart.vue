@@ -38,17 +38,19 @@ const chartOptions = computed(() => {
     plotOptions: { bar: { ...t.plotOptions?.bar, horizontal: true, barHeight: '42%' } },
     xaxis: {
       ...t.xaxis,
-      categories: props.dados.map(d => d.categoria),
       min: 0,
       max: maxValor.value,
       tickAmount: 4,
       labels: {
         ...t.xaxis?.labels,
-        show: true,
-        formatter: (value: number) => Number(value).toLocaleString('pt-BR'),
+        formatter: (v: number | string) =>
+          `R$ ${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(Number(v))}`,
       },
     },
-    yaxis: { ...t.yaxis },
+    yaxis: {
+      ...t.yaxis,
+      categories: props.dados.map(d => d.categoria),
+    },
     legend: { ...t.legend, position: 'bottom' },
     tooltip: { ...t.tooltip, y: { formatter: (value: number) => formatarMoeda(value) } },
     colors: ['#1F5C3A', '#b53d2c'],
