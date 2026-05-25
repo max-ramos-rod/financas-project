@@ -96,8 +96,7 @@ const carregarConta = async () => {
       cor: conta.cor,
       ativa: conta.ativa
     }
-  } catch (error) {
-    console.error('Erro ao carregar conta:', error)
+  } catch {
     router.back()
   }
 }
@@ -127,7 +126,6 @@ const salvar = async () => {
     
     router.push('/contas')
   } catch (error: any) {
-    console.error('Erro ao salvar:', error)
     erroSalvar.value = error.response?.data?.detail || 'Erro ao salvar conta'
   } finally {
     loading.value = false

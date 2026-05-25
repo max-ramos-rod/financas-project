@@ -93,8 +93,7 @@ const fetchDados = async () => {
   try {
     const contasRes = await api.get('/contas')
     contas.value = contasRes.data
-  } catch (error) {
-    console.error('Erro ao carregar dados:', error)
+  } catch {
   } finally {
     loading.value = false
   }
@@ -132,7 +131,6 @@ const deletarConta = async () => {
     contas.value = contas.value.filter(c => c.id !== id)
     fecharModalDelete()
   } catch (error) {
-    console.error('Erro ao deletar:', error)
     errorMessages.value = formatApiError(error)
     showErrorModal.value = true
   }

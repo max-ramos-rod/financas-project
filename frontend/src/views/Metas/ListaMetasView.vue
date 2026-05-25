@@ -81,8 +81,7 @@ const fetchDados = async () => {
   try {
     const metasRes = await api.get('/metas')
     metas.value = metasRes.data
-  } catch (error) {
-    console.error('Erro ao carregar dados:', error)
+  } catch {
   } finally {
     loading.value = false
   }
@@ -116,7 +115,6 @@ const deletarMeta = async () => {
     metas.value = metas.value.filter(m => m.id !== id)
     fecharModalDelete()
   } catch (error) {
-    console.error('Erro ao deletar:', error)
     errorMessages.value = formatApiError(error)
     showErrorModal.value = true
   }

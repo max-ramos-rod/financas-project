@@ -78,8 +78,7 @@ const fetchDados = async () => {
     
     orcamentos.value = orcamentosRes.data
     categorias.value = categoriasRes.data
-  } catch (error) {
-    console.error('Erro ao carregar dados:', error)
+  } catch {
   } finally {
     loading.value = false
   }
@@ -113,7 +112,6 @@ const deletarOrcamento = async () => {
     orcamentos.value = orcamentos.value.filter(o => o.id !== id)
     fecharModalDelete()
   } catch (error) {
-    console.error('Erro ao deletar:', error)
     errorMessages.value = formatApiError(error)
     showErrorModal.value = true
   }

@@ -17,6 +17,7 @@ const metas = ref<Meta[]>([])
 const categorias = ref<Categoria[]>([])
 const orcamentos = ref<Orcamento[]>([])
 const loading = ref(true)
+const erro = ref('')
 
 const mesAtual = new Date().getMonth() + 1
 const anoAtual = new Date().getFullYear()
@@ -258,6 +259,7 @@ const horaAtualizacao = computed(() => {
 
 const fetchDados = async () => {
   loading.value = true
+  erro.value = ''
 
   try {
     const [contasRes, transacoesRes, metasRes, categoriasRes, orcamentosRes] =
@@ -274,8 +276,8 @@ const fetchDados = async () => {
     metas.value = metasRes.data
     categorias.value = categoriasRes.data
     orcamentos.value = orcamentosRes.data
-  } catch (error) {
-    console.error('Erro ao carregar dashboard:', error)
+  } catch {
+    erro.value = 'Não foi possível carregar o painel. Verifique sua conexão e tente novamente.'
   } finally {
     loading.value = false
   }
@@ -301,6 +303,14 @@ onMounted(fetchDados)
         <div class="col-span-12 lg:col-span-7 skeleton h-72 rounded-box"></div>
         <div class="col-span-12 lg:col-span-5 skeleton h-72 rounded-box"></div>
       </div>
+    </div>
+
+    <!-- Erro de carregamento -->
+    <div v-else-if="erro" class="container mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center gap-4">
+      <div class="alert alert-error max-w-md">
+        <span>{{ erro }}</span>
+      </div>
+      <button class="btn btn-primary btn-sm" @click="fetchDados">Tentar novamente</button>
     </div>
 
     <!-- Main grid -->

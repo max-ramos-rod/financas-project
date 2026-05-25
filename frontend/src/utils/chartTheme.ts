@@ -17,6 +17,12 @@ type ChartTheme = Record<string, unknown>
 
 const FONT = '"Geist", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
+const xAxisFormatter = (value: string | number) => {
+  const n = typeof value === 'string' ? parseFloat(value) : value
+  if (!Number.isFinite(n)) return String(value)
+  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(n)
+}
+
 const lightTheme: ChartTheme = {
   chart: {
     background: 'transparent',
@@ -53,7 +59,7 @@ const lightTheme: ChartTheme = {
     itemMargin: { horizontal: 12, vertical: 0 },
   },
   xaxis: {
-    labels: { style: { colors: '#82827a', fontSize: '11px', fontFamily: FONT } },
+    labels: { formatter: xAxisFormatter, style: { colors: '#82827a', fontSize: '11px', fontFamily: FONT } },
     axisBorder: { show: false },
     axisTicks: { show: false },
   },
@@ -101,7 +107,7 @@ const darkTheme: ChartTheme = {
     itemMargin: { horizontal: 12, vertical: 0 },
   },
   xaxis: {
-    labels: { style: { colors: '#8a8278', fontSize: '11px', fontFamily: FONT } },
+    labels: { formatter: xAxisFormatter, style: { colors: '#8a8278', fontSize: '11px', fontFamily: FONT } },
     axisBorder: { show: false },
     axisTicks: { show: false },
   },

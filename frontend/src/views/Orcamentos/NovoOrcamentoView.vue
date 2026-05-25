@@ -50,8 +50,7 @@ const fetchDados = async () => {
     if (editando.value && orcamentoId.value) {
       await carregarOrcamento()
     }
-  } catch (error) {
-    console.error('Erro ao carregar dados:', error)
+  } catch {
   } finally {
     carregando.value = false
   }
@@ -69,8 +68,7 @@ const carregarOrcamento = async () => {
       ano: o.ano,
       valor_planejado: o.valor_planejado
     }
-  } catch (error) {
-    console.error('Erro ao carregar orçamento:', error)
+  } catch {
     router.back()
   }
 }
@@ -96,7 +94,6 @@ const salvar = async () => {
     
     router.push('/orcamentos')
   } catch (error: any) {
-    console.error('Erro ao salvar:', error)
     erro.value = error.response?.data?.detail || 'Erro ao salvar orçamento'
   } finally {
     loading.value = false

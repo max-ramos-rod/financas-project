@@ -93,7 +93,6 @@ const carregarMeta = async (id: number) => {
       cor: m.cor || '#10B981'
     }
   } catch (error) {
-    console.error('Erro ao carregar meta:', error)
     errorMessages.value = formatApiError(error)
     showErrorModal.value = true
   } finally {
@@ -128,7 +127,6 @@ const salvar = async () => {
 
     router.push('/metas')
   } catch (error: any) {
-    console.error('Erro ao salvar:', error)
     errorMessages.value = formatApiError(error)
     showErrorModal.value = true
   } finally {

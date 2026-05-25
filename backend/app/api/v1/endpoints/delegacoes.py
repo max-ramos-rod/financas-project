@@ -41,7 +41,7 @@ def convidar_delegacao(
     if invited_email == current_user.email.lower():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nao e possivel criar delegacao para o proprio usuario",
+            detail="Não é possível criar delegação para o próprio usuário",
         )
 
     try:

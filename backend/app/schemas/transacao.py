@@ -37,6 +37,9 @@ class TransacaoBase(BaseModel):
     valor_desconto: float = Field(default=0, ge=0)
     meta_id: Optional[int] = None
 
+class TransacaoCreate(TransacaoBase):
+    """Schema para criação de transação"""
+
     @model_validator(mode="after")
     def validar_parcelamento(self):
         if self.total_parcelas and self.total_parcelas > 1:
@@ -46,10 +49,6 @@ class TransacaoBase(BaseModel):
         if not self.parcelado:
             self.total_parcelas = None
         return self
-
-class TransacaoCreate(TransacaoBase):
-    """Schema para criação de transação"""
-    pass
 
 class TransacaoUpdate(BaseModel):
     """Schema para atualização de transação"""
