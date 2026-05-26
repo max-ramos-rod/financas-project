@@ -3,10 +3,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Meta } from '@/types'
+import ConfirmModal from '@/components/ConfirmModal.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import { Target } from '@lucide/vue'
 
 const router = useRouter()
 
-// State
 const loading = ref(true)
 const metas = ref<Meta[]>([])
 const metaADeletar = ref<Meta | null>(null)
@@ -31,24 +33,15 @@ function formatApiError(error: any): string[] {
   return [String(detail)]
 }
 
-// Filtros
 const filtros = ref({
   status: 'todas' as 'todas' | 'ativas' | 'concluidas',
-  busca: ''
+  busca: '',
 })
 
-// Computed - Metas Filtradas
 const metasFiltradas = computed(() => {
   let resultado = [...metas.value]
-  
-  // Filtro por status
-  if (filtros.value.status === 'ativas') {
-    resultado = resultado.filter(m => !m.concluida)
-  } else if (filtros.value.status === 'concluidas') {
-    resultado = resultado.filter(m => m.concluida)
-  }
-  
-  // Busca textual
+  if (filtros.value.status === 'ativas') resultado = resultado.filter(m => !m.concluida)
+  else if (filtros.value.status === 'concluidas') resultado = resultado.filter(m => m.concluida)
   if (filtros.value.busca) {
     const busca = filtros.value.busca.toLowerCase()
     resultado = resultado.filter(m =>
@@ -56,333 +49,313 @@ const metasFiltradas = computed(() => {
       (m.descricao && m.descricao.toLowerCase().includes(busca))
     )
   }
-  
-  // Ordena por data de criação (mais recentes primeiro)
   resultado.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  
   return resultado
 })
 
-// Computed - Totais
-const totais = computed(() => {
-  const ativas = metas.value.filter(m => !m.concluida).length
-  const concluidas = metas.value.filter(m => m.concluida).length
-  
-  return {
-    ativas,
-    concluidas,
-    total: metas.value.length
-  }
-})
+const totais = computed(() => ({
+  ativas: metas.value.filter(m => !m.concluida).length,
+  concluidas: metas.value.filter(m => m.concluida).length,
+  total: metas.value.length,
+  valorAcumulado: metas.value.filter(m => !m.concluida).reduce((s, m) => s + m.valor_atual, 0),
+  valorAlvo: metas.value.filter(m => !m.concluida).reduce((s, m) => s + m.valor_alvo, 0),
+}))
 
-// Métodos
+const temFiltrosAtivos = computed(() =>
+  filtros.value.status !== 'todas' || filtros.value.busca !== ''
+)
+
 const fetchDados = async () => {
   loading.value = true
   try {
-    const metasRes = await api.get('/metas')
-    metas.value = metasRes.data
+    const res = await api.get('/metas')
+    metas.value = res.data
   } catch {
   } finally {
     loading.value = false
   }
 }
 
-const novaMeta = () => {
-  router.push('/metas/nova')
-}
+const novaMeta = () => router.push('/metas/nova')
+const editarMeta = (id: number) => router.push(`/metas/${id}/editar`)
 
-const editarMeta = (id: number) => {
-  router.push(`/metas/${id}/editar`)
-}
-
-const abrirModalDelete = (meta: Meta) => {
-  metaADeletar.value = meta
-  mostraModalDelete.value = true
-}
-
-const fecharModalDelete = () => {
-  mostraModalDelete.value = false
-  metaADeletar.value = null
-}
-
+const abrirModalDelete = (meta: Meta) => { metaADeletar.value = meta; mostraModalDelete.value = true }
 const deletarMeta = async () => {
   if (!metaADeletar.value) return
-  
   const id = metaADeletar.value.id
-  
   try {
     await api.delete(`/metas/${id}`)
     metas.value = metas.value.filter(m => m.id !== id)
-    fecharModalDelete()
   } catch (error) {
     errorMessages.value = formatApiError(error)
     showErrorModal.value = true
   }
 }
 
-const formatarMoeda = (valor: number): string => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(valor)
-}
+const limparFiltros = () => { filtros.value = { status: 'todas', busca: '' } }
 
-const formatarData = (data: string): string => {
-  return new Date(data).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  })
-}
+const formatarMoeda = (valor: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
 
-const calcularProgresso = (meta: Meta): number => {
-  return Math.min(100, (meta.valor_atual / meta.valor_alvo) * 100)
-}
+const formatarData = (data: string) =>
+  new Date(data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 
-const limparFiltros = () => {
-  filtros.value = {
-    status: 'todas',
-    busca: ''
-  }
-}
+const calcularProgresso = (meta: Meta) =>
+  Math.min(100, (meta.valor_atual / meta.valor_alvo) * 100)
 
-onMounted(() => {
-  fetchDados()
-})
+onMounted(fetchDados)
 </script>
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <!-- Header -->
-    <div class="bg-base-100 shadow">
-      <div class="container mx-auto px-4 py-4">
-        <div class="flex justify-between items-center">
-          <h1 class="text-2xl font-bold">Metas</h1>
-          <button @click="novaMeta" class="btn btn-primary">
+
+    <div v-if="loading" class="flex items-center justify-center min-h-[60vh]">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+
+    <div v-else class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+
+      <!-- 1. Cabeçalho -->
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-5 lg:mb-6">
+        <div>
+          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight">
+            Metas
+          </h1>
+          <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/40 mt-1">
+            {{ metasFiltradas.length }}
+            {{ metasFiltradas.length === 1 ? 'meta' : 'metas' }}
+            <template v-if="temFiltrosAtivos"> · filtradas</template>
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-primary btn-sm sm:btn-md whitespace-nowrap" @click="novaMeta">
             Nova Meta
           </button>
         </div>
       </div>
-    </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="container mx-auto px-4 py-16 text-center">
-      <span class="loading loading-spinner loading-lg"></span>
-      <p class="mt-4">Carregando metas...</p>
-    </div>
-
-    <!-- Content -->
-    <div v-else class="container mx-auto px-4 py-8">
-      
-      <!-- Filtros -->
-      <div class="card bg-base-100 shadow-md mb-6">
-        <div class="card-body">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="card-title">Filtros</h3>
-            <button @click="limparFiltros" class="btn btn-ghost btn-sm">
-              Limpar Filtros
-            </button>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- 2. Toolbar de filtros -->
+      <div class="card bg-base-100 shadow-sm mb-4">
+        <div class="card-body p-3 sm:p-4 gap-0">
+          <div class="flex flex-wrap items-center gap-2">
             <!-- Busca -->
-            <div>
+            <div class="relative flex-1 min-w-[180px]">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/30 text-sm">⌕</span>
               <input
                 v-model="filtros.busca"
-                type="text"
-                placeholder="Buscar por nome ou descrição..."
-                class="input input-bordered w-full"
+                type="search"
+                class="input input-bordered input-sm w-full pl-8"
+                placeholder="Buscar por nome ou descrição…"
               />
             </div>
 
-            <!-- Status -->
-            <div>
-              <select v-model="filtros.status" class="select select-bordered w-full">
-                <option value="todas">Todas as Metas</option>
-                <option value="ativas">Ativas</option>
-                <option value="concluidas">Concluídas</option>
-              </select>
+            <!-- Segmented status -->
+            <div class="join">
+              <button
+                class="join-item btn btn-sm"
+                :class="filtros.status === 'todas' ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                @click="filtros.status = 'todas'"
+              >
+                Todas
+                <span class="font-mono text-[10px] opacity-60">{{ totais.total }}</span>
+              </button>
+              <button
+                class="join-item btn btn-sm"
+                :class="filtros.status === 'ativas' ? 'btn-warning' : 'btn-ghost border border-base-300'"
+                @click="filtros.status = 'ativas'"
+              >
+                Ativas
+                <span class="font-mono text-[10px] opacity-60">{{ totais.ativas }}</span>
+              </button>
+              <button
+                class="join-item btn btn-sm"
+                :class="filtros.status === 'concluidas' ? 'btn-success' : 'btn-ghost border border-base-300'"
+                @click="filtros.status = 'concluidas'"
+              >
+                Concluídas
+                <span class="font-mono text-[10px] opacity-60">{{ totais.concluidas }}</span>
+              </button>
             </div>
+
+            <button
+              v-if="temFiltrosAtivos"
+              class="btn btn-ghost btn-sm text-error hidden sm:flex"
+              @click="limparFiltros"
+            >
+              Limpar
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Resumo -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div class="card bg-base-100 shadow-md">
-          <div class="card-body">
-            <p class="text-sm text-gray-500">Total de Metas</p>
-            <p class="text-2xl font-bold">{{ totais.total }}</p>
+      <!-- 3. KPI strip -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4">
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body py-4 px-4 gap-1">
+            <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/50">Total</p>
+            <p class="text-lg sm:text-xl lg:text-2xl font-bold tabular-nums">{{ totais.total }}</p>
+            <p class="text-[10px] font-mono text-base-content/40 mt-0.5 hidden sm:block">metas cadastradas</p>
           </div>
         </div>
-
-        <div class="card bg-base-100 shadow-md">
-          <div class="card-body">
-            <p class="text-sm text-gray-500">Metas Ativas</p>
-            <p class="text-2xl font-bold text-warning">{{ totais.ativas }}</p>
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body py-4 px-4 gap-1">
+            <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/50">Ativas</p>
+            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-warning tabular-nums">{{ totais.ativas }}</p>
+            <p class="text-[10px] font-mono text-base-content/40 mt-0.5 hidden sm:block">em andamento</p>
           </div>
         </div>
-
-        <div class="card bg-base-100 shadow-md">
-          <div class="card-body">
-            <p class="text-sm text-gray-500">Metas Concluídas</p>
-            <p class="text-2xl font-bold text-success">{{ totais.concluidas }}</p>
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body py-4 px-4 gap-1">
+            <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/50">Concluídas</p>
+            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-success tabular-nums">{{ totais.concluidas }}</p>
+            <p class="text-[10px] font-mono text-base-content/40 mt-0.5 hidden sm:block">finalizadas</p>
+          </div>
+        </div>
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body py-4 px-4 gap-1">
+            <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/50">Acumulado</p>
+            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-success tabular-nums whitespace-nowrap">
+              {{ formatarMoeda(totais.valorAcumulado) }}
+            </p>
+            <p class="text-[10px] font-mono text-base-content/40 mt-0.5 hidden sm:block">
+              de {{ formatarMoeda(totais.valorAlvo) }}
+            </p>
           </div>
         </div>
       </div>
 
-      <!-- Lista de Metas -->
-      <div v-if="metasFiltradas.length === 0" class="card bg-base-100 shadow-md">
-        <div class="card-body text-center py-16">
-          <p class="text-xl font-semibold mb-2">Nenhuma meta encontrada</p>
-          <p class="text-base-content/50 mb-6">
-            {{ filtros.status !== 'todas' || filtros.busca
-              ? 'Tente ajustar os filtros'
-              : 'Adicione sua primeira meta de economias' }}
-          </p>
-          <button @click="novaMeta" class="btn btn-primary">
-            Nova Meta
-          </button>
+      <!-- 4. Cards de metas -->
+      <div v-if="metasFiltradas.length === 0" class="card bg-base-100 shadow-sm">
+        <div class="card-body py-12">
+          <EmptyState
+            v-if="temFiltrosAtivos"
+            variant="filtered"
+            title="Nenhuma meta encontrada."
+            description="Tente ajustar os filtros para ver mais resultados."
+          >
+            <template #icon><Target /></template>
+            <template #actions>
+              <button class="btn btn-ghost btn-sm" @click="limparFiltros">Limpar filtros</button>
+            </template>
+          </EmptyState>
+          <EmptyState
+            v-else
+            variant="first-time"
+            title="Nenhuma meta ainda."
+            description="Crie metas financeiras para acompanhar seu progresso de poupança."
+          >
+            <template #icon><Target /></template>
+            <template #actions>
+              <button class="btn btn-primary btn-sm" @click="novaMeta">Nova Meta</button>
+            </template>
+          </EmptyState>
         </div>
       </div>
 
-      <!-- Cards de Metas -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div
           v-for="meta in metasFiltradas"
           :key="meta.id"
-          class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow"
-          :style="{ borderTop: `4px solid ${meta.cor}` }"
+          class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow"
+          :style="{ borderTop: `3px solid ${meta.cor}` }"
         >
-          <div class="card-body">
+          <div class="card-body p-5 gap-3">
             <!-- Header -->
-            <div class="flex justify-between items-start mb-3">
-              <div class="flex-1">
-                <h3 class="card-title text-lg">{{ meta.nome }}</h3>
-                <p v-if="meta.descricao" class="text-sm text-gray-500 mt-1">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <h3 class="font-semibold text-base truncate">{{ meta.nome }}</h3>
+                <p v-if="meta.descricao" class="text-xs text-base-content/50 mt-0.5 line-clamp-1">
                   {{ meta.descricao }}
                 </p>
               </div>
-
-              <!-- Status Badge -->
-              <div v-if="meta.concluida" class="badge badge-success">Concluída</div>
-              <div v-else class="badge badge-warning">Ativa</div>
+              <span v-if="meta.concluida" class="badge badge-success badge-sm shrink-0">Concluída</span>
+              <span v-else class="badge badge-warning badge-sm shrink-0">Ativa</span>
             </div>
 
             <!-- Datas -->
-            <div class="flex justify-between text-sm text-gray-500 mb-4">
+            <div class="flex justify-between text-xs text-base-content/40 font-mono">
               <span>{{ formatarData(meta.data_inicio) }}</span>
               <span v-if="meta.data_fim">até {{ formatarData(meta.data_fim) }}</span>
             </div>
 
-            <!-- Valores -->
-            <div class="mb-4">
-              <div class="flex justify-between items-center mb-2">
-                <p class="text-sm font-semibold">Progresso</p>
-                <p class="text-sm font-bold">
-                  <span class="tabular-nums">{{ formatarMoeda(meta.valor_atual) }}</span> / <span class="tabular-nums">{{ formatarMoeda(meta.valor_alvo) }}</span>
-                </p>
+            <!-- Progresso -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-xs font-mono text-base-content/50 uppercase tracking-wide">Progresso</span>
+                <span class="text-xs font-semibold tabular-nums">
+                  {{ calcularProgresso(meta).toFixed(1) }}%
+                </span>
               </div>
+              <div class="h-2 w-full rounded-full bg-base-200 overflow-hidden">
+                <div
+                  class="h-full rounded-full transition-all"
+                  :style="{ width: `${calcularProgresso(meta)}%`, background: meta.cor }"
+                ></div>
+              </div>
+              <div class="flex justify-between mt-1.5 text-xs tabular-nums">
+                <span class="text-base-content/70">{{ formatarMoeda(meta.valor_atual) }}</span>
+                <span class="text-base-content/40">{{ formatarMoeda(meta.valor_alvo) }}</span>
+              </div>
+            </div>
 
-              <!-- Progress Bar -->
-              <progress 
-                class="progress w-full h-3" 
-                :value="calcularProgresso(meta)" 
-                max="100"
-                :style="{ 
-                  accentColor: meta.cor
-                }"
-              ></progress>
-
-              <!-- Percentual -->
-              <p class="text-xs text-gray-500 mt-2">
-                {{ calcularProgresso(meta).toFixed(1) }}% completo
+            <!-- Falta (só para ativas) -->
+            <div v-if="!meta.concluida" class="rounded-lg bg-base-200 px-3 py-2">
+              <p class="text-xs text-base-content/60">
+                Faltam
+                <strong class="tabular-nums text-base-content">
+                  {{ formatarMoeda(meta.valor_alvo - meta.valor_atual) }}
+                </strong>
               </p>
             </div>
 
-            <!-- Falta -->
-            <div v-if="!meta.concluida" class="alert alert-info mb-4 py-2">
-              <div>
-                <p class="text-sm">Faltam: <strong class="tabular-nums">{{ formatarMoeda(meta.valor_alvo - meta.valor_atual) }}</strong></p>
-              </div>
-            </div>
-
             <!-- Ações -->
-            <div class="card-actions justify-end pt-4 border-t">
-              <button
-                @click="editarMeta(meta.id)"
-                class="btn btn-sm btn-ghost"
-              >
-                Editar
-              </button>
-              <button
-                @click="abrirModalDelete(meta)"
-                class="btn btn-sm btn-ghost text-error"
-              >
-                Deletar
-              </button>
+            <div class="flex gap-1 justify-end pt-1 border-t border-base-200">
+              <button class="btn btn-ghost btn-xs" @click="editarMeta(meta.id)">Editar</button>
+              <button class="btn btn-ghost btn-xs text-error" @click="abrirModalDelete(meta)">Deletar</button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Contador -->
-      <div class="text-center mt-8 text-gray-500">
-        {{ metasFiltradas.length }} meta(s) encontrada(s)
+      <!-- Rodapé contador -->
+      <div v-if="metasFiltradas.length > 0" class="text-center mt-6">
+        <span class="font-mono text-[11px] text-base-content/40">
+          {{ metasFiltradas.length }} {{ metasFiltradas.length === 1 ? 'meta' : 'metas' }} exibida(s)
+        </span>
+        <button
+          v-if="temFiltrosAtivos"
+          class="btn btn-ghost btn-xs text-error ml-3 sm:hidden"
+          @click="limparFiltros"
+        >
+          Limpar filtros
+        </button>
       </div>
-    </div>
-    <!-- Modal de Confirmação de Deleção -->
-    <div
-      v-if="mostraModalDelete"
-      class="modal modal-open"
-    >
-      <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">
-          Excluir Meta
-        </h3>
-        <p class="py-4 text-gray-600">
-          Tem certeza que deseja excluir a meta <strong>"{{ metaADeletar?.nome }}"</strong>?
-        </p>
-        <p class="text-sm text-gray-500 mb-4">
-          Saldo atual: <strong>{{ formatarMoeda(metaADeletar?.valor_atual || 0) }}</strong>
-        </p>
-        <p class="text-sm text-error font-semibold">
-          Esta ação não pode ser desfeita.
-        </p>
 
-        <div class="modal-action gap-2 mt-6">
-          <button
-            @click="fecharModalDelete"
-            class="btn btn-ghost"
-          >
-            Cancelar
-          </button>
-          <button
-            @click="deletarMeta"
-            class="btn btn-error"
-          >
-            Excluir Conta
-          </button>
-        </div>
-      </div>
-      <form method="dialog" class="modal-backdrop">
-        <button @click="fecharModalDelete">close</button>
-      </form>
     </div>
-    <!-- Modal de Erro -->
-    <div v-if="showErrorModal" class="modal modal-open">
-      <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Erro</h3>
-        <div class="space-y-2 text-sm text-gray-700">
-          <p v-for="(m, i) in errorMessages" :key="i">• {{ m }}</p>
-        </div>
-        <div class="modal-action mt-6">
-          <button @click="showErrorModal = false" class="btn btn-ghost">Fechar</button>
-        </div>
+  </div>
+
+  <ConfirmModal
+    v-model:open="mostraModalDelete"
+    severity="simple"
+    :title="`Excluir a meta '${metaADeletar?.nome ?? ''}'?`"
+    :description="`Saldo acumulado de ${formatarMoeda(metaADeletar?.valor_atual ?? 0)} será descartado. Esta ação não pode ser desfeita.`"
+    confirm-label="Excluir meta"
+    cancel-label="Cancelar"
+    @confirm="deletarMeta"
+  />
+
+  <div v-if="showErrorModal" class="modal modal-open">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg mb-4">Erro</h3>
+      <div class="space-y-2 text-sm text-base-content/70">
+        <p v-for="(m, i) in errorMessages" :key="i">• {{ m }}</p>
       </div>
-      <form method="dialog" class="modal-backdrop">
-        <button @click="showErrorModal = false">close</button>
-      </form>
-    </div>     
+      <div class="modal-action mt-6">
+        <button @click="showErrorModal = false" class="btn btn-ghost">Fechar</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button @click="showErrorModal = false">close</button>
+    </form>
   </div>
 </template>

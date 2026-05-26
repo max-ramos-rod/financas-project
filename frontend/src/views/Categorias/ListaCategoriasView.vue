@@ -128,23 +128,21 @@ onMounted(fetchCategorias)
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <div class="bg-base-100 shadow">
-      <div class="container mx-auto px-4 py-4 flex items-center justify-between">
-        <h1 class="text-2xl font-bold">Categorias</h1>
-        <button class="btn btn-primary" @click="abrirNovaCategoria">Nova categoria</button>
-      </div>
-    </div>
-
     <div v-if="loading" class="container mx-auto px-4 py-12 text-center">
       <span class="loading loading-spinner loading-lg"></span>
     </div>
 
     <div v-else class="container mx-auto px-4 py-6 space-y-6">
+      <div class="flex items-center justify-between">
+        <h1 class="text-xl font-semibold">Categorias</h1>
+        <button class="btn btn-primary btn-sm" @click="abrirNovaCategoria">Nova categoria</button>
+      </div>
+
       <div v-if="erro" class="alert alert-error">
         <span>{{ erro }}</span>
       </div>
 
-      <div class="card bg-base-100 shadow">
+      <div class="card bg-base-100 shadow-sm">
         <div class="card-body">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input v-model="filtros.busca" class="input input-bordered md:col-span-2" placeholder="Buscar categoria" />
@@ -159,10 +157,10 @@ onMounted(fetchCategorias)
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="card bg-base-100 shadow">
+        <div class="card bg-base-100 shadow-sm">
           <div class="card-body">
             <h2 class="card-title">Minhas categorias</h2>
-            <div v-if="minhasCategorias.length === 0" class="text-sm text-gray-500">Nenhuma categoria criada.</div>
+            <div v-if="minhasCategorias.length === 0" class="text-sm text-base-content/50">Nenhuma categoria criada.</div>
             <div v-else class="space-y-2">
               <div v-for="c in minhasCategorias" :key="c.id" class="border rounded p-3 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -179,10 +177,10 @@ onMounted(fetchCategorias)
           </div>
         </div>
 
-        <div class="card bg-base-100 shadow">
+        <div class="card bg-base-100 shadow-sm">
           <div class="card-body">
             <h2 class="card-title">Categorias padrão</h2>
-            <div v-if="categoriasPadrao.length === 0" class="text-sm text-gray-500">Nenhuma categoria padrão encontrada.</div>
+            <div v-if="categoriasPadrao.length === 0" class="text-sm text-base-content/50">Nenhuma categoria padrão encontrada.</div>
             <div v-else class="space-y-2">
               <div v-for="c in categoriasPadrao" :key="c.id" class="border rounded p-3 flex items-center justify-between">
                 <div class="flex items-center gap-3">

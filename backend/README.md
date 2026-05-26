@@ -1,12 +1,14 @@
-# Backend - Finanças Cristãs API
+# Backend — Finanças Cristãs API
 
-API FastAPI com PostgreSQL
+FastAPI + SQLAlchemy + Alembic + PostgreSQL
 
 ## Instalação
 
 ```bash
+cd backend
 python -m venv venv
-source venv/bin/activate
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
 pip install -r requirements.txt
 ```
 
@@ -14,14 +16,40 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edite .env com suas credenciais
+```
+
+Variáveis obrigatórias no `.env`:
+
+```env
+DATABASE_URL=postgresql://user:pass@localhost:5432/financas_db
+SECRET_KEY=sua-chave-secreta
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=43200
 ```
 
 ## Migrations
 
 ```bash
+# Aplicar todas as migrations
 alembic upgrade head
+
+# Criar nova migration após alterar models
+alembic revision --autogenerate -m "descricao"
+
+# Histórico
+alembic history
 ```
+
+Nunca edite migrations antigas para reescrever histórico.
+
+## Seed de categorias
+
+```bash
+python seed_categorias.py
+```
+
+Popula 44 categorias padrão (obrigatório na primeira instalação).
+Veja `SEED_CATEGORIAS.md` para detalhes.
 
 ## Rodar
 
@@ -29,36 +57,33 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-## Convites por E-mail
+- API: http://localhost:8000
+- Docs interativos: http://localhost:8000/docs
+
+## Convites por e-mail (opcional)
 
 Configure no `.env`:
 
-```bash
+```env
 FRONTEND_URL=http://localhost:5173
-SMTP_HOST=...
+SMTP_HOST=smtp.example.com
 SMTP_PORT=587
-SMTP_USERNAME=...
-SMTP_PASSWORD=...
+SMTP_USERNAME=no-reply@example.com
+SMTP_PASSWORD=sua-senha
 SMTP_USE_TLS=true
-SMTP_FROM_EMAIL=no-reply@dominio.com
+SMTP_FROM_EMAIL=no-reply@example.com
 ```
 
-Sem SMTP configurado, o convite e criado mas o envio automatico de e-mail nao ocorre.
+Sem SMTP configurado, o convite é criado mas o e-mail automático não é enviado.
 
-API: http://localhost:8000
-Docs: http://localhost:8000/docs
-
-## Validação Local (Dia 5)
+## Testes
 
 ```bash
-# backend
-pip install -r requirements.txt
-pytest -q
+# Suite completa
+.\venv\Scripts\python.exe -m pytest -q
+
+# Arquivo específico
+.\venv\Scripts\python.exe -m pytest -q tests/test_contas_fatura.py
 ```
 
-## Documentacao de testes
-
-Consulte `backend/README_TESTES.md` para:
-- comandos de execucao
-- escopo da suite por arquivo
-- observacoes da infraestrutura de testes
+Veja `README_TESTES.md` para o escopo detalhado de cada suite.

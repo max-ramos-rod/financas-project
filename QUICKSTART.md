@@ -1,55 +1,91 @@
-# 🚀 Início Rápido
+# Início Rápido
 
-## Resposta Rápida: App Mobile Grátis?
+## Pré-requisitos
 
-**SIM! Use PWA:**
-- ✅ 100% gratuito
-- ✅ Funciona como app
-- ✅ Instalável
-- ✅ Offline
+- Python 3.12+
+- Node.js 20+
+- PostgreSQL 17+ (14+ funciona; Docker usa 17-alpine)
 
-## Instalação em 3 Passos
+## 1. Backend
 
-### 1. Backend
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate
+
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
+
 pip install -r requirements.txt
 cp .env.example .env
+```
+
+Edite o `.env` com suas credenciais PostgreSQL:
+
+```env
+DATABASE_URL=postgresql://financas_user:financas_pass@localhost:5432/financas_db
+SECRET_KEY=sua-chave-secreta-aqui
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=43200
+```
+
+```bash
 alembic upgrade head
+python seed_categorias.py    # popula 44 categorias padrão
 uvicorn app.main:app --reload
 ```
 
-### 2. Frontend
+## 2. Frontend
+
 ```bash
 cd frontend
 npm install
 cp .env.example .env
+```
+
+`.env` do frontend:
+
+```env
+VITE_API_URL=http://localhost:8000/api/v1
+```
+
+```bash
 npm run dev
 ```
 
-### 3. Acesse
+## 3. Acesse
+
 - Frontend: http://localhost:5173
 - API: http://localhost:8000
-- Docs: http://localhost:8000/docs
+- Docs interativos: http://localhost:8000/docs
 
-## Como Funciona o Dízimo
+## Primeiros passos no produto
 
-1. Registra entrada com flag "☑ Tem Dízimo"
-2. Sistema cria saída automática (10%)
-3. Ambas relacionadas via UUID
-4. Relatório anual agrupa tudo
+1. Criar conta em `/registro`
+2. Adicionar uma conta em `Contas`
+3. Lançar uma transação em `Transações`
+4. Ver o dashboard
 
-## Próximos Passos
+## Comandos úteis
 
-1. Criar usuário no /registro
-2. Adicionar primeira conta
-3. Registrar transação com dízimo
-4. Ver dashboard
+```bash
+# Backend — testes
+cd backend
+.\venv\Scripts\python.exe -m pytest -q
 
-## Modo Cristão ON/OFF
-
-`.env`:
+# Frontend — lint e testes
+cd frontend
+npm run lint
+npm run test
 ```
-VITE_MODO_CRISTAO=true  # ou false
+
+## Deploy com Docker
+
+```bash
+docker network create app_network
+docker volume create financas-project_pgdata
+docker compose up -d
+docker compose exec backend alembic upgrade head
+docker compose exec backend python seed_categorias.py
 ```
+
+Para o passo a passo completo com troubleshooting, veja `INSTALACAO.md`.

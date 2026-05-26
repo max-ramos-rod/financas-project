@@ -139,30 +139,18 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <!-- Header -->
-    <div class="bg-base-100 shadow">
-      <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center gap-4">
-          <button @click="cancelar" class="btn btn-ghost btn-sm">
-            ← Voltar
-          </button>
-          <h1 class="text-2xl font-bold">
-            {{ editando ? 'Editar Orçamento' : 'Novo Orçamento' }}
-          </h1>
-        </div>
-      </div>
-    </div>
-
-    <!-- Loading -->
     <div v-if="carregando" class="container mx-auto px-4 py-16 text-center">
       <span class="loading loading-spinner loading-lg"></span>
-      <p class="mt-4">Carregando...</p>
     </div>
 
-    <!-- Form -->
-    <div v-else class="container mx-auto px-4 py-8">
-      <div class="max-w-2xl mx-auto">
-        <form @submit.prevent="salvar" class="card bg-base-100 shadow-lg">
+    <div v-else class="container mx-auto px-4 py-6">
+      <div class="max-w-2xl mx-auto space-y-4">
+        <div class="flex items-center gap-3">
+          <button @click="cancelar" class="btn btn-ghost btn-sm">← Voltar</button>
+          <h1 class="text-xl font-semibold">{{ editando ? 'Editar Orçamento' : 'Novo Orçamento' }}</h1>
+        </div>
+
+        <form @submit.prevent="salvar" class="card bg-base-100 shadow-sm">
           <div class="card-body space-y-6">
             
             <!-- Categoria -->
@@ -214,7 +202,7 @@ onMounted(() => {
                 <span class="label-text font-semibold">Valor Planejado *</span>
               </label>
               <div class="relative">
-                <span class="absolute left-3 top-3 text-gray-500">R$</span>
+                <span class="absolute left-3 top-3 text-base-content/50">R$</span>
                 <input
                   v-model.number="form.valor_planejado"
                   type="number"
@@ -224,7 +212,7 @@ onMounted(() => {
                   required
                 />
               </div>
-              <p v-if="form.valor_planejado" class="text-sm text-gray-500 mt-2">
+              <p v-if="form.valor_planejado" class="text-sm text-base-content/50 mt-2">
                 Valor: <strong>{{ formatarMoeda(form.valor_planejado) }}</strong>
               </p>
             </div>
@@ -239,7 +227,7 @@ onMounted(() => {
                     <span class="text-3xl">{{ categoriaSelecionada?.icone || '📌' }}</span>
                     <div>
                       <p class="font-semibold">{{ categoriaSelecionada?.nome || 'Selecione uma categoria' }}</p>
-                      <p class="text-sm text-gray-600">
+                      <p class="text-sm text-base-content/50">
                         {{ getMeses().find(m => m.valor === form.mes)?.label || 'Mês' }} de {{ form.ano }}
                       </p>
                     </div>
@@ -247,7 +235,7 @@ onMounted(() => {
                 </div>
 
                 <div class="mt-4 p-3 rounded-lg bg-base-100">
-                  <p class="text-sm text-gray-600 mb-1">Valor Planejado</p>
+                  <p class="text-sm text-base-content/50 mb-1">Valor Planejado</p>
                   <p class="text-2xl font-bold text-info">
                     {{ form.valor_planejado ? formatarMoeda(form.valor_planejado) : 'R$ 0,00' }}
                   </p>

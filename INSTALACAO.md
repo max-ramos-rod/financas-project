@@ -1,40 +1,36 @@
-# 🚀 Guia Rápido - Instalação e Seed
+# Guia de Instalação
 
-## 📋 Passo a Passo Completo
+## Pré-requisitos
 
-### 1️⃣ Preparar o Ambiente
-
-```bash
-# Extrair o boilerplate
-tar -xzf financas-cristaos-boilerplate.tar.gz
-cd financas-cristaos
-```
+- Python 3.12+
+- Node.js 20+
+- PostgreSQL 17+ (recomendado; 14+ funciona mas o Docker usa 17-alpine)
 
 ---
 
-### 2️⃣ Backend - Instalação
+## Instalação para desenvolvimento
+
+### 1. Clonar o repositório
+
+```bash
+git clone <url-do-repositorio>
+cd financas-project
+```
+
+### 2. Backend
 
 ```bash
 cd backend
 
-# Criar ambiente virtual
 python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
 
-# Ativar ambiente virtual
-# Linux/Mac:
-source venv/bin/activate
-# Windows:
-venv\Scripts\activate
-
-# Instalar dependências
 pip install -r requirements.txt
 ```
 
----
+### 3. Banco de dados
 
-### 3️⃣ Configurar Banco de Dados
-
-**Criar banco PostgreSQL:**
 ```bash
 # Via psql
 psql -U postgres
@@ -44,13 +40,14 @@ GRANT ALL PRIVILEGES ON DATABASE financas_db TO financas_user;
 \q
 ```
 
-**Configurar .env:**
+Configurar `.env`:
+
 ```bash
 cp .env.example .env
-# Editar .env com suas credenciais
 ```
 
-**`.env` deve conter:**
+Variáveis obrigatórias:
+
 ```env
 DATABASE_URL=postgresql://financas_user:financas_pass@localhost:5432/financas_db
 SECRET_KEY=sua-chave-secreta-aqui-mude-isso
@@ -59,308 +56,174 @@ ACCESS_TOKEN_EXPIRE_MINUTES=43200
 ENVIRONMENT=development
 ```
 
----
+Variáveis opcionais (sessão e e-mail):
 
-### 4️⃣ Rodar Migrations (Criar Tabelas)
+```env
+SESSION_INACTIVITY_MINUTES=30       # expirar sessão por inatividade (padrão 2)
+SESSION_REFRESH_THRESHOLD_SECONDS=300
+FRONTEND_URL=http://localhost:5173  # usado nos links de convite
+SMTP_HOST=smtp.example.com          # sem SMTP, convites são criados sem e-mail
+```
+
+### 4. Migrations
 
 ```bash
-# Inicializar Alembic (se necessário)
-alembic revision --autogenerate -m "initial tables"
-
-# Rodar migrations
 alembic upgrade head
 ```
 
-**Saída esperada:**
-```
-INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
-INFO  [alembic.runtime.migration] Will assume transactional DDL.
-INFO  [alembic.runtime.migration] Running upgrade  -> xxxx, initial tables
-```
-
----
-
-### 5️⃣ ⭐ POPULAR CATEGORIAS PADRÃO (IMPORTANTE!)
+### 5. Seed de categorias (obrigatório)
 
 ```bash
-# Rodar seed de categorias
 python seed_categorias.py
 ```
 
-**Saída esperada:**
-```
-🌱 Iniciando seed de categorias padrão...
-✅ 44 categorias padrão criadas com sucesso!
+Popula 44 categorias padrão. Sem este passo os usuários não conseguem categorizar transações. Veja `SEED_CATEGORIAS.md` para detalhes.
 
-Resumo:
-  📈 Entradas: 6
-  📉 Saídas: 37
-  🔄 Flexíveis: 1
-  📊 Total: 44
-```
-
-**⚠️ ATENÇÃO:** Este passo é **OBRIGATÓRIO**! Sem as categorias padrão, os usuários não conseguirão categorizar transações.
-
----
-
-### 6️⃣ Iniciar Backend
+### 6. Iniciar backend
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-**Saída esperada:**
-```
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process
-INFO:     Started server process
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-```
+Verificar: `curl http://localhost:8000/health` → `{"status":"healthy"}`
 
-**Testar:**
-```bash
-curl http://localhost:8000
-# Deve retornar: {"message":"Finanças Cristãs API","status":"online"}
-```
+### 7. Frontend
 
----
-
-### 7️⃣ Frontend - Instalação
-
-**Abrir novo terminal:**
+Novo terminal:
 
 ```bash
 cd frontend
-
-# Instalar dependências
 npm install
-
-# Configurar .env
 cp .env.example .env
 ```
 
-**`.env` deve conter:**
+`.env` do frontend:
+
 ```env
 VITE_API_URL=http://localhost:8000/api/v1
-VITE_MODO_CRISTAO=true
 ```
-
----
-
-### 8️⃣ Iniciar Frontend
 
 ```bash
 npm run dev
 ```
 
-**Saída esperada:**
-```
-VITE v5.0.11  ready in 500 ms
+Acesse http://localhost:5173.
 
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: use --host to expose
+---
+
+## Deploy com Docker Compose
+
+O projeto inclui Dockerfiles para backend e frontend e um `docker-compose.yml` pronto.
+
+### Estrutura dos containers
+
+| Container | Imagem | Porta |
+|---|---|---|
+| `financas_ibf_db` | postgres:17-alpine | interna |
+| `financas_backend` | build local (Gunicorn + 2 workers) | 8000 (interna) |
+| `financas_frontend` | build multi-stage Node → Nginx | 5173:80 |
+
+### Configurar variáveis de produção
+
+```bash
+# Backend
+cp backend/.env.example backend/.env
+# Editar com credenciais de produção
+
+# Banco (arquivo separado para o container db)
+# backend/.env.confdb deve conter:
+# POSTGRES_USER=...
+# POSTGRES_PASSWORD=...
+# POSTGRES_DB=financas_db
+```
+
+### Volumes e networks externos
+
+```bash
+docker network create app_network
+docker volume create financas-project_pgdata
+```
+
+### Subir
+
+```bash
+docker compose up -d
+```
+
+### Primeira execução — migrations e seed
+
+```bash
+docker compose exec backend alembic upgrade head
+docker compose exec backend python seed_categorias.py
 ```
 
 ---
 
-## ✅ Verificação
+## Convites por e-mail (opcional)
 
-### Backend funcionando?
+Configure no `.env` do backend:
 
-```bash
-# Verificar saúde da API
-curl http://localhost:8000/health
-# Deve retornar: {"status":"healthy"}
-
-# Verificar categorias padrão
-curl http://localhost:8000/api/v1/categorias
-# Deve retornar JSON com 44 categorias
+```env
+FRONTEND_URL=http://localhost:5173
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=no-reply@example.com
+SMTP_PASSWORD=sua-senha
+SMTP_USE_TLS=true
+SMTP_FROM_EMAIL=no-reply@example.com
 ```
 
-### Frontend funcionando?
-
-Abrir navegador: http://localhost:5173
-
-Você deve ver:
-- Tela inicial com "💰 Finanças Cristãs"
-- Botões "Entrar" e "Criar Conta"
+Sem SMTP configurado, o convite é criado normalmente — o e-mail automático não é enviado.
 
 ---
 
-## 🔧 Comandos Úteis
+## Checklist de instalação (desenvolvimento)
 
-### Seed de Categorias
-
-```bash
-# Listar categorias criadas
-python seed_categorias.py --listar
-
-# Recriar categorias (limpa e cria novamente)
-python seed_categorias.py
-# Responda 's' quando perguntar
-```
-
-### Migrations
-
-```bash
-# Criar nova migration
-alembic revision --autogenerate -m "descrição"
-
-# Aplicar migrations
-alembic upgrade head
-
-# Voltar migration
-alembic downgrade -1
-
-# Ver histórico
-alembic history
-```
-
-### Banco de Dados
-
-```bash
-# Conectar ao banco
-psql -U financas_user -d financas_db
-
-# Listar tabelas
-\dt
-
-# Ver categorias padrão
-SELECT id, nome, icone, tipo, padrao FROM categorias WHERE padrao = true;
-
-# Contar categorias
-SELECT COUNT(*) FROM categorias WHERE padrao = true;
-# Deve retornar: 44
-```
-
----
-
-## 📊 Estrutura de Dados Criada
-
-Após rodar migrations + seed:
-
-```
-Tabelas criadas:
-✅ users
-✅ contas
-✅ categorias          ← 44 categorias padrão aqui
-✅ transacoes
-✅ metas
-✅ orcamentos
-✅ config_cristao
-```
-
-**Categorias padrão (44):**
-- 6 de entrada (Salário, Freelance, etc)
-- 37 de saída (Aluguel, Mercado, Dízimo, etc)
-- 1 flexível (Transferência)
-
----
-
-## ❓ Troubleshooting
-
-### Erro: "ModuleNotFoundError: No module named 'app'"
-
-```bash
-# Certifique-se de estar na pasta backend
-cd backend
-python seed_categorias.py
-```
-
-### Erro: "relation 'categorias' does not exist"
-
-```bash
-# Rode as migrations primeiro
-alembic upgrade head
-```
-
-### Erro: "could not connect to server"
-
-```bash
-# PostgreSQL não está rodando
-# Linux/Mac:
-sudo service postgresql start
-
-# Windows:
-# Iniciar serviço PostgreSQL pelo Serviços do Windows
-
-# Verificar se está rodando:
-psql --version
-```
-
-### Erro: "duplicate key value violates unique constraint"
-
-```bash
-# Categorias já existem, limpe antes:
-python seed_categorias.py
-# Responda 's' para recriar
-```
-
-### Frontend não conecta ao backend
-
-```bash
-# Verificar .env do frontend:
-cat frontend/.env
-# VITE_API_URL deve ser: http://localhost:8000/api/v1
-
-# Verificar CORS no backend
-# Deve permitir http://localhost:5173
-```
-
----
-
-## 📝 Checklist de Instalação
-
-- [ ] Python 3.11+ instalado
-- [ ] Node.js 18+ instalado
-- [ ] PostgreSQL 14+ instalado e rodando
+- [ ] Python 3.12+ instalado
+- [ ] Node.js 20+ instalado
+- [ ] PostgreSQL 14+ rodando
 - [ ] Banco `financas_db` criado
-- [ ] Backend: `pip install -r requirements.txt`
-- [ ] Backend: `.env` configurado
-- [ ] Backend: `alembic upgrade head` executado
-- [ ] **Backend: `python seed_categorias.py` executado** ⭐
+- [ ] `pip install -r requirements.txt` executado
+- [ ] `.env` do backend configurado
+- [ ] `alembic upgrade head` executado
+- [ ] `python seed_categorias.py` executado
 - [ ] Backend rodando em http://localhost:8000
-- [ ] Frontend: `npm install` executado
-- [ ] Frontend: `.env` configurado
+- [ ] `npm install` executado
+- [ ] `.env` do frontend configurado
 - [ ] Frontend rodando em http://localhost:5173
 
 ---
 
-## 🎯 Próximos Passos
+## Troubleshooting
 
-Após instalação:
+### ModuleNotFoundError: No module named 'app'
 
-1. **Criar primeiro usuário:**
-   - Acessar http://localhost:5173
-   - Clicar em "Criar Conta"
-   - Preencher dados
+```bash
+cd backend
+python seed_categorias.py
+```
 
-2. **Criar primeira conta:**
-   - Ir em "Contas"
-   - Adicionar conta (ex: "Carteira")
+### relation 'categorias' does not exist
 
-3. **Criar primeira transação:**
-   - Ir em "Transações"
-   - Adicionar entrada
-   - ☑️ Marcar "Tem Dízimo" (se modo cristão)
-   - Ver dízimo criado automaticamente!
+```bash
+alembic upgrade head
+```
 
-4. **Ver dashboard:**
-   - Ir em "Dashboard"
-   - Ver KPIs e gráficos
+### could not connect to server
 
----
+```bash
+# Linux/Mac:
+sudo service postgresql start
+# Windows: iniciar serviço PostgreSQL pelo Gerenciador de Serviços
+```
 
-## 🚀 Pronto!
+### Frontend não conecta ao backend
 
-Seu sistema está rodando com:
-- ✅ 44 categorias padrão
-- ✅ Sistema de dízimo automático
-- ✅ Frontend + Backend integrados
-- ✅ Banco de dados configurado
+Verificar `frontend/.env` — `VITE_API_URL` deve ser `http://localhost:8000/api/v1`.
 
-**Dúvidas?** Consulte:
-- `FUNCIONAMENTO.md` - Como o sistema funciona
-- `ROADMAP.md` - Planejamento de features
-- `backend/SEED_CATEGORIAS.md` - Detalhes do seed
+### duplicate key value violates unique constraint
+
+```bash
+python seed_categorias.py
+# Responda 's' para recriar
+```

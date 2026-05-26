@@ -1,101 +1,93 @@
-# 💰 Finanças Cristãs - Sistema Completo
+# Finanças Cristãs
 
-Controle financeiro pessoal com recursos específicos para cristãos (opcional).
+Controle financeiro pessoal com suporte a múltiplas contas, orçamentos, metas e recursos opcionais para cristãos.
 
-## ✨ Funcionalidades
+## Funcionalidades
 
-### Core
-- ✅ Entradas e Saídas
-- ✅ Múltiplas Contas
-- ✅ Empréstimos e Parcelamentos
-- ✅ 30+ Categorias
-- ✅ Despesas Fixas/Variáveis
+### Transações
+- Entradas e saídas com categorização
+- Parcelamento (2–48x) com rastreamento por parcela
+- Despesas fixas e recorrentes
+- Duplicar transação com um clique
+- Marcação como dízimo automático: flag na entrada gera saída vinculada via UUID
 
-### Recursos Cristãos
-- ✅ **Dízimo Automático** (flag gera saída)
-- ✅ Ofertas e Missões
-- ✅ Relatório Anual
-- ✅ Cadastro de Igreja
+### Contas
+- Tipos: carteira, banco, poupança, investimento, cartão de crédito
+- Cartão de crédito com ciclo de fatura completo:
+  - Fatura atual e fatura fechada separadas
+  - Ajuste manual de data de fechamento e vencimento por competência
+  - Pagamento de fatura debitando outra conta
 
-### Avançado
-- ✅ Orçamento Mensal
-- ✅ Metas Financeiras
-- ✅ Dashboard com KPIs
-- ✅ Gráficos e Relatórios
+### Planejamento
+- Orçamentos mensais por categoria com acompanhamento de percentual gasto
+- Metas financeiras com valor objetivo e progresso acumulado
 
-## 🚀 Stack
+### Relatórios
+- DRE mensal (Demonstrativo de Resultado): receitas, despesas e resultado por categoria
+- Exportação CSV e PDF
 
-**Frontend:** Vue 3 + TypeScript + TailwindCSS + DaisyUI + Pinia
-**Backend:** FastAPI + SQLAlchemy + PostgreSQL + JWT
-**Mobile:** PWA (100% gratuito)
+### Dashboard
+- KPIs: entradas, saídas, saldo do mês, cartão em aberto
+- Gráfico de fluxo financeiro (linha/área)
+- Despesas por categoria (barras horizontais)
+- Orçamento × gasto por categoria (barras de progresso)
 
-## 📱 App Mobile SEM PAGAR Google/Apple
+### Colaboração
+- Delegação de acesso: compartilhar visão da conta com outro usuário via convite por e-mail
+- Impersonação via `X-Act-As-User` no header
 
-### Opção 1: PWA (Recomendado)
-- 100% gratuito
-- Instala como app
-- Funciona offline
+## Stack
 
-### Opção 2: Lojas Alternativas Gratuitas
-- F-Droid (Android)
-- Amazon App Store
-- APK direto
+**Frontend:** Vue 3 + TypeScript + TailwindCSS (tema customizado Forest `#1F5C3A`) + DaisyUI + Pinia + ApexCharts
+**Backend:** FastAPI + SQLAlchemy (síncrono) + Alembic + PostgreSQL + JWT
+**Infra:** Docker Compose + Nginx + Gunicorn
 
-### Opção 3: Lojas Oficiais (Opcional)
-- Google Play: $25 (único)
-- Apple Store: $99/ano
+## Início rápido (desenvolvimento)
 
-## 🛠️ Instalação
+Veja `INSTALACAO.md` para o passo a passo completo.
 
-### Backend
 ```bash
+# Backend
 cd backend
 python -m venv venv
-source venv/bin/activate
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
 pip install -r requirements.txt
 cp .env.example .env
 alembic upgrade head
+python seed_categorias.py
 uvicorn app.main:app --reload
-```
 
-### Frontend
-```bash
+# Frontend (novo terminal)
 cd frontend
 npm install
 cp .env.example .env
 npm run dev
 ```
 
-## 💡 Sistema de Dízimo Automático
+Acesse:
+- Frontend: http://localhost:5173
+- API: http://localhost:8000
+- Docs interativos: http://localhost:8000/docs
 
-```
-Entrada: Salário R$ 3.000 ☑ Dízimo
-         ↓ (automático)
-Saída: R$ 300 (Dízimo)
-```
+## Deploy com Docker
 
-Relacionados via UUID único.
-
-## 📊 Estrutura
-
-```
-financas-cristaos/
-├── backend/        # FastAPI
-│   ├── app/
-│   │   ├── models/     # DÍZIMO AUTOMÁTICO aqui
-│   │   ├── api/
-│   │   └── core/
-│   └── alembic/
-├── frontend/       # Vue 3
-│   └── src/
-└── README.md
+```bash
+docker compose up -d
 ```
 
-## 📄 Licença
+O `docker-compose.yml` sobe PostgreSQL 17, backend (Gunicorn + Uvicorn workers) e frontend (Nginx servindo o build estático). Veja `INSTALACAO.md` para configuração das variáveis de ambiente de produção.
+
+## Documentação
+
+- `INSTALACAO.md` — instalação detalhada com troubleshooting e deploy Docker
+- `ESTRUTURA.md` — mapa completo de arquivos
+- `backend/README.md` — comandos e configuração do backend
+- `backend/README_TESTES.md` — como rodar e entender a suite de testes
+- `backend/SEED_CATEGORIAS.md` — seed das 44 categorias padrão
+- `ROADMAP.md` — features e melhorias planejadas
+- `docs/Plano_Evolucao_Arquitetural_Financas_Project.md` — plano arquitetural detalhado
+
+## Licença
 
 MIT
-
-## Documentacao complementar
-
-- Backend: `backend/README.md`
-- Testes da API: `backend/README_TESTES.md`

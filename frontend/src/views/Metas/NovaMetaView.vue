@@ -34,8 +34,7 @@ const form = ref({
   cor: '#10B981'
 })
 
-const showErrorModal = ref(false)
-const errorMessages = ref<string[]>([])
+const erroGeral = ref('')
 
 function formatApiError(error: any): string[] {
   const detail = error?.response?.data?.detail
@@ -93,8 +92,7 @@ const carregarMeta = async (id: number) => {
       cor: m.cor || '#10B981'
     }
   } catch (error) {
-    errorMessages.value = formatApiError(error)
-    showErrorModal.value = true
+    erroGeral.value = formatApiError(error).join(' — ')
   } finally {
     loading.value = false
   }
@@ -127,8 +125,7 @@ const salvar = async () => {
 
     router.push('/metas')
   } catch (error: any) {
-    errorMessages.value = formatApiError(error)
-    showErrorModal.value = true
+    erroGeral.value = formatApiError(error).join(' — ')
   } finally {
     loading.value = false
   }
@@ -168,22 +165,14 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <!-- Header -->
-    <div class="bg-base-100 shadow">
-      <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center gap-4">
-          <button @click="cancelar" class="btn btn-ghost btn-sm">
-            ← Voltar
-          </button>
-          <h1 class="text-2xl font-bold">{{ editando ? 'Editar Meta' : 'Nova Meta' }}</h1>
+    <div class="container mx-auto px-4 py-6">
+      <div class="max-w-2xl mx-auto space-y-4">
+        <div class="flex items-center gap-3">
+          <button @click="cancelar" class="btn btn-ghost btn-sm">← Voltar</button>
+          <h1 class="text-xl font-semibold">{{ editando ? 'Editar Meta' : 'Nova Meta' }}</h1>
         </div>
-      </div>
-    </div>
 
-    <!-- Form -->
-    <div class="container mx-auto px-4 py-8">
-      <div class="max-w-2xl mx-auto">
-        <form @submit.prevent="salvar" class="card bg-base-100 shadow-lg">
+        <form @submit.prevent="salvar" class="card bg-base-100 shadow-sm">
           <div class="card-body space-y-6">
             <!-- Nome -->
             <div>
@@ -220,7 +209,7 @@ onMounted(() => {
                   <span class="label-text font-semibold">Valor Alvo *</span>
                 </label>
                 <div class="relative">
-                  <span class="absolute left-3 top-3 text-gray-500">R$</span>
+                  <span class="absolute left-3 top-3 text-base-content/50">R$</span>
                   <input
                     v-model.number="form.valor_alvo"
                     type="number"
@@ -238,7 +227,7 @@ onMounted(() => {
                   <span class="label-text font-semibold">Valor Atual</span>
                 </label>
                 <div class="relative">
-                  <span class="absolute left-3 top-3 text-gray-500">R$</span>
+                  <span class="absolute left-3 top-3 text-base-content/50">R$</span>
                   <input
                     v-model.number="form.valor_atual"
                     type="number"
@@ -324,7 +313,7 @@ onMounted(() => {
                   :title="cor"
                 />
               </div>
-              <p class="text-xs text-gray-500 mt-2">Cor selecionada: {{ form.cor }}</p>
+              <p class="text-xs text-base-content/50 mt-2">Cor selecionada: {{ form.cor }}</p>
             </div>
 
             <!-- Status -->
@@ -333,10 +322,12 @@ onMounted(() => {
                 <input v-model="form.concluida" type="checkbox" class="checkbox" />
                 <div>
                   <p class="font-medium">Marcar como Concluída</p>
-                  <p class="text-sm text-gray-500">Indique se esta meta já foi alcançada</p>
+                  <p class="text-sm text-base-content/50">Indique se esta meta já foi alcançada</p>
                 </div>
               </label>
             </div>
+
+            <div v-if="erroGeral" class="alert alert-error"><span>{{ erroGeral }}</span></div>
 
             <!-- Botões -->
             <div class="card-actions justify-end pt-4 border-t">
@@ -360,22 +351,6 @@ onMounted(() => {
           </div>
         </form>
       </div>
-    </div>
-
-    <!-- Modal de Erro -->
-    <div v-if="showErrorModal" class="modal modal-open">
-      <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Erro ao salvar</h3>
-        <div class="space-y-2 text-sm text-gray-700">
-          <p v-for="(m, i) in errorMessages" :key="i">• {{ m }}</p>
-        </div>
-        <div class="modal-action mt-6">
-          <button @click="showErrorModal = false" class="btn btn-ghost">Fechar</button>
-        </div>
-      </div>
-      <form method="dialog" class="modal-backdrop">
-        <button @click="showErrorModal = false">close</button>
-      </form>
     </div>
   </div>
 </template>

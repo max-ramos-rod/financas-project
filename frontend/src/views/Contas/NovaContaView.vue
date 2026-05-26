@@ -155,24 +155,14 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <!-- Header -->
-    <div class="bg-base-100 shadow">
-      <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center gap-4">
-          <button @click="cancelar" class="btn btn-ghost btn-sm">
-            ← Voltar
-          </button>
-          <h1 class="text-2xl font-bold">
-            {{ editando ? 'Editar Conta' : 'Nova Conta' }}
-          </h1>
+    <div class="container mx-auto px-4 py-6">
+      <div class="max-w-2xl mx-auto space-y-4">
+        <div class="flex items-center gap-3">
+          <button @click="cancelar" class="btn btn-ghost btn-sm">← Voltar</button>
+          <h1 class="text-xl font-semibold">{{ editando ? 'Editar Conta' : 'Nova Conta' }}</h1>
         </div>
-      </div>
-    </div>
 
-    <!-- Form -->
-    <div class="container mx-auto px-4 py-8">
-      <div class="max-w-2xl mx-auto">
-        <form @submit.prevent="salvar" class="card bg-base-100 shadow-lg">
+        <form @submit.prevent="salvar" class="card bg-base-100 shadow-sm">
           <div class="card-body space-y-6">
             
             <!-- Nome -->
@@ -199,7 +189,7 @@ onMounted(() => {
                   <label class="label cursor-pointer">
                     <span class="label-text">
                       <span class="font-medium">{{ tipo.label }}</span>
-                      <span class="text-xs text-gray-500 block">{{ tipo.descricao }}</span>
+                      <span class="text-xs text-base-content/50 block">{{ tipo.descricao }}</span>
                     </span>
                     <input
                       v-model="form.tipo"
@@ -218,7 +208,7 @@ onMounted(() => {
                 <span class="label-text font-semibold">Saldo *</span>
               </label>
               <div class="relative">
-                <span class="absolute left-3 top-3 text-gray-500">R$</span>
+                <span class="absolute left-3 top-3 text-base-content/50">R$</span>
                 <input
                   v-model.number="form.saldo"
                   type="number"
@@ -229,10 +219,10 @@ onMounted(() => {
                   required
                 />
               </div>
-              <p v-if="isCartaoCredito" class="text-sm text-gray-500 mt-2">
+              <p v-if="isCartaoCredito" class="text-sm text-base-content/50 mt-2">
                 Em cartão de crédito o saldo inicial é fixo em <strong>R$ 0,00</strong>.
               </p>
-              <p v-if="form.saldo !== null" class="text-sm text-gray-500 mt-2">
+              <p v-if="form.saldo !== null" class="text-sm text-base-content/50 mt-2">
                 Saldo atual: <strong>{{ formatarMoeda(form.saldo) }}</strong>
               </p>
             </div>
@@ -293,7 +283,7 @@ onMounted(() => {
                   :title="cor"
                 />
               </div>
-              <p class="text-xs text-gray-500">Cor selecionada: {{ form.cor }}</p>
+              <p class="text-xs text-base-content/50">Cor selecionada: {{ form.cor }}</p>
             </div>
 
             <!-- Status -->
@@ -302,7 +292,7 @@ onMounted(() => {
                 <input v-model="form.ativa" type="checkbox" class="checkbox" />
                 <div>
                   <p class="font-medium">Conta Ativa</p>
-                  <p class="text-sm text-gray-500">Marque para usar esta conta</p>
+                  <p class="text-sm text-base-content/50">Marque para usar esta conta</p>
                 </div>
               </label>
             </div>
@@ -318,7 +308,7 @@ onMounted(() => {
                 <div class="flex justify-between items-start">
                   <div>
                     <h3 class="card-title text-lg">{{ form.nome || 'Nome da Conta' }}</h3>
-                    <p class="text-sm text-gray-500 mt-1">
+                    <p class="text-sm text-base-content/50 mt-1">
                       {{ tiposConta.find(t => t.valor === form.tipo)?.label || 'Tipo' }}
                     </p>
                   </div>
@@ -326,7 +316,7 @@ onMounted(() => {
                   <div v-else class="badge badge-ghost">Inativa</div>
                 </div>
                 <div class="mt-4 p-3 rounded-lg bg-base-200">
-                  <p class="text-sm text-gray-500 mb-1">Saldo</p>
+                  <p class="text-sm text-base-content/50 mb-1">Saldo</p>
                   <p class="text-3xl font-bold text-success">
                     {{ formatarMoeda(form.saldo) }}
                   </p>

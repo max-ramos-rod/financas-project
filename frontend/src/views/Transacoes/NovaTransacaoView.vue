@@ -355,29 +355,28 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-base-200">
-    <div class="bg-base-100 shadow">
-      <div class="container mx-auto px-4 py-4 flex items-center gap-4">
-        <button @click="cancelar" class="btn btn-ghost btn-sm">Voltar</button>
-        <h1 class="text-2xl font-bold">{{ editando ? 'Editar Transação' : 'Nova Transação' }}</h1>
-        <button
-          v-if="editando && !editandoDizimo"
-          type="button"
-          class="btn btn-outline btn-sm ml-auto"
-          :disabled="duplicando"
-          @click="duplicarTransacaoAtual"
-        >
-          <span v-if="duplicando" class="loading loading-spinner loading-xs"></span>
-          <span v-else>Duplicar</span>
-        </button>
-      </div>
-    </div>
-
     <div v-if="carregando" class="container mx-auto px-4 py-16 text-center">
       <span class="loading loading-spinner loading-lg"></span>
     </div>
 
-    <div v-else class="container mx-auto px-4 py-8">
-      <form @submit.prevent="salvar('lista')" class="card bg-base-100 shadow-lg max-w-3xl mx-auto">
+    <div v-else class="container mx-auto px-4 py-6">
+      <div class="max-w-3xl mx-auto space-y-4">
+        <div class="flex items-center gap-3">
+          <button @click="cancelar" class="btn btn-ghost btn-sm">← Voltar</button>
+          <h1 class="text-xl font-semibold">{{ editando ? 'Editar Transação' : 'Nova Transação' }}</h1>
+          <button
+            v-if="editando && !editandoDizimo"
+            type="button"
+            class="btn btn-outline btn-sm ml-auto"
+            :disabled="duplicando"
+            @click="duplicarTransacaoAtual"
+          >
+            <span v-if="duplicando" class="loading loading-spinner loading-xs"></span>
+            <span v-else>Duplicar</span>
+          </button>
+        </div>
+
+        <form @submit.prevent="salvar('lista')" class="card bg-base-100 shadow-sm">
         <div class="card-body space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="md:col-span-2">
@@ -415,7 +414,7 @@ onMounted(() => {
                 <option :value="null">Selecione...</option>
                 <option v-for="conta in contas.filter((c) => c.ativa)" :key="conta.id" :value="conta.id">{{ conta.nome }}</option>
               </select>
-              <p v-if="isCartaoCredito && form.tipo === 'saida'" class="text-xs text-gray-500 mt-1">
+              <p v-if="isCartaoCredito && form.tipo === 'saida'" class="text-xs text-base-content/50 mt-1">
                 Conta cartão: compra registrada para pagamento da fatura.
               </p>
             </div>
@@ -427,7 +426,7 @@ onMounted(() => {
                 <option value="atrasado">Atrasado</option>
                 <option value="cancelado">Cancelado</option>
               </select>
-              <p v-if="statusBloqueado" class="text-xs text-gray-500 mt-1">
+              <p v-if="statusBloqueado" class="text-xs text-base-content/50 mt-1">
                 Para cartão de crédito, o status inicial é sempre Fatura.
               </p>
             </div>
@@ -512,7 +511,8 @@ onMounted(() => {
             <button type="button" class="btn btn-primary" :disabled="!formValido || loading" @click="salvar('lista')">{{ loading ? 'Salvando...' : (editando ? 'Salvar e sair' : 'Salvar e sair') }}</button>
           </div>
         </div>
-      </form>
+        </form>
+      </div>
     </div>
   </div>
 
@@ -534,7 +534,7 @@ onMounted(() => {
             <input v-model="formCategoria.cor" type="color" class="input input-bordered w-full p-1 h-11" />
           </div>
         </div>
-        <p class="text-xs text-gray-500">Tipo da categoria: {{ form.tipo }}</p>
+        <p class="text-xs text-base-content/50">Tipo da categoria: {{ form.tipo }}</p>
         <p v-if="erroCategoria" class="text-sm text-error">{{ erroCategoria }}</p>
       </div>
       <div class="modal-action">

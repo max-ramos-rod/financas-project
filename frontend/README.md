@@ -65,3 +65,13 @@ O tema DaisyUI foi customizado em `tailwind.config.js`:
 - Tipografia: Geist (sans) + Geist Mono (labels técnicos)
 - Escala semântica: `text-label`, `text-meta`, `text-body`, `text-lg`, ... `text-display`, `text-mega`
 - Componentes de marca: `<BrandMark>` (F mark SVG) e `<Lockup>` (mark + texto)
+
+## Padrão de telas
+
+Todas as telas de listagem (Transações, Contas, Metas, Orçamentos) seguem o mesmo padrão:
+1. **Cabeçalho inline** — título semântico + contador + CTA principal, sem barra separada
+2. **Toolbar de filtros** — `card bg-base-100 shadow-sm` com busca, segmented control e selects
+3. **KPI strip** — `grid grid-cols-2 lg:grid-cols-4` com cards de métricas e valores `tabular-nums`
+4. **Conteúdo principal** — lista/tabela/cards em `card bg-base-100 shadow-sm`
+5. **EmptyState** — variante `first-time` (sem dados) ou `filtered` (sem resultados com filtros)
+6. **ConfirmModal** — substitui `alert()`/`confirm()` nativos em todas as ações destrutivas

@@ -1,51 +1,70 @@
-# Backend Tests Guide
+# Backend — Guia de Testes
 
-Guia rapido para executar e entender os testes da API.
+## Pré-requisitos
 
-## Pre-requisitos
-
-- Python 3.12+
 - Ambiente virtual criado em `backend/venv`
-- Dependencias instaladas com `pip install -r requirements.txt`
+- Dependências instaladas com `pip install -r requirements.txt`
 
-## Executar todos os testes
+A suite usa banco SQLite em memória via `tests/conftest.py` — não requer PostgreSQL rodando.
+
+## Executar
 
 ```bash
+# Suite completa
 cd backend
 .\venv\Scripts\python.exe -m pytest -q
-```
 
-## Executar um arquivo especifico
-
-```bash
-cd backend
+# Arquivo específico
 .\venv\Scripts\python.exe -m pytest -q tests/test_contas_fatura.py
+
+# Verbose (ver nome de cada teste)
+.\venv\Scripts\python.exe -m pytest -v
 ```
 
-## Cobertura atual (alto nivel)
+Warnings de bibliotecas de terceiros podem aparecer e não impedem o sucesso.
 
-- `tests/test_auth.py`
-  - login retorna token
-  - endpoint protegido exige token valido
+## Escopo por arquivo
 
-- `tests/test_contas_cartao.py`
-  - regras de conta cartao de credito
-  - saldo forcado para zero no create/update
+### `test_auth.py`
+- Registro de novo usuário
+- Login retorna token JWT válido
+- Refresh de sessão antes da expiração
+- `GET /auth/me` retorna usuário autenticado
+- Endpoint protegido rejeita request sem token
 
-- `tests/test_contas_fatura.py`
-  - `GET /api/v1/contas/{id}/fatura-atual`
-  - `POST /api/v1/contas/{id}/pagar-fatura`
+### `test_contas_cartao.py`
+- Criação de conta cartão exige `dia_fechamento` e `dia_vencimento`
+- `dia_fechamento == dia_vencimento` é rejeitado (backend e crud)
+- Saldo forçado para zero no create/update de cartão de crédito
+- Update de cartão valida igualdade dos dias ao atualizar parcialmente
 
-- `tests/test_endpoints_smoke.py`
-  - smoke CRUD de categorias, metas e orcamentos
-  - categoria em uso nao pode ser excluida
+### `test_contas_fatura.py`
+- `GET /api/v1/contas/{id}/fatura-atual` — fatura do ciclo vigente
+- `GET /api/v1/contas/{id}/fatura-fechada` — fatura do ciclo fechado
+- `POST /api/v1/contas/{id}/pagar-fatura` — pagamento da fatura
+- Ajuste de ciclo com data real de fechamento/vencimento
+- Testes usam datas relativas ao mês atual (não quebram com o tempo)
 
-- `tests/test_transacoes_cartao_meta_orcamento.py`
-  - regras de transacoes com cartao
-  - atualizacao de meta e orcamento
-  - dizimo automatico (ligar/desligar na edicao)
+### `test_cartao_fatura_ciclo.py`
+- Cálculo de ciclos de fechamento e vencimento em múltiplos cenários
+- Competência da fatura com dia de fechamento no início, meio e fim do mês
+- Transações em diferentes posições do ciclo vão para a competência correta
 
-## Observacoes
+### `test_endpoints_smoke.py`
+- CRUD básico de categorias, metas e orçamentos
+- Categoria em uso por uma transação não pode ser excluída
 
-- A suite usa banco SQLite em memoria via `tests/conftest.py`.
-- Warnings de bibliotecas terceiras podem aparecer e nao impedem o sucesso dos testes.
+### `test_relatorios_dre.py`
+- `GET /api/v1/relatorios/dre-mensal` — estrutura do DRE mensal
+- Receitas, despesas e resultado por categoria
+
+### `test_transacoes_cartao_meta_orcamento.py`
+- Regras de transações com cartão de crédito (entrada bloqueada, saldo não altera)
+- Atualização automática de meta ao lançar transação vinculada
+- Atualização de orçamento ao criar/editar transação da categoria
+- Dízimo automático: ligar e desligar na edição de transação existente
+
+### `test_transacoes_filtros.py`
+- Filtros de listagem: tipo, status, conta, categoria, valor (igual/gte/lte), período, busca textual
+- Combinação de múltiplos filtros simultâneos
+- Endpoint `/visao-financeira` com itens de fatura misturados a transações normais

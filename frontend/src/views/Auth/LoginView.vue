@@ -38,7 +38,7 @@ const handleLogin = async () => {
     <header class="bg-base-100 border-b border-base-300 h-16 flex items-center px-6 lg:px-8 shrink-0">
       <Lockup size="sm" to="/" />
       <div class="flex-1"></div>
-      <router-link to="/" class="text-sm text-base-content/60 hover:text-base-content transition-colors">
+      <router-link to="/" class="text-sm text-base-content/70 hover:text-base-content transition-colors">
         Voltar pra Home
       </router-link>
     </header>
@@ -58,7 +58,7 @@ const handleLogin = async () => {
             Vamos olhar o seu <span class="text-primary">mês</span>?
           </h2>
 
-          <p class="mt-5 text-base leading-relaxed text-base-content/60 max-w-[38ch]">
+          <p class="mt-5 text-base leading-relaxed text-base-content/70 max-w-[38ch]">
             Seu dashboard, suas contas, suas metas — exatamente como você deixou da última vez.
           </p>
         </div>
@@ -79,7 +79,7 @@ const handleLogin = async () => {
 
                 <div class="form-control">
                   <label class="label py-0 pb-1.5">
-                    <span class="label-text text-[11px] font-mono uppercase tracking-widest text-base-content/50">E-mail</span>
+                    <span class="label-text text-[11px] font-mono uppercase tracking-widest text-base-content/60">E-mail</span>
                   </label>
                   <input
                     v-model="email"
@@ -93,7 +93,7 @@ const handleLogin = async () => {
 
                 <div class="form-control">
                   <label class="label py-0 pb-1.5">
-                    <span class="label-text text-[11px] font-mono uppercase tracking-widest text-base-content/50">Senha</span>
+                    <span class="label-text text-[11px] font-mono uppercase tracking-widest text-base-content/60">Senha</span>
                   </label>
                   <div class="relative">
                     <input
@@ -106,7 +106,7 @@ const handleLogin = async () => {
                     />
                     <button
                       type="button"
-                      class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-mono text-base-content/40 hover:text-base-content transition-colors"
+                      class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center min-w-[44px] min-h-[44px] text-[11px] font-mono text-base-content/60 hover:text-base-content transition-colors"
                       @click="showPassword = !showPassword"
                     >
                       {{ showPassword ? 'ocultar' : 'mostrar' }}
