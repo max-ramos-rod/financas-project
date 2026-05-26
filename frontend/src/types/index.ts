@@ -21,6 +21,7 @@ export interface User {
   email: string
   nome: string
   role: string
+  avatar_url?: string | null
 }
 
 export interface Conta {

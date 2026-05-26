@@ -24,8 +24,13 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     id: int
     created_at: datetime
+    avatar_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class GoogleLoginRequest(BaseModel):
+    credential: str
 
 
 class Token(BaseModel):

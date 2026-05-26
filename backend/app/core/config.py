@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = None
     SMTP_USE_TLS: bool = True
     SMTP_FROM_EMAIL: str | None = None
+    GOOGLE_CLIENT_ID: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 

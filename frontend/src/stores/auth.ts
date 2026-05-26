@@ -207,6 +207,24 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function loginWithGoogle(credential: string) {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await api.post<AuthTokenResponse>('/auth/google', { credential })
+      persistToken(response.data)
+      startSessionMonitoring()
+      await fetchUser()
+      return true
+    } catch (err: any) {
+      error.value = err.response?.data?.detail || 'Erro ao entrar com Google'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function register(data: RegisterData) {
     loading.value = true
     error.value = null
@@ -257,6 +275,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isUser,
     login,
+    loginWithGoogle,
     register,
     logout,
     fetchUser,

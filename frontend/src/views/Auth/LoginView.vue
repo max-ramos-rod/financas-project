@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import { useAuthStore } from '@/stores/auth'
 import Lockup from '@/components/Lockup.vue'
 
 const router = useRouter()
 const { login, loading, error } = useAuth()
+const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
 
 const getDashboardRoute = (role: string): string => {
   const routes: Record<string, string> = {
@@ -29,6 +33,24 @@ const handleLogin = async () => {
     router.push(getDashboardRoute(user.value?.role || 'user'))
   }
 }
+
+const handleGoogleCallback = async (response: { credential: string }) => {
+  const success = await authStore.loginWithGoogle(response.credential)
+  if (success) {
+    router.push(getDashboardRoute(authStore.user?.role || 'user'))
+  }
+}
+
+onMounted(() => {
+  if (!GOOGLE_CLIENT_ID) return
+  const g = (window as any).google
+  if (!g?.accounts?.id) return
+  g.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCallback })
+  const btnEl = document.getElementById('google-btn')
+  if (btnEl) {
+    g.accounts.id.renderButton(btnEl, { theme: 'outline', size: 'large', width: btnEl.offsetWidth || 320, locale: 'pt-BR' })
+  }
+})
 </script>
 
 <template>
@@ -132,6 +154,11 @@ const handleLogin = async () => {
                 </button>
 
               </form>
+
+              <template v-if="GOOGLE_CLIENT_ID">
+                <div class="divider text-xs text-base-content/30 my-3">ou</div>
+                <div id="google-btn" class="flex justify-center"></div>
+              </template>
 
               <p class="mt-6 text-center text-xs text-base-content/40">
                 Ainda não tem conta?
