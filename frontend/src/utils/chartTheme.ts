@@ -3,25 +3,24 @@
  * ----------------------------------------------------------------------------
  * Tema de gráficos coerente com o resto do produto.
  *
+ * IMPORTANTE: este tema NÃO define formatter nos eixos. Cada componente
+ * de chart declara seu próprio formatter local — isso evita que o ApexCharts
+ * aplique o formatter duas vezes em bar charts horizontais (bug observado
+ * no apexcharts ^5.5.0 com series em formato { name, data }).
+ *
  * Uso (ApexCharts):
  *   import { getChartTheme } from '@/utils/chartTheme'
  *
+ *   const t = getChartTheme()
  *   const options = {
- *     ...getChartTheme(),
- *     series: [...],
- *     // overrides específicos do gráfico
+ *     ...t,
+ *     // overrides específicos, incluindo formatters de eixo
  *   }
  */
 
 type ChartTheme = Record<string, unknown>
 
 const FONT = '"Geist", "Helvetica Neue", Helvetica, Arial, sans-serif'
-
-const xAxisFormatter = (value: string | number) => {
-  const n = typeof value === 'string' ? parseFloat(value) : value
-  if (!Number.isFinite(n)) return String(value)
-  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(n)
-}
 
 const lightTheme: ChartTheme = {
   chart: {
@@ -59,7 +58,7 @@ const lightTheme: ChartTheme = {
     itemMargin: { horizontal: 12, vertical: 0 },
   },
   xaxis: {
-    labels: { formatter: xAxisFormatter, style: { colors: '#82827a', fontSize: '11px', fontFamily: FONT } },
+    labels: { style: { colors: '#82827a', fontSize: '11px', fontFamily: FONT } },
     axisBorder: { show: false },
     axisTicks: { show: false },
   },
@@ -107,7 +106,7 @@ const darkTheme: ChartTheme = {
     itemMargin: { horizontal: 12, vertical: 0 },
   },
   xaxis: {
-    labels: { formatter: xAxisFormatter, style: { colors: '#8a8278', fontSize: '11px', fontFamily: FONT } },
+    labels: { style: { colors: '#8a8278', fontSize: '11px', fontFamily: FONT } },
     axisBorder: { show: false },
     axisTicks: { show: false },
   },

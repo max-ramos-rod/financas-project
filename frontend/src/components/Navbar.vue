@@ -25,7 +25,7 @@ const navItems: Array<{ rota: string; label: string; icon: NavIconKey }> = [
 
 const iconPaths: Record<NavIconKey, string> = {
   dashboard: 'M3 13.5 12 3l9 10.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-7.5Z',
-  transacoes: 'M17 9V5l4 4-4 4V9H7a4 4 0 1 0 4 4h2a6 6 0 1 1-6-6h10Zm-10 6v4l-4-4 4-4v4h10a4 4 0 1 0-4-4h-2a6 6 0 1 1 6 6H7Z',
+  transacoes: 'M21 9H7l3-3-1.5-1.5L2 11l6.5 6.5L10 16l-3-3h14V9zm-10 6h10v-2H11v2zm-9 5h20v-2H2v2z',
   contas: 'M3 7.5 12 3l9 4.5v2H3v-2Zm2 4h2v6H5v-6Zm6 0h2v6h-2v-6Zm6 0h2v6h-2v-6ZM3 20h18v2H3v-2Z',
   metas: 'M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm0 2a7 7 0 0 1 6.71 5h-2.17A5 5 0 0 0 12 7Zm0 14a7 7 0 0 1-6.71-5h2.17A5 5 0 0 0 12 17Zm1-8 4.5-4.5 1.5 1.5L14.5 12.5 13 11Z',
   orcamentos: 'M4 6h16v3H4V6Zm0 5h10v3H4v-3Zm0 5h16v3H4v-3Z',
@@ -161,7 +161,10 @@ onMounted(() => {
             </button>
           </li>
           <div class="dropdown dropdown-end">
-            <div tabindex="0" role="button" class="btn btn-sm btn-ghost">{{ LABELS.gestao }}</div>
+            <div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-1">
+              {{ LABELS.gestao }}
+              <svg class="h-3 w-3 opacity-70" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5H7z"/></svg>
+            </div>
             <ul tabindex="0" class="dropdown-content menu bg-base-100 text-base-content rounded-box z-50 mt-3 w-60 p-2 shadow-lg">
                 <li v-for="item in navItemsGestao" :key="item.rota">
                   <a @click="navegarPara(item.rota)" :class="{ 'menu-active': rotaAtiva === item.rota }">
@@ -180,9 +183,10 @@ onMounted(() => {
     <div class="navbar-end gap-2">
       <div class="hidden lg:flex items-center gap-2">
         <div class="dropdown dropdown-end">
-          <div tabindex="0" role="button" class="btn btn-sm btn-ghost">
+          <div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-1">
             {{ LABELS.colaboracao }}
             <span v-if="pendingInviteCount" class="badge badge-warning badge-sm">{{ pendingInviteCount }}</span>
+            <svg class="h-3 w-3 opacity-70" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5H7z"/></svg>
           </div>
           <ul tabindex="0" class="dropdown-content menu bg-base-100 text-base-content rounded-box z-50 mt-3 w-60 p-2 shadow-lg">
             <li>
@@ -200,8 +204,9 @@ onMounted(() => {
         </div>
 
         <div class="dropdown dropdown-end">
-          <div tabindex="0" role="button" class="btn btn-sm btn-ghost">
+          <div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-1">
             {{ authStore.user?.nome || 'Usuario' }}
+            <svg class="h-3 w-3 opacity-70" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5H7z"/></svg>
           </div>
           <div tabindex="0" class="dropdown-content rounded-box bg-base-100 text-base-content z-50 mt-3 w-72 p-3 shadow-lg">
             <div class="space-y-3">
