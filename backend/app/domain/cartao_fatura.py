@@ -243,7 +243,6 @@ def _obter_resumo_fatura_por_competencia(
         .filter(
             Transacao.user_id == user_id,
             Transacao.conta_id == conta.id,
-            Transacao.tipo == TipoTransacao.SAIDA,
             Transacao.data >= periodo_inicio,
             Transacao.data <= periodo_fim,
             Transacao.status_liquidacao != StatusLiquidacao.CANCELADO,
@@ -252,13 +251,19 @@ def _obter_resumo_fatura_por_competencia(
         .all()
     )
 
-    valor_total = sum(valor_efetivo_transacao(item) for item in transacoes)
-    valor_pago = sum(valor_efetivo_transacao(item) for item in transacoes if item.status_liquidacao == StatusLiquidacao.LIQUIDADO)
+    saidas = [t for t in transacoes if t.tipo == TipoTransacao.SAIDA]
+    entradas = [t for t in transacoes if t.tipo == TipoTransacao.ENTRADA]
+
+    total_saidas = sum(valor_efetivo_transacao(t) for t in saidas)
+    total_entradas = sum(valor_efetivo_transacao(t) for t in entradas)
+
+    valor_total = total_saidas - total_entradas
+    valor_pago = sum(valor_efetivo_transacao(t) for t in saidas if t.status_liquidacao == StatusLiquidacao.LIQUIDADO)
     valor_a_pagar = sum(
-        valor_efetivo_transacao(item)
-        for item in transacoes
-        if item.status_liquidacao in [StatusLiquidacao.PREVISTO, StatusLiquidacao.ATRASADO]
-    )
+        valor_efetivo_transacao(t)
+        for t in saidas
+        if t.status_liquidacao in [StatusLiquidacao.PREVISTO, StatusLiquidacao.ATRASADO]
+    ) - total_entradas
 
     return ResumoFatura(
         conta_id=conta.id,

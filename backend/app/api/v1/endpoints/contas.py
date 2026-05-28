@@ -48,6 +48,7 @@ def _resposta_fatura(resumo) -> FaturaResumoResponse:
             data=t.data,
             data_vencimento=t.data_vencimento,
             status_liquidacao=t.status_liquidacao.value,
+            tipo=t.tipo.value,
             valor=t.valor,
             valor_multa=t.valor_multa or 0,
             valor_juros=t.valor_juros or 0,

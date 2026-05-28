@@ -76,6 +76,7 @@ class FaturaItemResponse(BaseModel):
     data: date
     data_vencimento: Optional[date] = None
     status_liquidacao: str
+    tipo: str
     valor: float
     valor_multa: float = 0
     valor_juros: float = 0

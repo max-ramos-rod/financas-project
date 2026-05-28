@@ -72,7 +72,7 @@ def test_transacao_cartao_saida_forca_status_previsto(client):
     assert payload["data_liquidacao"] is None
 
 
-def test_transacao_cartao_entrada_bloqueada(client):
+def test_transacao_cartao_entrada_permitida(client):
     headers = _auth_headers(client)
 
     conta_response = client.post(
@@ -101,15 +101,15 @@ def test_transacao_cartao_entrada_bloqueada(client):
             "valor": 100.0,
             "tipo": "entrada",
             "data": date.today().isoformat(),
-            "status_liquidacao": "liquidado",
+            "status_liquidacao": "previsto",
         },
     )
 
-    assert transacao_response.status_code == 400
-    assert "entrada so pode ser registrada" in transacao_response.json()["detail"].lower()
+    assert transacao_response.status_code == 201
+    assert transacao_response.json()["tipo"] == "entrada"
 
 
-def test_atualizar_transacao_para_entrada_em_cartao_bloqueada(client):
+def test_atualizar_transacao_entrada_para_cartao_permitida(client):
     headers = _auth_headers(client)
 
     conta_corrente_response = client.post(
@@ -153,6 +153,7 @@ def test_atualizar_transacao_para_entrada_em_cartao_bloqueada(client):
             "tipo": "entrada",
             "data": date.today().isoformat(),
             "status_liquidacao": "liquidado",
+            "data_liquidacao": date.today().isoformat(),
         },
     )
     assert create_response.status_code == 201
@@ -164,11 +165,11 @@ def test_atualizar_transacao_para_entrada_em_cartao_bloqueada(client):
         json={"conta_id": cartao_id},
     )
 
-    assert update_response.status_code == 400
-    assert "entrada so pode ser registrada" in update_response.json()["detail"].lower()
+    assert update_response.status_code == 200
+    assert update_response.json()["tipo"] == "entrada"
 
 
-def test_transacao_entrada_em_conta_investimento_bloqueada(client):
+def test_transacao_entrada_em_conta_investimento_permitida(client):
     headers = _auth_headers(client)
 
     conta_response = client.post(
@@ -195,11 +196,12 @@ def test_transacao_entrada_em_conta_investimento_bloqueada(client):
             "tipo": "entrada",
             "data": date.today().isoformat(),
             "status_liquidacao": "liquidado",
+            "data_liquidacao": date.today().isoformat(),
         },
     )
 
-    assert transacao_response.status_code == 400
-    assert "entrada so pode ser registrada" in transacao_response.json()["detail"].lower()
+    assert transacao_response.status_code == 201
+    assert transacao_response.json()["tipo"] == "entrada"
 
 
 def test_transacao_atualiza_meta_e_orcamento(client):

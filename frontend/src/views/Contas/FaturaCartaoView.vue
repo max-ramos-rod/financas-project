@@ -493,7 +493,10 @@ onMounted(carregar)
                         :key="item.transacao_id"
                         class="hover:bg-base-50"
                       >
-                        <td class="pl-0 font-medium text-sm max-w-[200px] truncate">{{ item.descricao }}</td>
+                        <td class="pl-0 font-medium text-sm max-w-[200px] truncate">
+                          {{ item.descricao }}
+                          <span v-if="item.tipo === 'entrada'" class="ml-1.5 badge badge-xs badge-success">crédito</span>
+                        </td>
                         <td class="text-sm text-base-content/60 whitespace-nowrap">{{ formatarData(item.data) }}</td>
                         <td class="text-sm text-base-content/60 whitespace-nowrap">
                           {{ item.data_vencimento ? formatarData(item.data_vencimento) : '—' }}
@@ -504,7 +507,13 @@ onMounted(carregar)
                             :class="item.status_liquidacao === 'liquidado' ? 'badge-success' : 'badge-warning'"
                           >{{ item.status_liquidacao }}</span>
                         </td>
+                        <td class="text-right pr-0 font-bold text-sm whitespace-nowrap tabular-nums text-success"
+                          v-if="item.tipo === 'entrada'"
+                        >
+                          − {{ formatarMoeda(item.valor_efetivo) }}
+                        </td>
                         <td class="text-right pr-0 font-bold text-sm whitespace-nowrap tabular-nums"
+                          v-else
                           :class="item.status_liquidacao === 'liquidado' ? 'text-success' : 'text-error'"
                         >
                           {{ formatarMoeda(item.valor_efetivo) }}
@@ -534,7 +543,10 @@ onMounted(carregar)
                     class="py-3 flex items-start justify-between gap-3"
                   >
                     <div class="flex-1 min-w-0">
-                      <p class="text-sm font-medium truncate">{{ item.descricao }}</p>
+                      <p class="text-sm font-medium truncate">
+                        {{ item.descricao }}
+                        <span v-if="item.tipo === 'entrada'" class="ml-1 badge badge-xs badge-success">crédito</span>
+                      </p>
                       <p class="text-xs text-base-content/50 mt-0.5">
                         {{ formatarData(item.data) }}
                         <span v-if="item.data_vencimento"> · Venc. {{ formatarData(item.data_vencimento) }}</span>
@@ -547,9 +559,9 @@ onMounted(carregar)
                     <div class="flex items-center gap-2 shrink-0">
                       <p
                         class="text-sm font-bold tabular-nums"
-                        :class="item.status_liquidacao === 'liquidado' ? 'text-success' : 'text-error'"
+                        :class="item.tipo === 'entrada' ? 'text-success' : (item.status_liquidacao === 'liquidado' ? 'text-success' : 'text-error')"
                       >
-                        {{ formatarMoeda(item.valor_efetivo) }}
+                        {{ item.tipo === 'entrada' ? '− ' : '' }}{{ formatarMoeda(item.valor_efetivo) }}
                       </p>
                       <button
                         class="btn btn-ghost btn-xs opacity-30 hover:opacity-100"
