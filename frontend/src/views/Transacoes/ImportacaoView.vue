@@ -10,22 +10,82 @@ const contas = ref<Conta[]>([])
 const contaId = ref<number | null>(null)
 const arquivo = ref<File | null>(null)
 const loading = ref(false)
+const hashingArquivo = ref(false)
 const resultado = ref<ImportacaoResult | null>(null)
 const erro = ref('')
 const mostrarErros = ref(false)
+const avisoReimport = ref<{ filename: string; importedAt: string; count: number } | null>(null)
 
-const FORMATOS_ACEITOS = '.csv,.ofx,.qfx,.xlsx,.xls,.txt,.ret,.rem,.cnab'
+const FORMATOS_ACEITOS = '.ofx,.qfx,.xlsx,.xls,.txt,.ret,.rem,.cnab'
+const STORAGE_KEY = 'financas_import_history'
+
+interface HistoricoImport {
+  hash: string
+  filename: string
+  importedAt: string
+  count: number
+}
+
+const lerHistorico = (): HistoricoImport[] => {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+const salvarNoHistorico = (hash: string, filename: string, count: number) => {
+  const historico = lerHistorico()
+  const existente = historico.findIndex(r => r.hash === hash)
+  const registro: HistoricoImport = { hash, filename, importedAt: new Date().toISOString(), count }
+  if (existente >= 0) {
+    historico[existente] = registro
+  } else {
+    historico.unshift(registro)
+    if (historico.length > 50) historico.length = 50
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(historico))
+}
+
+const hashArquivo = async (file: File): Promise<string> => {
+  const buffer = await file.arrayBuffer()
+  const digest = await crypto.subtle.digest('SHA-256', buffer)
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+const formatarDataHora = (iso: string): string => {
+  const d = new Date(iso)
+  return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
 
 onMounted(async () => {
   const res = await api.get<Conta[]>('/contas')
   contas.value = (res.data as any).items ?? res.data
 })
 
-const onArquivo = (e: Event) => {
+const onArquivo = async (e: Event) => {
   const input = e.target as HTMLInputElement
-  arquivo.value = input.files?.[0] ?? null
+  const file = input.files?.[0] ?? null
+  arquivo.value = file
   resultado.value = null
   erro.value = ''
+  avisoReimport.value = null
+
+  if (!file) return
+
+  hashingArquivo.value = true
+  try {
+    const hash = await hashArquivo(file)
+    const historico = lerHistorico()
+    const encontrado = historico.find(r => r.hash === hash)
+    if (encontrado) {
+      avisoReimport.value = encontrado
+    }
+  } finally {
+    hashingArquivo.value = false
+  }
 }
 
 const importar = async () => {
@@ -44,14 +104,18 @@ const importar = async () => {
     })
     resultado.value = res.data
     mostrarErros.value = false
+
+    if (res.data.importadas > 0) {
+      const hash = await hashArquivo(arquivo.value)
+      salvarNoHistorico(hash, arquivo.value.name, res.data.importadas)
+      avisoReimport.value = null
+    }
   } catch (err: any) {
     erro.value = err.response?.data?.detail ?? 'Erro ao importar arquivo.'
   } finally {
     loading.value = false
   }
 }
-
-
 </script>
 
 <template>
@@ -65,7 +129,7 @@ const importar = async () => {
         </button>
         <div>
           <h1 class="text-2xl font-semibold tracking-tight">Importar transações</h1>
-          <p class="text-xs text-base-content/50 mt-0.5">CSV · OFX/QFX · XLSX · CNAB 240</p>
+          <p class="text-xs text-base-content/50 mt-0.5">OFX/QFX · XLSX · CNAB 240</p>
         </div>
       </div>
 
@@ -91,7 +155,10 @@ const importar = async () => {
           <!-- Arquivo -->
           <div class="form-control">
             <label class="label py-0 pb-1.5">
-              <span class="label-text text-[11px] font-mono uppercase tracking-widest text-base-content/60">Arquivo</span>
+              <span class="label-text text-[11px] font-mono uppercase tracking-widest text-base-content/60">
+                Arquivo
+                <span v-if="hashingArquivo" class="loading loading-spinner loading-xs ml-1"></span>
+              </span>
             </label>
             <input
               type="file"
@@ -100,16 +167,29 @@ const importar = async () => {
               @change="onArquivo"
             />
             <label class="label py-0 pt-1">
-              <span class="label-text-alt text-base-content/40">Formatos suportados: CSV, OFX, QFX, XLSX, CNAB 240</span>
+              <span class="label-text-alt text-base-content/40">Formatos suportados: OFX, QFX, XLSX, CNAB 240</span>
             </label>
           </div>
 
+          <!-- Aviso de re-importação -->
+          <div v-if="avisoReimport" class="alert alert-warning py-3 flex-col items-start gap-1">
+            <p class="font-semibold text-sm">Este arquivo já foi importado antes.</p>
+            <p class="text-xs">
+              <span class="font-medium">{{ avisoReimport.filename }}</span>
+              foi importado em {{ formatarDataHora(avisoReimport.importedAt) }}
+              ({{ avisoReimport.count }} transaç{{ avisoReimport.count === 1 ? 'ão' : 'ões' }}).
+              Importar novamente vai duplicar essas transações.
+            </p>
+          </div>
+
           <button
-            class="btn btn-primary w-full"
-            :disabled="!contaId || !arquivo || loading"
+            class="btn w-full"
+            :class="avisoReimport ? 'btn-warning' : 'btn-primary'"
+            :disabled="!contaId || !arquivo || loading || hashingArquivo"
             @click="importar"
           >
             <span v-if="loading" class="loading loading-spinner loading-sm"></span>
+            <span v-else-if="avisoReimport">Importar mesmo assim</span>
             <span v-else>Importar</span>
           </button>
 
@@ -136,7 +216,7 @@ const importar = async () => {
                 <div class="stat-title text-[10px]">Importadas</div>
                 <div class="stat-value text-lg text-success">{{ resultado.importadas }}</div>
               </div>
-              <div class="stat bg-error/10 rounded-xl p-3" :class="resultado.erros.length ? '' : 'bg-base-200'">
+              <div class="stat rounded-xl p-3" :class="resultado.erros.length ? 'bg-error/10' : 'bg-base-200'">
                 <div class="stat-title text-[10px]">Erros</div>
                 <div class="stat-value text-lg" :class="resultado.erros.length ? 'text-error' : ''">
                   {{ resultado.erros.length }}

@@ -27,10 +27,6 @@ def detectar_e_parsear(content: bytes, filename: str) -> Tuple[str, List[Transac
         from .xlsx_parser import parse_xlsx
         return "XLSX", parse_xlsx(content)
 
-    if ext == "csv":
-        from .csv_parser import parse_csv
-        return "CSV", parse_csv(content)
-
     if ext in ("ret", "rem", "cnab"):
         from .cnab_parser import parse_cnab240
         return "CNAB 240", parse_cnab240(content)
@@ -44,6 +40,6 @@ def detectar_e_parsear(content: bytes, filename: str) -> Tuple[str, List[Transac
         from .cnab_parser import parse_cnab240
         return "CNAB 240", parse_cnab240(content)
 
-    # Fallback: tenta CSV
-    from .csv_parser import parse_csv
-    return "CSV", parse_csv(content)
+    raise ValueError(
+        "Formato não reconhecido. Formatos suportados: OFX, QFX, XLSX, XLS, CNAB 240 (.ret/.rem/.cnab)."
+    )

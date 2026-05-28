@@ -2,8 +2,11 @@ import io
 from datetime import date, datetime
 from typing import List, Optional
 
-from .base import TransacaoImportada
-from .csv_parser import COLS_DATE, COLS_DESC, COLS_VALUE, COLS_CREDIT, COLS_DEBIT, _find_col, _norm, _parse_date, _parse_value
+from .base import (
+    TransacaoImportada,
+    COLS_DATE, COLS_DESC, COLS_VALUE, COLS_CREDIT, COLS_DEBIT,
+    _find_col, _norm, _parse_date, _parse_value,
+)
 
 
 def _cell_date(val) -> Optional[date]:

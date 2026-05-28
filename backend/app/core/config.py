@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30
-    SESSION_INACTIVITY_MINUTES: int = 2
+    SESSION_INACTIVITY_MINUTES: int = 10
     SESSION_REFRESH_THRESHOLD_SECONDS: int = 300
     DATABASE_URL: str = "postgresql://financas_user:financas_pass@localhost:5432/financas_db"
     BACKEND_CORS_ORIGINS: List[str] = ["*"]

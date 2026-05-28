@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
 import { useAuthStore } from '@/stores/auth'
 import Lockup from '@/components/Lockup.vue'
 
 const router = useRouter()
-const { login, loading, error } = useAuth()
 const authStore = useAuthStore()
+const { login, loading, error } = authStore
 
 const email = ref('')
 const password = ref('')
@@ -29,8 +28,7 @@ const handleLogin = async () => {
   })
 
   if (success) {
-    const { user } = useAuth()
-    router.push(getDashboardRoute(user.value?.role || 'user'))
+    router.push(getDashboardRoute(authStore.user?.role || 'user'))
   }
 }
 

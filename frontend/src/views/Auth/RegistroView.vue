@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
+import { useAuthStore } from '@/stores/auth'
 import Lockup from '@/components/Lockup.vue'
 
 const router = useRouter()
-const { register, loading, error } = useAuth()
+const authStore = useAuthStore()
+const { loading, error } = storeToRefs(authStore)
+const { register } = authStore
 
 const nome = ref('')
 const email = ref('')
