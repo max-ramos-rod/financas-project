@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, categorias, metas, orcamentos, transacoes, contas, delegacoes, relatorios
+from app.api.v1.endpoints import auth, categorias, metas, orcamentos, transacoes, contas, delegacoes, relatorios, importacao
 
 api_router = APIRouter()
 
@@ -11,3 +11,4 @@ api_router.include_router(orcamentos.router, prefix="/orcamentos", tags=["orcame
 api_router.include_router(transacoes.router, prefix="/transacoes", tags=["transacoes"])
 api_router.include_router(delegacoes.router, prefix="/delegacoes", tags=["delegacoes"])
 api_router.include_router(relatorios.router, prefix="/relatorios", tags=["relatorios"])
+api_router.include_router(importacao.router, prefix="/importacao", tags=["importacao"])

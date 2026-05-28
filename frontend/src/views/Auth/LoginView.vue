@@ -35,6 +35,7 @@ const handleLogin = async () => {
 }
 
 const handleGoogleCallback = async (response: { credential: string }) => {
+  if (!response?.credential) return
   const success = await authStore.loginWithGoogle(response.credential)
   if (success) {
     router.push(getDashboardRoute(authStore.user?.role || 'user'))

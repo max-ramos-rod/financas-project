@@ -316,6 +316,12 @@ onMounted(async () => {
           </p>
         </div>
         <div class="flex gap-2">
+          <button
+            class="btn btn-ghost btn-sm sm:btn-md whitespace-nowrap"
+            @click="router.push({ name: 'importar-transacoes' })"
+          >
+            Importar
+          </button>
           <button class="btn btn-primary btn-sm sm:btn-md whitespace-nowrap flex-1 sm:flex-none" @click="novaTransacao">
             {{ LABELS.nova_transacao }}
           </button>

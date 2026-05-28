@@ -99,6 +99,7 @@ def login_google(
             body.credential,
             google_requests.Request(),
             settings.GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=10,
         )
     except ValueError:
         raise HTTPException(

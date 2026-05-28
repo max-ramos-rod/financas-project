@@ -126,6 +126,7 @@ export interface FaturaItem {
   data: string
   data_vencimento?: string | null
   status_liquidacao: 'previsto' | 'liquidado' | 'atrasado' | 'cancelado'
+  tipo: 'saida' | 'entrada'
   valor: number
   valor_multa: number
   valor_juros: number
@@ -154,6 +155,27 @@ export interface FaturaResumo {
   valor_pago: number
   valor_a_pagar: number
   itens: FaturaItem[]
+}
+
+export interface ImportacaoDuplicata {
+  descricao: string
+  valor: number
+  tipo: string
+  data: string
+}
+
+export interface ImportacaoErro {
+  indice: number
+  descricao: string
+  motivo: string
+}
+
+export interface ImportacaoResult {
+  formato_detectado: string
+  total_no_arquivo: number
+  importadas: number
+  duplicatas: ImportacaoDuplicata[]
+  erros: ImportacaoErro[]
 }
 
 export interface ApiError {

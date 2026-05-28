@@ -15,11 +15,17 @@ const router = createRouter({
       component: () => import('@/views/Transacoes/ListaTransacoesView.vue'), 
       meta: { requiresAuth: true } 
     },
-    { 
-      path: '/transacoes/nova', 
-      name: 'nova-transacao', 
-      component: () => import('@/views/Transacoes/NovaTransacaoView.vue'), 
-      meta: { requiresAuth: true } 
+    {
+      path: '/transacoes/nova',
+      name: 'nova-transacao',
+      component: () => import('@/views/Transacoes/NovaTransacaoView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/transacoes/importar',
+      name: 'importar-transacoes',
+      component: () => import('@/views/Transacoes/ImportacaoView.vue'),
+      meta: { requiresAuth: true },
     },
     { 
       path: '/transacoes/:id/editar', 
