@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Conta, FaturaResumo } from '@/types'
 import { formatDateBR, formatDateForInput } from '@/utils/date'
+import { formatarMoeda } from '@/utils/financeiro'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import { Pencil } from '@lucide/vue'
 
@@ -38,9 +39,6 @@ const excluindo = ref(false)
 const contasPagamento = computed(() =>
   contas.value.filter((c) => c.ativa && c.tipo !== 'cartao_credito' && c.id !== contaId)
 )
-
-const formatarMoeda = (valor: number): string =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
 
 const formatarData = (data: string): string => formatDateBR(data)
 

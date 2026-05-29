@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 import type { Conta, Transacao, Meta, Categoria, Orcamento } from '@/types'
 import { parseDate } from '@/utils/date'
+import { valorEfetivo as valorEfetivoTransacao, formatarMoeda } from '@/utils/financeiro'
 import { LABELS } from '@/utils/strings'
 import EmptyState from '@/components/EmptyState.vue'
 import { Calendar, TrendingDown } from '@lucide/vue'
@@ -97,9 +98,6 @@ const despesasPorCategoria = computed(() => {
     .map(([nome, valor]) => ({ nome, valor }))
     .sort((a, b) => b.valor - a.valor)
 })
-
-const valorEfetivoTransacao = (t: Transacao) =>
-  Math.max(0, t.valor + (t.valor_multa || 0) + (t.valor_juros || 0) - (t.valor_desconto || 0))
 
 const orcamentosMesSelecionado = computed(() =>
   orcamentos.value.filter(o => o.mes === mesOrcamentoSelecionado.value && o.ano === anoAtual)
@@ -209,12 +207,6 @@ const metasEmAndamento = computed(() =>
 
 const getPercentualMeta = (meta: Meta): number =>
   Math.min((meta.valor_atual / meta.valor_alvo) * 100, 100)
-
-const formatarMoeda = (valor: number): string =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(valor)
 
 const formatarData = (data: string): string => {
   const d = parseDate(data)
