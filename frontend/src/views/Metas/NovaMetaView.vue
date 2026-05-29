@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
 import { formatDateForInput } from '@/utils/date'
+import { extractApiError } from '@/services/apiError'
 
 const router = useRouter()
 const route = useRoute()
@@ -36,22 +37,6 @@ const form = ref({
 
 const erroGeral = ref('')
 
-function formatApiError(error: any): string[] {
-  const detail = error?.response?.data?.detail
-  if (!detail) return [error?.message || 'Erro desconhecido']
-  if (Array.isArray(detail)) {
-    return detail.map(d => {
-      if (typeof d === 'string') return d
-      if (d?.msg && d?.loc) return `${d.loc.join('.')} — ${d.msg}`
-      return JSON.stringify(d)
-    })
-  }
-  if (typeof detail === 'object') {
-    if (detail.msg) return [detail.msg]
-    return [JSON.stringify(detail)]
-  }
-  return [String(detail)]
-}
 
 // Cores pré-definidas
 const coresPredefinidas = [
@@ -92,7 +77,7 @@ const carregarMeta = async (id: number) => {
       cor: m.cor || '#10B981'
     }
   } catch (error) {
-    erroGeral.value = formatApiError(error).join(' — ')
+    erroGeral.value = extractApiError(error)
   } finally {
     loading.value = false
   }
@@ -125,7 +110,7 @@ const salvar = async () => {
 
     router.push('/metas')
   } catch (error: any) {
-    erroGeral.value = formatApiError(error).join(' — ')
+    erroGeral.value = extractApiError(error)
   } finally {
     loading.value = false
   }

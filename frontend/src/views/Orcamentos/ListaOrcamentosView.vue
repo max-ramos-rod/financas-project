@@ -2,8 +2,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import api from '@/services/api'
 import type { Orcamento } from '@/types'
+import { extractApiError } from '@/services/apiError'
 import { useCategoriasStore } from '@/stores/categorias'
 import { useOrcamentosStore } from '@/stores/orcamentos'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
@@ -22,22 +22,6 @@ const mostraModalDelete = ref(false)
 const showErrorModal = ref(false)
 const errorMessages = ref<string[]>([])
 
-function formatApiError(error: any): string[] {
-  const detail = error?.response?.data?.detail
-  if (!detail) return [error?.message || 'Erro desconhecido']
-  if (Array.isArray(detail)) {
-    return detail.map(d => {
-      if (typeof d === 'string') return d
-      if (d?.msg && d?.loc) return `${d.loc.join('.')} — ${d.msg}`
-      return JSON.stringify(d)
-    })
-  }
-  if (typeof detail === 'object') {
-    if (detail.msg) return [detail.msg]
-    return [JSON.stringify(detail)]
-  }
-  return [String(detail)]
-}
 
 const nomesMesesAbrev = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
                          'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -116,10 +100,9 @@ const deletarOrcamento = async () => {
   if (!orcamentoADeletar.value) return
   const id = orcamentoADeletar.value.id
   try {
-    await api.delete(`/orcamentos/${id}`)
-    orcamentosStore.orcamentos = orcamentosStore.orcamentos.filter(o => o.id !== id)
+    await orcamentosStore.remover(id)
   } catch (error) {
-    errorMessages.value = formatApiError(error)
+    errorMessages.value = [extractApiError(error)]
     showErrorModal.value = true
   }
 }

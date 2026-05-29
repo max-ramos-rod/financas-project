@@ -29,6 +29,11 @@ export const useContasStore = defineStore('contas', () => {
     return fetchPromise
   }
 
+  async function remover(id: number): Promise<void> {
+    await api.delete(`/contas/${id}`)
+    contas.value = contas.value.filter((c) => c.id !== id)
+  }
+
   function reset() {
     contas.value = []
   }
@@ -39,6 +44,7 @@ export const useContasStore = defineStore('contas', () => {
     contasAtivas,
     contasAtivas_semCartao,
     fetchContas,
+    remover,
     reset,
   }
 })

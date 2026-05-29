@@ -1,8 +1,8 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import api from '@/services/api'
 import type { Categoria } from '@/types'
+import { extractApiError } from '@/services/apiError'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import { useCategoriasStore } from '@/stores/categorias'
 
@@ -82,14 +82,13 @@ const salvarCategoria = async () => {
       tipo: form.value.tipo,
     }
     if (editandoId.value) {
-      await api.put(`/categorias/${editandoId.value}`, payload)
+      await categoriasStore.atualizar(editandoId.value, payload)
     } else {
-      await api.post('/categorias', payload)
+      await categoriasStore.criar(payload)
     }
     showModal.value = false
-    await fetchCategorias()
-  } catch (error: any) {
-    erro.value = error?.response?.data?.detail || 'Erro ao salvar categoria'
+  } catch (error) {
+    erro.value = extractApiError(error, 'Erro ao salvar categoria')
   } finally {
     salvando.value = false
   }
@@ -107,10 +106,9 @@ const iniciarExclusao = (categoria: Categoria) => {
 const confirmarExcluir = async () => {
   if (!categoriaAExcluir.value) return
   try {
-    await api.delete(`/categorias/${categoriaAExcluir.value.id}`)
-    await fetchCategorias()
-  } catch (error: any) {
-    erro.value = error?.response?.data?.detail || 'Erro ao excluir categoria'
+    await categoriasStore.remover(categoriaAExcluir.value.id)
+  } catch (error) {
+    erro.value = extractApiError(error, 'Erro ao excluir categoria')
   }
 }
 

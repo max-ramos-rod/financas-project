@@ -24,9 +24,14 @@ export const useMetasStore = defineStore('metas', () => {
     return fetchPromise
   }
 
+  async function remover(id: number): Promise<void> {
+    await api.delete(`/metas/${id}`)
+    metas.value = metas.value.filter((m) => m.id !== id)
+  }
+
   function reset() {
     metas.value = []
   }
 
-  return { metas, loading, fetchMetas, reset }
+  return { metas, loading, fetchMetas, remover, reset }
 })

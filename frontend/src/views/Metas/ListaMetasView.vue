@@ -2,8 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import api from '@/services/api'
 import type { Meta } from '@/types'
+import { extractApiError } from '@/services/apiError'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Target } from '@lucide/vue'
@@ -17,22 +17,6 @@ const mostraModalDelete = ref(false)
 const showErrorModal = ref(false)
 const errorMessages = ref<string[]>([])
 
-function formatApiError(error: any): string[] {
-  const detail = error?.response?.data?.detail
-  if (!detail) return [error?.message || 'Erro desconhecido']
-  if (Array.isArray(detail)) {
-    return detail.map(d => {
-      if (typeof d === 'string') return d
-      if (d?.msg && d?.loc) return `${d.loc.join('.')} — ${d.msg}`
-      return JSON.stringify(d)
-    })
-  }
-  if (typeof detail === 'object') {
-    if (detail.msg) return [detail.msg]
-    return [JSON.stringify(detail)]
-  }
-  return [String(detail)]
-}
 
 const filtros = ref({
   status: 'todas' as 'todas' | 'ativas' | 'concluidas',
@@ -76,10 +60,9 @@ const deletarMeta = async () => {
   if (!metaADeletar.value) return
   const id = metaADeletar.value.id
   try {
-    await api.delete(`/metas/${id}`)
-    metas.value = metas.value.filter(m => m.id !== id)
+    await metasStore.remover(id)
   } catch (error) {
-    errorMessages.value = formatApiError(error)
+    errorMessages.value = [extractApiError(error)]
     showErrorModal.value = true
   }
 }

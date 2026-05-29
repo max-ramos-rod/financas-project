@@ -17,9 +17,14 @@ export const useOrcamentosStore = defineStore('orcamentos', () => {
     }
   }
 
+  async function remover(id: number): Promise<void> {
+    await api.delete(`/orcamentos/${id}`)
+    orcamentos.value = orcamentos.value.filter((o) => o.id !== id)
+  }
+
   function reset() {
     orcamentos.value = []
   }
 
-  return { orcamentos, loading, fetchOrcamentos, reset }
+  return { orcamentos, loading, fetchOrcamentos, remover, reset }
 })

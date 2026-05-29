@@ -2,8 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import api from '@/services/api'
 import type { Conta } from '@/types'
+import { extractApiError } from '@/services/apiError'
 import { formatDateBR } from '@/utils/date'
 import { LABELS, labelTipoConta } from '@/utils/strings'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
@@ -19,22 +19,6 @@ const mostraModalDelete = ref(false)
 const showErrorModal = ref(false)
 const errorMessages = ref<string[]>([])
 
-function formatApiError(error: any): string[] {
-  const detail = error?.response?.data?.detail
-  if (!detail) return [error?.message || 'Erro desconhecido']
-  if (Array.isArray(detail)) {
-    return detail.map(d => {
-      if (typeof d === 'string') return d
-      if (d?.msg && d?.loc) return `${d.loc.join('.')} — ${d.msg}`
-      return JSON.stringify(d)
-    })
-  }
-  if (typeof detail === 'object') {
-    if (detail.msg) return [detail.msg]
-    return [JSON.stringify(detail)]
-  }
-  return [String(detail)]
-}
 
 const filtros = ref({
   tipo: 'todas' as 'todas' | 'carteira' | 'conta_corrente' | 'poupanca' | 'cartao_credito' | 'investimento' | 'outro',
@@ -81,10 +65,9 @@ const deletarConta = async () => {
   if (!contaADeletar.value) return
   const id = contaADeletar.value.id
   try {
-    await api.delete(`/contas/${id}`)
-    contas.value = contas.value.filter(c => c.id !== id)
+    await contasStore.remover(id)
   } catch (error) {
-    errorMessages.value = formatApiError(error)
+    errorMessages.value = [extractApiError(error)]
     showErrorModal.value = true
   }
 }
