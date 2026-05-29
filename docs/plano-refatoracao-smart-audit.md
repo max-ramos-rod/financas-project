@@ -3,7 +3,7 @@
 **Versão base**: `financas-project @ v1.0.0`  
 **Referência**: `C:\Projetos\smart-audit`  
 **Data**: 2026-05-28  
-**Última atualização de status**: 2026-05-29  
+**Última atualização de status**: 2026-05-29 (sessão 3)  
 **Executor**: Agente Orquestrador com sub-agentes especializados
 
 ---
@@ -16,10 +16,10 @@ O smart-audit é uma plataforma SaaS de auditorias com padrões de engenharia ma
 
 | # | Funcionalidade | Status | Observação |
 |---|---|---|---|
-| 1 | Recuperação de senha (forgot/reset) | ✅ Concluído | `app/crud/crud_password_reset.py`, 2 views Auth; SMTP pendente (token logado em `[DEV]`) |
+| 1 | Recuperação de senha (forgot/reset) | ✅ Concluído | `app/crud/crud_password_reset.py`, 2 views Auth; SMTP integrado (`send_password_reset_email`), fallback `[DEV]` |
 | 2 | Rate limiting com slowapi | ✅ Concluído | `app/core/limiter.py`; 5 endpoints `/auth` protegidos |
 | 3 | Respostas de erro RFC 7807 | ✅ Concluído | `app/core/errors.py`; 3 handlers registrados em `main.py` |
-| 4 | Health check endpoint | — | Não verificado |
+| 4 | Health check endpoint | ✅ Concluído | `GET /health` → `{"status": "healthy"}` em `main.py` |
 | 5 | CI/CD GitHub Actions | ✅ Concluído | `.github/workflows/ci.yml`; 3 jobs: backend (PG), frontend lint/unit, E2E |
 | 6 | Ruff linting (Python) | ✅ Concluído | `pyproject.toml` configurado; step no CI; 134 issues auto-fixados |
 | 7 | Abstração de localStorage | ✅ Concluído | `frontend/src/services/storage.ts`; 7 grupos de métodos |

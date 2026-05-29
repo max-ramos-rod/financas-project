@@ -5,13 +5,15 @@ from app.core.config import settings
 
 
 def _smtp_send(message: EmailMessage) -> None:
-    """Envia uma mensagem via SMTP usando as configurações globais."""
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as smtp:  # type: ignore[arg-type]
-        if settings.SMTP_USE_TLS:
-            smtp.starttls()
-        if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
-            smtp.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-        smtp.send_message(message)
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as smtp:  # type: ignore[arg-type]
+            if settings.SMTP_USE_TLS:
+                smtp.starttls()
+            if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
+                smtp.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+            smtp.send_message(message)
+    except smtplib.SMTPException as exc:
+        raise RuntimeError(f"Falha ao enviar e-mail: {exc}") from exc
 
 
 def _check_smtp_configured() -> None:

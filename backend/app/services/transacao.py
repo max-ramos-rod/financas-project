@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.core.repositories import SQLAlchemyRepository
+from app.contracts import TransacaoRepositoryProtocol
 from app.crud.crud_transacao import get_transacao
 from app.domain.cartao_fatura import valor_efetivo_transacao
 from app.domain.transacao import (
@@ -22,14 +22,10 @@ from app.models import (
     TipoTransacao,
     Transacao,
 )
+from app.repositories import TransacaoRepository
 from app.schemas.transacao import TransacaoCreate, TransacaoUpdate
 
-
-class TransacaoRepository(SQLAlchemyRepository[Transacao]):
-    model = Transacao
-
-
-_repo = TransacaoRepository()
+_repo: TransacaoRepositoryProtocol = TransacaoRepository()
 
 
 def _add_months(base_date: date, months: int) -> date:
