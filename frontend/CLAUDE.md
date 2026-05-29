@@ -8,7 +8,8 @@
 - Axios
 - Tailwind CSS
 - DaisyUI
-- Vitest
+- Vitest (unit)
+- Playwright (E2E — `e2e/`)
 
 ## Estrutura relevante
 - `src/views/` telas por dominio
@@ -17,6 +18,8 @@
 - `src/stores/` estado global
 - `src/types/index.ts` contratos principais
 - `src/utils/date.ts` normalizacao e formatacao de datas
+- `e2e/` testes Playwright (auth, transacoes, fatura)
+- `e2e/fixtures.ts` fixture `authed` — injecta token no localStorage e mocka `/auth/me`
 
 ## Padrões de UI e estado
 - Reaproveite padroes visuais entre telas antes de criar uma terceira variacao.
@@ -39,8 +42,17 @@
 ## Validacao
 - Tipagem:
   - `npm run lint`
-- Testes:
+- Testes unitarios:
   - `npm run test`
+- Testes E2E (Playwright):
+  - `npm run test:e2e` (inicia dev server automaticamente)
+  - `npm run test:e2e:ui` (modo interativo)
+
+## Playwright — boas praticas
+- Rotas sao processadas em LIFO: registre as mais gerais primeiro, as mais especificas por ultimo.
+- O fixture `authed` ja registra catch-all para `/api/v1/` e mock de `/auth/me`; testes apenas sobrescrevem o necessario.
+- Ao usar `storeToRefs(store)` para estado Pinia reativo no template; destructuring direto perde reatividade.
+- Evitar `getByText()` sem `.first()` quando o texto pode aparecer em multiplos elementos (ex: nome em tabela e header).
 
 ## O que evitar
 - Nao fazer chamadas Axios diretas espalhadas quando ja existe helper/fetch do dominio.

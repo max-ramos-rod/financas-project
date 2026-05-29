@@ -28,6 +28,7 @@
   - `cd frontend`
   - `npm run lint`
   - `npm run test`
+  - `npm run test:e2e` (Playwright; requer dev server em http://localhost:5173)
 
 ## Fronteiras de escopo
 - Mudancas em `frontend/` nao devem alterar `backend/` sem necessidade explicita.
