@@ -111,8 +111,14 @@ Use este padrao sempre que multiplos componentes puderem chamar o mesmo fetch si
 - Evitar `getByText()` sem `.first()` quando o texto pode aparecer em multiplos elementos (ex: nome em tabela e header).
 
 ## Serviços utilitários
-- `src/services/storage.ts` — **única fonte de acesso ao localStorage**. Nunca usar `localStorage.*` diretamente nas stores ou views; usar `storage.*` em vez disso. As keys reais são definidas internamente no módulo.
-- `src/services/apiError.ts` — helper `extractApiError(err)` para extrair mensagem legível de erros Axios (suporta `detail` string, array Pydantic e objeto com `msg`). Usar em todos os `catch` que exibem erro ao usuário.
+- `src/services/storage.ts` — **única fonte de acesso ao localStorage**. Nunca usar `localStorage.*` diretamente. Métodos disponíveis:
+  - **Token:** `getToken()`, `setToken(v)`, `removeToken()`
+  - **Expiração:** `getTokenExpiresAt()`, `setTokenExpiresAt(v)`, `removeTokenExpiresAt()`
+  - **Sessão:** `getSessionTimeout()`, `setSessionTimeout(v)`, `getLastActivity()`, `setLastActivity(v)`
+  - **Delegação:** `getActAsUser()`, `removeActAsUser()`
+  - **Importação:** `getImportHistory()`, `setImportHistory(v)`
+  - **Limpar:** `clearSession()` — remove token, expiração, timeout, atividade e act-as
+- `src/services/apiError.ts` — helper `extractApiError(err, fallback?)` para extrair mensagem legível de erros Axios (suporta `detail` string, array Pydantic e objeto com `msg`). Usar em todos os `catch` que exibem erro ao usuário.
 
 ## O que evitar
 - Nao fazer chamadas `api.get` diretas para listagem quando existe store do dominio.

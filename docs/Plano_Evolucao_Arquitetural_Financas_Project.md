@@ -10,9 +10,14 @@ Ultima atualizacao: 2026-05-29
 | Fase 0 | auth-sessao-inatividade | Concluido |
 | Fase 0 | rate limiting (slowapi) | Concluido |
 | Fase 0 | recuperacao de senha | Concluido |
+| Fase 0 | CI/CD GitHub Actions (3 jobs: backend, frontend, E2E) | Concluido |
+| Fase 0 | E2E Playwright (auth, transacoes, fatura) | Concluido |
+| Fase 0 | Busca full-text (`GET /busca`) | Concluido |
 | Fase 0 | substituicao de alert/confirm | Em andamento |
+| Fase 0 | SMTP para recuperacao de senha | Pendente |
 | **Fase 1** | **Envelope padronizado de resposta** | **Concluido** |
 | **Fase 1** | **Paginacao reutilizavel** | **Concluido** |
+| **Fase 1** | **Erros RFC 7807** | **Concluido** |
 | **Fase 1** | **Fortalecer stores por dominio** | **Concluido** |
 | Fase 2 | Service layer (TransacaoService) | Pendente |
 | Fase 3 | Repositories explicitos | Pendente |
@@ -69,7 +74,7 @@ Resumo:
 
 ### 3.1 Problemas atuais
 
-1. A camada `crud_*` acumula responsabilidades demais:
+1. ❌ A camada `crud_*` acumula responsabilidades demais: (PENDENTE — Fase 2)
 - acesso a dados
 - validacao
 - regra de negocio
@@ -78,12 +83,12 @@ Resumo:
 - impacto em orcamentos
 - efeitos secundarios de dominio
 
-2. Os endpoints dependem de uma camada intermediaria que nao esta claramente separada entre:
+2. ❌ Os endpoints dependem de uma camada intermediaria que nao esta claramente separada entre: (PENDENTE — Fase 2)
 - persistencia
 - dominio
 - orquestracao de caso de uso
 
-3. Regras criticas do sistema tendem a ficar acopladas:
+3. ❌ Regras criticas do sistema tendem a ficar acopladas: (PENDENTE — Fase 2/5)
 - transacao
 - saldo
 - cartao
@@ -92,15 +97,16 @@ Resumo:
 - dizimo
 
 4. Falta padronizacao transversal forte para:
-- envelope de resposta
-- paginacao
-- erros
-- contratos entre camadas
+- ✅ envelope de resposta — resolvido: `app/core/responses.py` (`PagedResponse[T]`)
+- ✅ paginacao — resolvido: `app/core/pagination.py` (`PaginationParams`, `PageMeta`, `PaginationMetaBuilder`)
+- ✅ erros — resolvido: `app/core/errors.py` (RFC 7807 — `http_exception_handler`, `validation_exception_handler`, `unhandled_exception_handler`)
+- ❌ contratos entre camadas — pendente (Fase 3 — `Protocol` para repositories)
 
-5. O frontend esta melhor que o backend em organizacao pratica, mas ainda ha espaco para:
-- stores mais fortes por dominio
-- menos logica em views
-- padronizacao de consumo da API
+5. O frontend estava com espaco para melhorar em:
+- ✅ stores mais fortes por dominio — resolvido: contas, categorias, orcamentos, metas, delegacoes (6 stores no total com auth)
+- ✅ padronizacao de consumo da API — resolvido: nenhuma view faz `api.get` direto para listagem de recursos
+- ⚠️ menos logica em views — parcialmente resolvido: fetches de listagem migrados para stores; CRUD direto (POST/PUT/DELETE) e logica de estado em edicao/criacao (transacoes, contas, metas) ainda vivem nas views
+- ⚠️ transacoes sem store — Dashboard ainda faz `api.get('/transacoes', {page_size: 500})` diretamente; candidato a `stores/transacoes.ts` futuramente
 
 ### 3.2 Forcas atuais
 
@@ -506,13 +512,9 @@ frontend/src/
 - descricao: `ResponseEnvelope[T]`, `PaginatedResponseEnvelope[T]`, alias `PagedResponse`
 - entregue em: 2026-05-29 — `app/core/responses.py`
 
-### 3. RFC 7807 para erros
-- descricao: padronizar erros como `problem+json`
-- motivo: consistencia e melhor tratamento no frontend
-- dificuldade: media
-- impacto: alto
-- dependencias: nenhuma
-- ordem recomendada: proximo branch
+### 3. RFC 7807 para erros ✅ CONCLUIDO
+- descricao: handlers registrados em `app/core/errors.py` + `app/main.py`
+- entregue: `http_exception_handler`, `validation_exception_handler`, `unhandled_exception_handler`
 
 ### 4. Paginacao reutilizavel ✅ CONCLUIDO
 - descricao: `PaginationParams`, `PageMeta`, `PaginationMetaBuilder`
@@ -599,16 +601,18 @@ frontend/src/
 ### Sequencia pratica
 
 1. ~~fechar `auth-sessao-inatividade`~~ ✅
-2. ~~padronizar resposta da API~~ ✅
+2. ~~padronizar resposta e erros da API~~ ✅
 3. ~~adaptar frontend para novos contratos~~ ✅
 4. ~~fortalecer stores por dominio~~ ✅
-5. **→ criar `TransacaoService`** ← proximo passo
-6. criar repositories + contracts
-7. adicionar testes unitarios de service
-8. extrair subservicos menores
-9. padronizar erros com RFC 7807
-10. melhorias adjacentes de produto (Google OAuth, feedbacks DaisyUI)
-11. so depois avaliar async
+5. ~~busca full-text~~ ✅
+6. ~~CI/CD e E2E Playwright~~ ✅
+7. **→ criar `TransacaoService`** ← proximo passo recomendado
+8. criar repositories + contracts (`Protocol`)
+9. adicionar testes unitarios de service com fakes
+10. extrair subservicos menores (saldo, dizimo, orcamento, cartao)
+11. SMTP para recuperacao de senha
+12. melhorias adjacentes de produto (Google OAuth, feedbacks DaisyUI)
+13. so depois avaliar async
 
 ## 12. Decisao recomendada para o branch atual
 

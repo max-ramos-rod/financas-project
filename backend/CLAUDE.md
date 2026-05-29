@@ -10,6 +10,9 @@
 ## Estrutura relevante
 - `app/api/v1/endpoints/` rotas HTTP
 - `app/api/deps.py` autenticacao, `AccessContext` e delegacao
+- `app/core/config.py` — configuracoes da aplicacao (settings)
+- `app/core/errors.py` — handlers RFC 7807: `http_exception_handler` (HTTPException → `{type, title, status, detail}`), `validation_exception_handler` (422 Pydantic), `unhandled_exception_handler` (500 generico); todos registrados em `main.py`
+- `app/core/limiter.py` — rate limiting via slowapi; endpoints protegidos: `/auth/login` (20/min), `/auth/register` (5/min), `/auth/google` (20/min), `/auth/forgot-password` (3/min), `/auth/reset-password` (5/min)
 - `app/core/pagination.py` — `PaginationParams`, `PageMeta`, `PaginationMetaBuilder`
 - `app/core/responses.py` — `ResponseEnvelope[T]`, `PaginatedResponseEnvelope[T]`, alias `PagedResponse`; helpers `success_response()` e `paginated_response()`
 - `app/core/repositories.py` — `SQLAlchemyRepository[ModelT]` (ABC generico; reservado para futura service layer — mutation methods usam `flush()`, nao `commit()`, requer UoW externo)
@@ -56,7 +59,7 @@ Shape da resposta:
 
 Recursos sem paginacao real (contas, categorias, orcamentos) retornam todos os itens com `page=1, page_size=max(total,1)`.
 
-Nunca retornar lista plana em rotas de listagem. Os testes esperam `response.json()["data"]`.
+Todos os endpoints de listagem retornam `PagedResponse`. Os testes esperam `response.json()["data"]`.
 
 ## SQLAlchemyRepository — aviso importante
 
@@ -109,5 +112,8 @@ Por isso, os arquivos `crud_*` existentes NAO devem usar esses metodos de mutaca
 
 ## Direcao arquitetural
 - Quando possivel, mover logica pesada de `crud_*` para servicos/dominio pequenos e testaveis.
-- Padronizacao de responses concluida (Fase 1 do plano arquitetural). Proximo passo: criar service layer com `SQLAlchemyRepository` como camada de persistencia.
+- Padronizacao de responses e erros concluida (Fase 1 do plano arquitetural): `PagedResponse`, RFC 7807, paginacao reutilizavel, rate limiting, recuperacao de senha.
+- Proximo passo: criar `TransacaoService` como primeira service layer real, usando `SQLAlchemyRepository` como camada de persistencia.
 - Consulte `docs/Plano_Evolucao_Arquitetural_Financas_Project.md` para o roadmap completo.
+- SMTP integrado: `send_password_reset_email` em `app/services/email.py`; se SMTP nao estiver configurado, mantém fallback para log `[DEV]`.
+- Ruff linting ativo: `python -m ruff check .` passa sem erros; step adicionado ao CI.

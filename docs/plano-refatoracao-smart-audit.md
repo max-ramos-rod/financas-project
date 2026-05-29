@@ -3,6 +3,7 @@
 **Versão base**: `financas-project @ v1.0.0`  
 **Referência**: `C:\Projetos\smart-audit`  
 **Data**: 2026-05-28  
+**Última atualização de status**: 2026-05-29  
 **Executor**: Agente Orquestrador com sub-agentes especializados
 
 ---
@@ -11,22 +12,22 @@
 
 O smart-audit é uma plataforma SaaS de auditorias com padrões de engenharia maduros que podem ser portados incrementalmente para o financas-project. O mapeamento abaixo identifica o que é aproveitável, o que precisa de adaptação e o que deve ser ignorado (fora de domínio).
 
-### O que será portado
+### Status de entrega
 
-| # | Funcionalidade | Origem (smart-audit) | Destino (financas) | Prioridade |
-|---|---|---|---|---|
-| 1 | Recuperação de senha (forgot/reset) | `backend/app/modules/auth/` + 4 views | `backend/app/api/v1/endpoints/auth.py` + 2 views | 🔴 Alta |
-| 2 | Rate limiting com slowapi | `app/core/limiter.py` | `backend/app/core/` | 🔴 Alta |
-| 3 | Respostas de erro RFC 7807 | `app/core/errors.py` | `backend/app/core/` | 🔴 Alta |
-| 4 | Health check endpoint | `app/api/v1/router.py` | `backend/app/api/v1/` | 🟡 Média |
-| 5 | CI/CD GitHub Actions | `.github/workflows/ci.yml` | `.github/workflows/` | 🟡 Média |
-| 6 | Ruff linting (Python) | `pyproject.toml` | `backend/pyproject.toml` ou `backend/` | 🟡 Média |
-| 7 | Abstração de localStorage | `services/api/storage.ts` | `frontend/src/services/` | 🟡 Média |
-| 8 | Parser de erros RFC 7807 | `services/api/problem.ts` | `frontend/src/services/` | 🟡 Média |
-| 9 | Busca full-text (transações) | `app/modules/search/` + `SearchView.vue` | backend endpoint + frontend view | 🟡 Média |
-| 10 | Playwright E2E tests | `frontend/e2e/` + `playwright.config.ts` | `frontend/` | 🟡 Média |
-| 11 | Export PDF de fatura | `app/modules/submissions/service.py` | `backend/app/domain/cartao_fatura.py` | 🟢 Baixa |
-| 12 | Export CSV de transações | `app/modules/submissions/service.py` | `backend/app/api/v1/endpoints/transacoes.py` | 🟢 Baixa |
+| # | Funcionalidade | Status | Observação |
+|---|---|---|---|
+| 1 | Recuperação de senha (forgot/reset) | ✅ Concluído | `app/crud/crud_password_reset.py`, 2 views Auth; SMTP pendente (token logado em `[DEV]`) |
+| 2 | Rate limiting com slowapi | ✅ Concluído | `app/core/limiter.py`; 5 endpoints `/auth` protegidos |
+| 3 | Respostas de erro RFC 7807 | ✅ Concluído | `app/core/errors.py`; 3 handlers registrados em `main.py` |
+| 4 | Health check endpoint | — | Não verificado |
+| 5 | CI/CD GitHub Actions | ✅ Concluído | `.github/workflows/ci.yml`; 3 jobs: backend (PG), frontend lint/unit, E2E |
+| 6 | Ruff linting (Python) | ✅ Concluído | `pyproject.toml` configurado; step no CI; 134 issues auto-fixados |
+| 7 | Abstração de localStorage | ✅ Concluído | `frontend/src/services/storage.ts`; 7 grupos de métodos |
+| 8 | Parser de erros RFC 7807 | ✅ Concluído | `frontend/src/services/apiError.ts`; `extractApiError(err, fallback?)` |
+| 9 | Busca full-text | ✅ Concluído | `app/api/v1/endpoints/busca.py`; `BuscaView.vue`; link na Navbar |
+| 10 | Playwright E2E tests | ✅ Concluído | `frontend/e2e/` — auth, transacoes, fatura |
+| 11 | Export PDF de fatura | ✅ Concluído | `GET /contas/{id}/faturas/{ano}/{mes}/pdf`; botão na FaturaCartaoView |
+| 12 | Export CSV de transações | ✅ Concluído | `GET /transacoes/export`; botão na ListaTransacoesView |
 
 ### O que NÃO será portado
 

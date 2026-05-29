@@ -50,6 +50,11 @@ Warnings de bibliotecas de terceiros podem aparecer e não impedem o sucesso.
 - Competência da fatura com dia de fechamento no início, meio e fim do mês
 - Transações em diferentes posições do ciclo vão para a competência correta
 
+### `test_busca.py`
+- `GET /busca?q=<termo>` retorna transações e contas matching
+- Busca respeita isolamento de usuário (não vaza dados de terceiros)
+- `q` com menos de 2 caracteres retorna 422
+
 ### `test_endpoints_smoke.py`
 - CRUD básico de categorias, metas e orçamentos
 - Categoria em uso por uma transação não pode ser excluída
@@ -68,3 +73,7 @@ Warnings de bibliotecas de terceiros podem aparecer e não impedem o sucesso.
 - Filtros de listagem: tipo, status, conta, categoria, valor (igual/gte/lte), período, busca textual
 - Combinação de múltiplos filtros simultâneos
 - Endpoint `/visao-financeira` com itens de fatura misturados a transações normais
+
+### `test_negativos.py`
+- Cenários de erro esperados: acesso a recursos de outro usuário, IDs inexistentes, operações inválidas
+- Garante que o isolamento de dados entre usuários funciona corretamente
