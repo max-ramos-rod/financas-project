@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import AccessContext, get_access_context
 from app.core.pagination import PaginationMetaBuilder, PaginationParams
 from app.core.responses import PagedResponse
-from app.crud import crud_transacao as crud
 from app.db.session import get_db
 from app.domain.cartao_fatura import obter_resumo_fatura_por_competencia, valor_efetivo_transacao
 from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao
@@ -161,7 +160,7 @@ def listar_transacoes(
         except ValueError:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="valor_ref invalido")
 
-    all_items, total = crud.get_transacoes(
+    all_items, total = _service.listar(
         db=db,
         user_id=access_ctx.effective_user.id,
         tipo=tipo,
@@ -219,7 +218,7 @@ def listar_transacoes_visao_financeira(
     categoria_normalizada = None if sem_categoria else categoria_id
     valor_ref_num = _parse_valor_ref(valor_ref)
 
-    transacoes, _ = crud.get_transacoes(
+    transacoes, _ = _service.listar(
         db=db,
         user_id=access_ctx.effective_user.id,
         tipo=tipo,
@@ -321,7 +320,7 @@ def buscar_transacao(
     access_ctx: AccessContext = Depends(get_access_context)
 ):
     """Busca uma transação específica"""
-    transacao = crud.get_transacao(db, transacao_id, access_ctx.effective_user.id)
+    transacao = _service.buscar(db, transacao_id, access_ctx.effective_user.id)
 
     if not transacao:
         raise HTTPException(
@@ -504,7 +503,7 @@ def exportar_csv(
     sem_categoria = categoria_id == -1
     categoria_normalizada = None if sem_categoria else categoria_id
 
-    transacoes, _ = crud.get_transacoes(
+    transacoes, _ = _service.listar(
         db=db,
         user_id=access_ctx.effective_user.id,
         tipo=tipo,

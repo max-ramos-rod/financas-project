@@ -1,12 +1,12 @@
 import uuid
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
 from app.contracts import ContaRepositoryProtocol
 from app.domain.cartao_fatura import ResumoFatura, valor_efetivo_transacao
-from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao, Transacao
+from app.models import Conta, ContaCartaoCiclo, StatusLiquidacao, TipoConta, TipoTransacao, Transacao
 from app.repositories import ContaRepository
 from app.schemas.conta import ContaCreate, ContaUpdate, PagarFaturaRequest
 
@@ -68,6 +68,69 @@ class ContaService:
         self._repo.delete(db, db_conta)
         db.commit()
         return True
+
+    def listar(self, db: Session, user_id: int) -> List[Conta]:
+        return db.query(Conta).filter(Conta.user_id == user_id).all()
+
+    def buscar(self, db: Session, conta_id: int, user_id: int) -> Optional[Conta]:
+        return db.query(Conta).filter(Conta.id == conta_id, Conta.user_id == user_id).first()
+
+    def ajustar_ciclo_competencia(
+        self,
+        db: Session,
+        conta_id: int,
+        competencia_ano: int,
+        competencia_mes: int,
+        data_fechamento_prevista,
+        data_vencimento_prevista,
+        data_fechamento_real,
+        data_vencimento_real,
+        observacao,
+    ) -> None:
+        ciclo = (
+            db.query(ContaCartaoCiclo)
+            .filter(
+                ContaCartaoCiclo.conta_id == conta_id,
+                ContaCartaoCiclo.competencia_ano == competencia_ano,
+                ContaCartaoCiclo.competencia_mes == competencia_mes,
+            )
+            .first()
+        )
+        if ciclo is None:
+            ciclo = ContaCartaoCiclo(
+                conta_id=conta_id,
+                competencia_ano=competencia_ano,
+                competencia_mes=competencia_mes,
+                data_fechamento_prevista=data_fechamento_prevista,
+                data_vencimento_prevista=data_vencimento_prevista,
+            )
+        ciclo.data_fechamento_prevista = data_fechamento_prevista
+        ciclo.data_vencimento_prevista = data_vencimento_prevista
+        ciclo.data_fechamento_real = data_fechamento_real
+        ciclo.data_vencimento_real = data_vencimento_real
+        ciclo.observacao = observacao
+        db.add(ciclo)
+        db.commit()
+
+    def limpar_ajuste_ciclo_competencia(
+        self,
+        db: Session,
+        conta_id: int,
+        competencia_ano: int,
+        competencia_mes: int,
+    ) -> None:
+        ciclo = (
+            db.query(ContaCartaoCiclo)
+            .filter(
+                ContaCartaoCiclo.conta_id == conta_id,
+                ContaCartaoCiclo.competencia_ano == competencia_ano,
+                ContaCartaoCiclo.competencia_mes == competencia_mes,
+            )
+            .first()
+        )
+        if ciclo:
+            db.delete(ciclo)
+            db.commit()
 
     def pagar_fatura(
         self,

@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import AccessContext, get_access_context
 from app.core.pagination import PaginationMetaBuilder, PaginationParams
 from app.core.responses import PagedResponse
-from app.crud import crud_meta as crud
 from app.db.session import get_db
 from app.schemas.meta import MetaCreate, MetaResponse, MetaUpdate
 from app.services.meta import MetaService
@@ -20,7 +19,7 @@ def listar_metas(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    all_metas = crud.get_metas(db, access_ctx.effective_user.id)
+    all_metas = _service.listar(db, access_ctx.effective_user.id)
     total = len(all_metas)
     params = PaginationParams(page=page, page_size=page_size)
     skip = (page - 1) * page_size
@@ -36,7 +35,7 @@ def buscar_meta(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    meta = crud.get_meta(db, meta_id, access_ctx.effective_user.id)
+    meta = _service.buscar(db, meta_id, access_ctx.effective_user.id)
     if not meta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meta não encontrada")
     return meta

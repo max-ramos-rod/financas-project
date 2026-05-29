@@ -198,7 +198,7 @@ class TestCriarComDizimo:
         assert all(not t.e_dizimo for t in repo.saved)
 
 
-@patch("app.services.transacao.get_transacao")
+@patch("app.services.transacao.TransacaoService.buscar")
 @patch("app.services.transacao.recalcular_meta")
 @patch("app.services.transacao.recalcular_orcamento_mes")
 class TestDeletar:

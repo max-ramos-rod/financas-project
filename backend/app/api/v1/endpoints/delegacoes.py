@@ -7,13 +7,6 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.pagination import PaginationMetaBuilder, PaginationParams
 from app.core.responses import PagedResponse
-from app.crud.crud_delegacao import (
-    get_delegacao_by_id,
-    get_delegacao_by_token,
-    is_invite_expired,
-    list_delegacoes_received,
-    list_delegacoes_sent,
-)
 from app.db.session import get_db
 from app.models import DelegacaoStatus, User
 from app.schemas.delegacao import (
@@ -79,7 +72,7 @@ def listar_delegacoes_enviadas(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    items = list_delegacoes_sent(db, current_user.id)
+    items = _service.listar_enviadas(db, current_user.id)
     total = len(items)
     params = PaginationParams(page=1, page_size=max(total, 1))
     return PagedResponse(data=items, meta=PaginationMetaBuilder.build(total, params))
@@ -90,7 +83,7 @@ def listar_delegacoes_recebidas(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    items = list_delegacoes_received(db, current_user.id)
+    items = _service.listar_recebidas(db, current_user.id)
     total = len(items)
     params = PaginationParams(page=1, page_size=max(total, 1))
     return PagedResponse(data=items, meta=PaginationMetaBuilder.build(total, params))
@@ -102,7 +95,7 @@ def aceitar_delegacao(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    delegacao = get_delegacao_by_id(db, delegacao_id)
+    delegacao = _service.buscar_por_id(db, delegacao_id)
     if not delegacao:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delegacao nao encontrada")
     if delegacao.delegate_user_id != current_user.id:
@@ -120,7 +113,7 @@ def revogar_delegacao(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    delegacao = get_delegacao_by_id(db, delegacao_id)
+    delegacao = _service.buscar_por_id(db, delegacao_id)
     if not delegacao:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delegacao nao encontrada")
 
@@ -148,7 +141,7 @@ def listar_contextos_disponiveis(
         )
     ]
     delegacoes_ativas = [
-        item for item in list_delegacoes_received(db, current_user.id)
+        item for item in _service.listar_recebidas(db, current_user.id)
         if item.status == DelegacaoStatus.ACTIVE
     ]
     for item in delegacoes_ativas:
@@ -166,7 +159,7 @@ def listar_contextos_disponiveis(
 
 @router.get("/invite-info/{token}", response_model=DelegacaoInviteTokenInfo)
 def convite_por_token(token: str, db: Session = Depends(get_db)):
-    delegacao = get_delegacao_by_token(db, token)
+    delegacao = _service.buscar_por_token(db, token)
     if not delegacao:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite nao encontrado")
 
@@ -175,7 +168,7 @@ def convite_por_token(token: str, db: Session = Depends(get_db)):
         owner_nome=delegacao.owner.nome,
         owner_email=delegacao.owner.email,
         has_account=delegacao.delegate_user_id is not None,
-        expired=is_invite_expired(delegacao),
+        expired=_service.is_invite_expired(delegacao),
     )
 
 
@@ -185,14 +178,14 @@ def confirmar_convite(
     payload: DelegacaoConfirmRequest,
     db: Session = Depends(get_db),
 ):
-    delegacao = get_delegacao_by_token(db, token)
+    delegacao = _service.buscar_por_token(db, token)
     if not delegacao:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite nao encontrado")
 
     if delegacao.status != DelegacaoStatus.PENDING:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Convite nao esta pendente")
 
-    if is_invite_expired(delegacao):
+    if _service.is_invite_expired(delegacao):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Convite expirado")
 
     try:

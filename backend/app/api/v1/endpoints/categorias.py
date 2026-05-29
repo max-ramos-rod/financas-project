@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import AccessContext, get_access_context
 from app.core.pagination import PaginationMetaBuilder, PaginationParams
 from app.core.responses import PagedResponse
-from app.crud import crud_categoria as crud
 from app.db.session import get_db
 from app.schemas.categoria import CategoriaCreate, CategoriaResponse, CategoriaUpdate
 from app.services.categoria import CategoriaService
@@ -18,7 +17,7 @@ def listar_categorias(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    categorias = crud.get_categorias(db, access_ctx.effective_user.id)
+    categorias = _service.listar(db, access_ctx.effective_user.id)
     total = len(categorias)
     params = PaginationParams(page=1, page_size=max(total, 1))
     return PagedResponse(data=categorias, meta=PaginationMetaBuilder.build(total, params))

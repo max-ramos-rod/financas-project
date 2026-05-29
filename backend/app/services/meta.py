@@ -39,3 +39,9 @@ class MetaService:
         self._repo.delete(db, db_meta)
         db.commit()
         return True
+
+    def listar(self, db: Session, user_id: int) -> list[Meta]:
+        return db.query(Meta).filter(Meta.user_id == user_id).all()
+
+    def buscar(self, db: Session, meta_id: int, user_id: int) -> Meta | None:
+        return db.query(Meta).filter(Meta.id == meta_id, Meta.user_id == user_id).first()

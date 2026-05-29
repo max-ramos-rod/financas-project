@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.crud import crud_password_reset
 from app.db.session import get_db
 from app.main import app
 

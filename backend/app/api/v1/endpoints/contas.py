@@ -1,4 +1,4 @@
-﻿import io
+import io
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import AccessContext, get_access_context
 from app.core.pagination import PaginationMetaBuilder, PaginationParams
 from app.core.responses import PagedResponse
-from app.crud import crud_conta as crud
 from app.db.session import get_db
 from app.domain.cartao_fatura import (
     determinar_competencia_fatura_atual,
@@ -17,7 +16,7 @@ from app.domain.cartao_fatura import (
     obter_resumo_fatura_por_competencia,
     valor_efetivo_transacao,
 )
-from app.models import ContaCartaoCiclo, TipoConta
+from app.models import TipoConta
 from app.schemas.conta import (
     ContaCreate,
     ContaResponse,
@@ -35,7 +34,7 @@ router = APIRouter()
 
 
 def _buscar_cartao_ou_erro(db: Session, conta_id: int, user_id: int):
-    conta = crud.get_conta(db, conta_id, user_id)
+    conta = _service.buscar(db, conta_id, user_id)
     if not conta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
     if conta.tipo != TipoConta.CARTAO_CREDITO:
@@ -113,7 +112,7 @@ def listar_contas(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    contas = crud.get_contas(db, access_ctx.effective_user.id)
+    contas = _service.listar(db, access_ctx.effective_user.id)
 
     for conta in contas:
         if conta.tipo != TipoConta.CARTAO_CREDITO:
@@ -157,7 +156,7 @@ def buscar_conta(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    conta = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
+    conta = _service.buscar(db, conta_id, access_ctx.effective_user.id)
 
     if not conta:
         raise HTTPException(
@@ -262,7 +261,7 @@ def obter_fatura_atual(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    conta = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
+    conta = _service.buscar(db, conta_id, access_ctx.effective_user.id)
     if not conta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
 
@@ -284,7 +283,7 @@ def obter_fatura_fechada(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    conta = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
+    conta = _service.buscar(db, conta_id, access_ctx.effective_user.id)
     if not conta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
 
@@ -321,32 +320,17 @@ def ajustar_ciclo_fatura_por_competencia(
         access_ctx=access_ctx,
     )
 
-    ciclo = (
-        db.query(ContaCartaoCiclo)
-        .filter(
-            ContaCartaoCiclo.conta_id == conta.id,
-            ContaCartaoCiclo.competencia_ano == competencia_ano,
-            ContaCartaoCiclo.competencia_mes == competencia_mes,
-        )
-        .first()
+    _service.ajustar_ciclo_competencia(
+        db,
+        conta_id=conta.id,
+        competencia_ano=competencia_ano,
+        competencia_mes=competencia_mes,
+        data_fechamento_prevista=resumo_ciclo.data_fechamento_prevista,
+        data_vencimento_prevista=resumo_ciclo.data_vencimento_prevista,
+        data_fechamento_real=payload.data_fechamento_real,
+        data_vencimento_real=payload.data_vencimento_real,
+        observacao=payload.observacao,
     )
-
-    if ciclo is None:
-        ciclo = ContaCartaoCiclo(
-            conta_id=conta.id,
-            competencia_ano=competencia_ano,
-            competencia_mes=competencia_mes,
-            data_fechamento_prevista=resumo_ciclo.data_fechamento_prevista,
-            data_vencimento_prevista=resumo_ciclo.data_vencimento_prevista,
-        )
-
-    ciclo.data_fechamento_prevista = resumo_ciclo.data_fechamento_prevista
-    ciclo.data_vencimento_prevista = resumo_ciclo.data_vencimento_prevista
-    ciclo.data_fechamento_real = payload.data_fechamento_real
-    ciclo.data_vencimento_real = payload.data_vencimento_real
-    ciclo.observacao = payload.observacao
-    db.add(ciclo)
-    db.commit()
 
     resumo = _obter_resumo_fatura_ciclo_ou_erro(
         db,
@@ -370,18 +354,7 @@ def limpar_ajuste_ciclo_fatura_por_competencia(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mes da fatura invalido")
 
     conta = _buscar_cartao_ou_erro(db, conta_id, access_ctx.effective_user.id)
-    ciclo = (
-        db.query(ContaCartaoCiclo)
-        .filter(
-            ContaCartaoCiclo.conta_id == conta.id,
-            ContaCartaoCiclo.competencia_ano == competencia_ano,
-            ContaCartaoCiclo.competencia_mes == competencia_mes,
-        )
-        .first()
-    )
-    if ciclo:
-        db.delete(ciclo)
-        db.commit()
+    _service.limpar_ajuste_ciclo_competencia(db, conta.id, competencia_ano, competencia_mes)
 
     resumo = _obter_resumo_fatura_ciclo_ou_erro(
         db,
@@ -400,13 +373,7 @@ def ajustar_ciclo_fatura_atual(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    conta = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
-    if not conta:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
-    if conta.tipo != TipoConta.CARTAO_CREDITO:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Conta nao e cartao de credito")
-    if conta.dia_fechamento is None or conta.dia_vencimento is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cartao sem fechamento/vencimento configurado")
+    conta = _buscar_cartao_ou_erro(db, conta_id, access_ctx.effective_user.id)
 
     referencia = date.today()
     competencia_ano, competencia_mes = determinar_competencia_fatura_atual(
@@ -416,32 +383,17 @@ def ajustar_ciclo_fatura_atual(
     )
     resumo_atual = obter_fatura_atual(conta_id=conta_id, db=db, access_ctx=access_ctx)
 
-    ciclo = (
-        db.query(ContaCartaoCiclo)
-        .filter(
-            ContaCartaoCiclo.conta_id == conta.id,
-            ContaCartaoCiclo.competencia_ano == competencia_ano,
-            ContaCartaoCiclo.competencia_mes == competencia_mes,
-        )
-        .first()
+    _service.ajustar_ciclo_competencia(
+        db,
+        conta_id=conta.id,
+        competencia_ano=competencia_ano,
+        competencia_mes=competencia_mes,
+        data_fechamento_prevista=resumo_atual.data_fechamento_prevista,
+        data_vencimento_prevista=resumo_atual.data_vencimento_prevista,
+        data_fechamento_real=payload.data_fechamento_real,
+        data_vencimento_real=payload.data_vencimento_real,
+        observacao=payload.observacao,
     )
-
-    if ciclo is None:
-        ciclo = ContaCartaoCiclo(
-            conta_id=conta.id,
-            competencia_ano=competencia_ano,
-            competencia_mes=competencia_mes,
-            data_fechamento_prevista=resumo_atual.data_fechamento_prevista,
-            data_vencimento_prevista=resumo_atual.data_vencimento_prevista,
-        )
-
-    ciclo.data_fechamento_prevista = resumo_atual.data_fechamento_prevista
-    ciclo.data_vencimento_prevista = resumo_atual.data_vencimento_prevista
-    ciclo.data_fechamento_real = payload.data_fechamento_real
-    ciclo.data_vencimento_real = payload.data_vencimento_real
-    ciclo.observacao = payload.observacao
-    db.add(ciclo)
-    db.commit()
 
     return obter_fatura_atual(conta_id=conta_id, db=db, access_ctx=access_ctx)
 
@@ -452,29 +404,14 @@ def limpar_ajuste_ciclo_fatura_atual(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    conta = crud.get_conta(db, conta_id, access_ctx.effective_user.id)
-    if not conta:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
-    if conta.tipo != TipoConta.CARTAO_CREDITO:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Conta nao e cartao de credito")
+    conta = _buscar_cartao_ou_erro(db, conta_id, access_ctx.effective_user.id)
 
     competencia_ano, competencia_mes = determinar_competencia_fatura_atual(
         db,
         conta=conta,
         ref_date=date.today(),
     )
-    ciclo = (
-        db.query(ContaCartaoCiclo)
-        .filter(
-            ContaCartaoCiclo.conta_id == conta.id,
-            ContaCartaoCiclo.competencia_ano == competencia_ano,
-            ContaCartaoCiclo.competencia_mes == competencia_mes,
-        )
-        .first()
-    )
-    if ciclo:
-        db.delete(ciclo)
-        db.commit()
+    _service.limpar_ajuste_ciclo_competencia(db, conta.id, competencia_ano, competencia_mes)
 
     return obter_fatura_atual(conta_id=conta_id, db=db, access_ctx=access_ctx)
 

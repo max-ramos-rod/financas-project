@@ -1,11 +1,10 @@
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import List, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.contracts.delegacao import DelegacaoRepositoryProtocol
-from app.crud.crud_delegacao import is_invite_expired
 from app.crud.crud_user import create_user, get_user_by_email
 from app.models import Delegacao, DelegacaoStatus, User, UserRole
 from app.repositories.delegacao import DelegacaoRepository
@@ -17,6 +16,46 @@ INVITE_TTL_DAYS = 7
 class DelegacaoService:
     def __init__(self, repo: DelegacaoRepositoryProtocol | None = None) -> None:
         self._repo: DelegacaoRepositoryProtocol = repo if repo is not None else DelegacaoRepository()
+
+    @staticmethod
+    def is_invite_expired(delegacao: Delegacao) -> bool:
+        if delegacao.invite_expires_at is None:
+            return True
+        return delegacao.invite_expires_at < datetime.now(timezone.utc)
+
+    def listar_enviadas(self, db: Session, owner_user_id: int) -> List[Delegacao]:
+        return (
+            db.query(Delegacao)
+            .options(joinedload(Delegacao.owner), joinedload(Delegacao.delegate))
+            .filter(Delegacao.owner_user_id == owner_user_id)
+            .order_by(Delegacao.created_at.desc())
+            .all()
+        )
+
+    def listar_recebidas(self, db: Session, delegate_user_id: int) -> List[Delegacao]:
+        return (
+            db.query(Delegacao)
+            .options(joinedload(Delegacao.owner), joinedload(Delegacao.delegate))
+            .filter(Delegacao.delegate_user_id == delegate_user_id)
+            .order_by(Delegacao.created_at.desc())
+            .all()
+        )
+
+    def buscar_por_id(self, db: Session, delegacao_id: int) -> Optional[Delegacao]:
+        return (
+            db.query(Delegacao)
+            .options(joinedload(Delegacao.owner), joinedload(Delegacao.delegate))
+            .filter(Delegacao.id == delegacao_id)
+            .first()
+        )
+
+    def buscar_por_token(self, db: Session, token: str) -> Optional[Delegacao]:
+        return (
+            db.query(Delegacao)
+            .options(joinedload(Delegacao.owner), joinedload(Delegacao.delegate))
+            .filter(Delegacao.invite_token == token)
+            .first()
+        )
 
     def invite(
         self, db: Session, owner_user_id: int, invited_email: str, can_write: bool
@@ -68,7 +107,7 @@ class DelegacaoService:
     def accept(self, db: Session, delegacao: Delegacao) -> Delegacao:
         if delegacao.status != DelegacaoStatus.PENDING:
             raise ValueError("Apenas convites pendentes podem ser aceitos.")
-        if is_invite_expired(delegacao):
+        if self.is_invite_expired(delegacao):
             raise ValueError("Convite expirado.")
         if not delegacao.delegate_user_id:
             raise ValueError("Convite sem usuario associado.")

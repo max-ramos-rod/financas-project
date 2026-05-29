@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import AccessContext, get_access_context
 from app.core.pagination import PaginationMetaBuilder, PaginationParams
 from app.core.responses import PagedResponse
-from app.crud import crud_orcamento as crud
 from app.db.session import get_db
 from app.schemas.orcamento import OrcamentoCreate, OrcamentoResponse, OrcamentoUpdate
 from app.services.orcamento import OrcamentoService
@@ -22,7 +21,7 @@ def listar_orcamentos(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    orcamentos = crud.get_orcamentos(db, access_ctx.effective_user.id, mes, ano)
+    orcamentos = _service.listar(db, access_ctx.effective_user.id, mes, ano)
     total = len(orcamentos)
     params = PaginationParams(page=1, page_size=max(total, 1))
     return PagedResponse(data=orcamentos, meta=PaginationMetaBuilder.build(total, params))
@@ -34,7 +33,7 @@ def buscar_orcamento(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    orcamento = crud.get_orcamento(db, orcamento_id, access_ctx.effective_user.id)
+    orcamento = _service.buscar(db, orcamento_id, access_ctx.effective_user.id)
     if not orcamento:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Orçamento não encontrado"

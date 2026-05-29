@@ -1,6 +1,6 @@
 from calendar import monthrange
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -73,3 +73,30 @@ class OrcamentoService:
         self._repo.delete(db, db_orcamento)
         db.commit()
         return True
+
+    def listar(
+        self,
+        db: Session,
+        user_id: int,
+        mes: Optional[int] = None,
+        ano: Optional[int] = None,
+    ) -> List[Orcamento]:
+        query = db.query(Orcamento).filter(Orcamento.user_id == user_id)
+        if mes:
+            query = query.filter(Orcamento.mes == mes)
+        if ano:
+            query = query.filter(Orcamento.ano == ano)
+        orcamentos = query.all()
+        for o in orcamentos:
+            o.valor_gasto = self._calcular_valor_gasto(db, o)
+        return orcamentos
+
+    def buscar(self, db: Session, orcamento_id: int, user_id: int) -> Optional[Orcamento]:
+        o = (
+            db.query(Orcamento)
+            .filter(Orcamento.id == orcamento_id, Orcamento.user_id == user_id)
+            .first()
+        )
+        if o:
+            o.valor_gasto = self._calcular_valor_gasto(db, o)
+        return o

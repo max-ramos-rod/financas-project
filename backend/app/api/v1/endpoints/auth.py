@@ -8,7 +8,6 @@ from app.api.deps import get_current_active_user
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.security import create_access_token, get_session_expire_delta, get_session_timeout_seconds
-from app.crud import crud_password_reset
 from app.crud.crud_user import (
     authenticate_user,
     create_google_user,
@@ -30,9 +29,11 @@ from app.schemas.user import (
     UserResponse,
 )
 from app.services.email import send_password_reset_email
+from app.services.password_reset import PasswordResetService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+_password_reset = PasswordResetService()
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -163,7 +164,7 @@ def read_users_me(current_user: User = Depends(get_current_active_user)):
 def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = get_user_by_email(db, body.email)
     if user:
-        token_obj = crud_password_reset.criar_token(db, user.id)
+        token_obj = _password_reset.criar_token(db, user.id)
         reset_url = f"{settings.FRONTEND_URL}/redefinir-senha?token={token_obj.token}"
         try:
             send_password_reset_email(to_email=body.email, reset_url=reset_url)
@@ -177,7 +178,7 @@ def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session =
 @router.post("/reset-password", response_model=ResetPasswordResponse)
 @limiter.limit("5/minute")
 def reset_password(request: Request, body: ResetPasswordRequest, db: Session = Depends(get_db)):
-    token_obj = crud_password_reset.buscar_token_valido(db, body.token)
+    token_obj = _password_reset.buscar_token_valido(db, body.token)
     if not token_obj:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -189,6 +190,6 @@ def reset_password(request: Request, body: ResetPasswordRequest, db: Session = D
 
     from app.core.security import get_password_hash
     user.hashed_password = get_password_hash(body.password)
-    crud_password_reset.marcar_usado(db, token_obj)
+    _password_reset.marcar_usado(db, token_obj)
     db.commit()
     return ResetPasswordResponse(message="Senha alterada com sucesso. Faça login com a nova senha.")
