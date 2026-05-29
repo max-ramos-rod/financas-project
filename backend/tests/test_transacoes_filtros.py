@@ -101,7 +101,7 @@ def test_filtro_categoria_sem_categoria(client):
 
     response = client.get("/api/v1/transacoes?categoria_id=-1", headers=headers)
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["data"]
     ids = {item["id"] for item in items}
     assert sem_categoria["id"] in ids
     assert all(item.get("categoria_id") is None for item in items)
@@ -117,7 +117,7 @@ def test_filtro_fixas_e_nao_fixas(client):
 
     response = client.get("/api/v1/transacoes?fixa=fixas", headers=headers)
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["data"]
     ids = {item["id"] for item in items}
     assert fixa["id"] in ids
     assert all(item.get("fixa") is True for item in items)
@@ -133,7 +133,7 @@ def test_filtro_valor_modo_gte(client):
 
     response = client.get("/api/v1/transacoes?valor_modo=gte&valor_ref=200,00", headers=headers)
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["data"]
     ids = {item["id"] for item in items}
     assert maior["id"] in ids
     assert all(float(item["valor"]) >= 200.0 for item in items)
@@ -172,7 +172,7 @@ def test_filtro_orcamento_fora_e_dentro(client):
         headers=headers,
     )
     assert response_fora.status_code == 200
-    ids_fora = {item["id"] for item in response_fora.json()}
+    ids_fora = {item["id"] for item in response_fora.json()["data"]}
     assert fora_1["id"] in ids_fora
     assert fora_2["id"] in ids_fora
 
@@ -181,7 +181,7 @@ def test_filtro_orcamento_fora_e_dentro(client):
         headers=headers,
     )
     assert response_dentro.status_code == 200
-    items_dentro = response_dentro.json()
+    items_dentro = response_dentro.json()["data"]
     assert any(item.get("categoria_id") == cat_dentro for item in items_dentro)
     assert all(item["tipo"] == "saida" for item in items_dentro)
 

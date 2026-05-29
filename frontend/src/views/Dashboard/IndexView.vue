@@ -260,13 +260,13 @@ const fetchDados = async () => {
 
   try {
     const [transacoesRes, metasRes, orcamentosRes] = await Promise.all([
-      api.get('/transacoes'),
+      api.get('/transacoes', { params: { page: 1, page_size: 500 } }),
       api.get('/metas'),
       api.get('/orcamentos'),
       contasStore.fetchContas(),
       categoriasStore.fetchCategorias(),
     ])
-    transacoes.value = transacoesRes.data
+    transacoes.value = (transacoesRes.data as { data: Transacao[] }).data
     metas.value = metasRes.data
     orcamentos.value = orcamentosRes.data
   } catch {

@@ -29,8 +29,6 @@ def _add_months(base_date: date, months: int) -> date:
 def get_transacoes(
     db: Session,
     user_id: int,
-    skip: int = 0,
-    limit: int = 1000,
     tipo: Optional[TipoTransacao] = None,
     status_liquidacao: Optional[StatusLiquidacao] = None,
     fixa: Optional[bool] = None,
@@ -43,7 +41,7 @@ def get_transacoes(
     valor_modo: Optional[str] = None,
     valor_ref: Optional[float] = None,
     orcamento: Optional[str] = None,
-) -> List[Transacao]:
+) -> tuple[List[Transacao], int]:
     query = db.query(Transacao).filter(Transacao.user_id == user_id)
 
     if tipo:
@@ -135,12 +133,7 @@ def get_transacoes(
         else:
             transacoes = [t for t in transacoes if t.tipo == TipoTransacao.SAIDA and not _fora_orcamento(t)]
 
-    if skip:
-        transacoes = transacoes[skip:]
-    if limit is not None:
-        transacoes = transacoes[:limit]
-
-    return transacoes
+    return transacoes, len(transacoes)
 
 
 def get_transacao(db: Session, transacao_id: int, user_id: int) -> Optional[Transacao]:

@@ -1,3 +1,6 @@
+import type { PagedResponse } from '@/types'
+import type { Transacao } from '@/types'
+
 export type FiltrosTransacoes = {
   tipo: 'todas' | 'entrada' | 'saida'
   status_liquidacao: 'todos' | 'previsto' | 'liquidado' | 'atrasado' | 'cancelado'
@@ -12,7 +15,7 @@ export type FiltrosTransacoes = {
   busca: string
 }
 
-export const montarParamsApiDosFiltros = (filtros: FiltrosTransacoes) => ({
+export const montarParamsApiDosFiltros = (filtros: FiltrosTransacoes, page = 1, page_size = 50) => ({
   tipo: filtros.tipo !== 'todas' ? filtros.tipo : undefined,
   status_liquidacao: filtros.status_liquidacao !== 'todos' ? filtros.status_liquidacao : undefined,
   fixa: filtros.fixa !== 'todas' ? filtros.fixa : undefined,
@@ -24,6 +27,8 @@ export const montarParamsApiDosFiltros = (filtros: FiltrosTransacoes) => ({
   mes: filtros.mes != null ? filtros.mes : undefined,
   ano: filtros.ano || undefined,
   busca: filtros.busca || undefined,
+  page,
+  page_size,
 })
 
 type ApiClient = {
@@ -33,9 +38,11 @@ type ApiClient = {
 export const buscarTransacoesFiltradas = async (
   apiClient: ApiClient,
   filtros: FiltrosTransacoes,
-) => {
+  page = 1,
+  page_size = 50,
+): Promise<PagedResponse<Transacao>> => {
   const response = await apiClient.get('/transacoes/visao-financeira', {
-    params: montarParamsApiDosFiltros(filtros),
+    params: montarParamsApiDosFiltros(filtros, page, page_size),
   })
-  return response.data
+  return response.data as PagedResponse<Transacao>
 }

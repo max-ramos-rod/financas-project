@@ -1,5 +1,6 @@
 import csv
 import io
+import math
 from datetime import date
 from calendar import monthrange
 
@@ -12,6 +13,7 @@ from app.db.session import get_db
 from app.api.deps import AccessContext, get_access_context
 from app.domain.cartao_fatura import obter_resumo_fatura_por_competencia, valor_efetivo_transacao
 from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao
+from app.schemas.pagination import PageMeta, PagedResponse
 from app.schemas.transacao import (
     TransacaoCreate,
     TransacaoUpdate,
@@ -123,10 +125,10 @@ def _aplicar_filtros_financeiros(
             filtrados = [item for item in filtrados if valor_efetivo_transacao(item) <= valor_ref]
     return filtrados
 
-@router.get("", response_model=List[TransacaoResponse])
+@router.get("", response_model=PagedResponse[TransacaoResponse])
 def listar_transacoes(
-    skip: int = 0,
-    limit: int = 1000,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=500),
     tipo: TipoTransacao | None = Query(default=None),
     status_liquidacao: StatusLiquidacao | None = Query(default=None),
     fixa: str | None = Query(default=None, pattern="^(fixas|nao_fixas)$"),
@@ -141,11 +143,6 @@ def listar_transacoes(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context)
 ):
-    """
-    Lista todas as transações do usuário.
-    
-    Inclui transações normais e dízimos gerados automaticamente.
-    """
     fixa_bool = None
     if fixa == "fixas":
         fixa_bool = True
@@ -162,11 +159,9 @@ def listar_transacoes(
         except ValueError:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="valor_ref invalido")
 
-    transacoes = crud.get_transacoes(
+    all_items, total = crud.get_transacoes(
         db=db,
         user_id=access_ctx.effective_user.id,
-        skip=skip,
-        limit=limit,
         tipo=tipo,
         status_liquidacao=status_liquidacao,
         fixa=fixa_bool,
@@ -180,13 +175,22 @@ def listar_transacoes(
         valor_ref=valor_ref_num,
         orcamento=orcamento,
     )
-    return transacoes
+    skip = (page - 1) * page_size
+    return PagedResponse(
+        data=all_items[skip: skip + page_size],
+        meta=PageMeta(
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=max(1, math.ceil(total / page_size)),
+        ),
+    )
 
 
-@router.get("/visao-financeira", response_model=List[TransacaoFinanceiraResponse])
+@router.get("/visao-financeira", response_model=PagedResponse[TransacaoFinanceiraResponse])
 def listar_transacoes_visao_financeira(
-    skip: int = 0,
-    limit: int = 1000,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=500),
     tipo: TipoTransacao | None = Query(default=None),
     status_liquidacao: StatusLiquidacao | None = Query(default=None),
     fixa: str | None = Query(default=None, pattern="^(fixas|nao_fixas)$"),
@@ -217,11 +221,9 @@ def listar_transacoes_visao_financeira(
     categoria_normalizada = None if sem_categoria else categoria_id
     valor_ref_num = _parse_valor_ref(valor_ref)
 
-    transacoes = crud.get_transacoes(
+    transacoes, _ = crud.get_transacoes(
         db=db,
         user_id=access_ctx.effective_user.id,
-        skip=0,
-        limit=None,
         tipo=tipo,
         status_liquidacao=status_liquidacao,
         fixa=fixa_bool,
@@ -305,11 +307,17 @@ def listar_transacoes_visao_financeira(
         )
 
     itens.sort(key=lambda item: (item.data, item.id), reverse=True)
-    if skip:
-        itens = itens[skip:]
-    if limit is not None:
-        itens = itens[:limit]
-    return itens
+    total = len(itens)
+    skip = (page - 1) * page_size
+    return PagedResponse(
+        data=itens[skip: skip + page_size],
+        meta=PageMeta(
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=max(1, math.ceil(total / page_size)),
+        ),
+    )
 
 
 @router.get("/{transacao_id}", response_model=TransacaoResponse)

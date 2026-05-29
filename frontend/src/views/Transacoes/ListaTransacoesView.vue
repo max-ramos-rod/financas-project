@@ -22,6 +22,11 @@ const duplicandoId = ref<number | null>(null)
 const transacoes = ref<Transacao[]>([])
 const loadControl = new TransacoesLoadControl()
 
+const PAGE_SIZE = 50
+const paginaAtual = ref(1)
+const totalItens = ref(0)
+const totalPaginas = ref(1)
+
 const contasStore = useContasStore()
 const categoriasStore = useCategoriasStore()
 const { contas } = storeToRefs(contasStore)
@@ -86,7 +91,25 @@ const fetchApoio = async () => {
 }
 
 const fetchTransacoes = async () => {
-  transacoes.value = (await buscarTransacoesFiltradas(api, { ...filtros.value })) as Transacao[]
+  const resultado = await buscarTransacoesFiltradas(api, { ...filtros.value }, paginaAtual.value, PAGE_SIZE)
+  transacoes.value = resultado.data
+  totalItens.value = resultado.meta.total
+  totalPaginas.value = resultado.meta.total_pages
+}
+
+const paginasVisiveis = computed(() => {
+  const range: number[] = []
+  for (let i = Math.max(1, paginaAtual.value - 2); i <= Math.min(totalPaginas.value, paginaAtual.value + 2); i++) {
+    range.push(i)
+  }
+  return range
+})
+
+const irParaPagina = async (p: number) => {
+  if (p < 1 || p > totalPaginas.value || p === paginaAtual.value) return
+  paginaAtual.value = p
+  await fetchTransacoes()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const novaTransacao = () =>
@@ -186,6 +209,7 @@ const confirmarLiquidar = async () => {
 watch(
   filtros,
   () => {
+    paginaAtual.value = 1
     void loadControl.aoAlterarFiltros({
       replaceQuery: () => router.replace({ query: queryAtualDosFiltros() }),
       fetchTransacoes,
@@ -220,8 +244,8 @@ onMounted(async () => {
             {{ LABELS.transacoes }}
           </h1>
           <p class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/40 mt-1">
-            {{ transacoesFiltradas.length }}
-            {{ transacoesFiltradas.length === 1 ? 'lançamento' : 'lançamentos' }}
+            {{ totalItens }}
+            {{ totalItens === 1 ? 'lançamento' : 'lançamentos' }}
             · {{ labelPeriodoAtual }}
           </p>
         </div>
@@ -321,6 +345,32 @@ onMounted(async () => {
         @iniciar-delecao="iniciarDelecao"
         @abrir-fatura-cartao="abrirFaturaCartao"
       />
+
+      <!-- Pagination -->
+      <div v-if="totalPaginas > 1" class="flex justify-center mt-6">
+        <div class="join">
+          <button
+            class="join-item btn btn-sm"
+            :disabled="paginaAtual === 1"
+            @click="irParaPagina(paginaAtual - 1)"
+          >«</button>
+          <button
+            v-for="p in paginasVisiveis"
+            :key="p"
+            class="join-item btn btn-sm"
+            :class="{ 'btn-active': p === paginaAtual }"
+            @click="irParaPagina(p)"
+          >{{ p }}</button>
+          <button
+            class="join-item btn btn-sm"
+            :disabled="paginaAtual === totalPaginas"
+            @click="irParaPagina(paginaAtual + 1)"
+          >»</button>
+        </div>
+        <p class="text-[11px] font-mono text-base-content/40 ml-4 self-center">
+          Página {{ paginaAtual }} de {{ totalPaginas }}
+        </p>
+      </div>
 
     </div>
   </div>

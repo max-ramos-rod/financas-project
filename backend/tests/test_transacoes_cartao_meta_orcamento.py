@@ -315,7 +315,7 @@ def test_dizimo_automatico_gera_categoria_dizimo(client):
 
     lista = client.get("/api/v1/transacoes", headers=headers)
     assert lista.status_code == 200
-    transacoes = lista.json()
+    transacoes = lista.json()["data"]
     dizimos = [t for t in transacoes if t.get("e_dizimo") is True]
     assert len(dizimos) >= 1
     assert all(t.get("categoria_id") is not None for t in dizimos)
@@ -366,7 +366,7 @@ def test_editar_entrada_ativando_dizimo_cria_saida(client):
 
     lista = client.get("/api/v1/transacoes", headers=headers)
     assert lista.status_code == 200
-    transacoes = lista.json()
+    transacoes = lista.json()["data"]
     dizimos_da_entrada = [
         t for t in transacoes
         if t.get("e_dizimo") is True and t.get("entrada_origem_id") == transacao_id
@@ -411,7 +411,7 @@ def test_editar_entrada_desligando_dizimo_remove_saida(client):
     lista_antes = client.get("/api/v1/transacoes", headers=headers)
     assert lista_antes.status_code == 200
     dizimos_antes = [
-        t for t in lista_antes.json()
+        t for t in lista_antes.json()["data"]
         if t.get("e_dizimo") is True and t.get("entrada_origem_id") == transacao_id
     ]
     assert len(dizimos_antes) == 1
@@ -429,7 +429,7 @@ def test_editar_entrada_desligando_dizimo_remove_saida(client):
     lista_depois = client.get("/api/v1/transacoes", headers=headers)
     assert lista_depois.status_code == 200
     dizimos_depois = [
-        t for t in lista_depois.json()
+        t for t in lista_depois.json()["data"]
         if t.get("e_dizimo") is True and t.get("entrada_origem_id") == transacao_id
     ]
     assert len(dizimos_depois) == 0
@@ -542,7 +542,7 @@ def test_duplicar_transacao_de_dizimo_direto_bloqueia(client):
 
     lista = client.get("/api/v1/transacoes", headers=headers)
     assert lista.status_code == 200
-    dizimo = next(t for t in lista.json() if t.get("e_dizimo") is True)
+    dizimo = next(t for t in lista.json()["data"] if t.get("e_dizimo") is True)
 
     duplicar_response = client.post(
         f"/api/v1/transacoes/{dizimo['id']}/duplicar",
@@ -619,7 +619,7 @@ def test_visao_financeira_consolida_lancamentos_de_cartao_em_fatura(client):
         headers=headers,
     )
     assert response.status_code == 200
-    payload = response.json()
+    payload = response.json()["data"]
     descricoes = [item["descricao"] for item in payload]
 
     assert "Compra Cartao" not in descricoes

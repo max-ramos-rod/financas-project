@@ -217,7 +217,7 @@ def test_pagar_fatura_liquida_itens_e_debita_conta_pagamento(client):
 
     transacoes = client.get("/api/v1/transacoes", headers=headers)
     assert transacoes.status_code == 200
-    lista = transacoes.json()
+    lista = transacoes.json()["data"]
 
     item_1 = next(t for t in lista if t["id"] == id_1)
     item_2 = next(t for t in lista if t["id"] == id_2)
@@ -351,7 +351,7 @@ def test_pagamento_sem_descricao_usa_prefixo_ftpg(client):
     transacoes = client.get("/api/v1/transacoes", headers=headers)
     assert transacoes.status_code == 200
     transferencia = next(
-        t for t in transacoes.json()
+        t for t in transacoes.json()["data"]
         if t["tipo"] == "transferencia" and t["conta_id"] == conta_pagamento_id
     )
     assert transferencia["descricao"].startswith("FTPG Cartao Teste")
@@ -561,6 +561,6 @@ def test_pagar_fatura_antiga_por_competencia(client):
 
     transacoes = client.get("/api/v1/transacoes", headers=headers)
     assert transacoes.status_code == 200
-    item = next(t for t in transacoes.json() if t["id"] == transacao_id)
+    item = next(t for t in transacoes.json()["data"] if t["id"] == transacao_id)
     assert item["status_liquidacao"] == "liquidado"
     assert item["data_liquidacao"] == data_pagamento.isoformat()

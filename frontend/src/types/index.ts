@@ -13,6 +13,7 @@ export type {
   DelegacaoInviteTokenInfo,
 } from './delegacao'
 export type { DRECategoriaResumo, DREMensal } from './relatorios'
+export type { PageMeta, PagedResponse } from './pagination'
 
 export interface ApiError {
   detail: string | { loc: string[]; msg: string; type: string }[]
