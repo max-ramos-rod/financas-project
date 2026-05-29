@@ -1,39 +1,23 @@
 ﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import api from '@/services/api'
-import type { Delegacao } from '@/types'
 import { labelStatusDelegacao, corStatusDelegacao } from '@/utils/strings'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import { Users } from '@lucide/vue'
+import { useDelegacoesStore } from '@/stores/delegacoes'
 
-const loading = ref(false)
-const error = ref('')
+const delegacoesStore = useDelegacoesStore()
+const { convitesEnviados, convitesRecebidos, loading, error } = storeToRefs(delegacoesStore)
 const success = ref('')
-const convitesEnviados = ref<Delegacao[]>([])
-const convitesRecebidos = ref<Delegacao[]>([])
 
 const formatDate = (value?: string | null): string => {
   if (!value) return '-'
   return new Date(value).toLocaleDateString('pt-BR')
 }
 
-const carregarConvites = async () => {
-  loading.value = true
-  error.value = ''
-  try {
-    const [sentResponse, receivedResponse] = await Promise.all([
-      api.get<Delegacao[]>('/delegacoes/sent'),
-      api.get<Delegacao[]>('/delegacoes/received'),
-    ])
-    convitesEnviados.value = sentResponse.data
-    convitesRecebidos.value = receivedResponse.data
-  } catch (err: any) {
-    error.value = err?.response?.data?.detail || 'Falha ao carregar convites.'
-  } finally {
-    loading.value = false
-  }
-}
+const carregarConvites = () => delegacoesStore.fetchConvites()
 
 const delegacaoARevogar = ref<number | null>(null)
 const showRevogarModal = ref(false)

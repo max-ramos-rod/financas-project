@@ -1,5 +1,3 @@
-import math
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -11,7 +9,8 @@ from app.schemas.meta import (
     MetaUpdate,
     MetaResponse,
 )
-from app.schemas.pagination import PageMeta, PagedResponse
+from app.core.pagination import PaginationMetaBuilder, PaginationParams
+from app.core.responses import PagedResponse
 
 from app.crud import crud_meta as crud
 
@@ -26,15 +25,11 @@ def listar_metas(
 ):
     all_metas = crud.get_metas(db, access_ctx.effective_user.id)
     total = len(all_metas)
+    params = PaginationParams(page=page, page_size=page_size)
     skip = (page - 1) * page_size
     return PagedResponse(
         data=all_metas[skip: skip + page_size],
-        meta=PageMeta(
-            total=total,
-            page=page,
-            page_size=page_size,
-            total_pages=max(1, math.ceil(total / page_size)),
-        ),
+        meta=PaginationMetaBuilder.build(total, params),
     )
 
 

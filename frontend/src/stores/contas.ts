@@ -18,9 +18,9 @@ export const useContasStore = defineStore('contas', () => {
     if (fetchPromise) return fetchPromise
     loading.value = true
     fetchPromise = api
-      .get<Conta[]>('/contas')
+      .get('/contas')
       .then((res) => {
-        contas.value = res.data
+        contas.value = (res.data as { data: Conta[] }).data
       })
       .finally(() => {
         loading.value = false

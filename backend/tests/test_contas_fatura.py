@@ -208,9 +208,9 @@ def test_pagar_fatura_liquida_itens_e_debita_conta_pagamento(client):
 
     contas = client.get("/api/v1/contas", headers=headers)
     assert contas.status_code == 200
-    conta_pagamento = next(c for c in contas.json() if c["id"] == conta_pagamento_id)
+    conta_pagamento = next(c for c in contas.json()["data"] if c["id"] == conta_pagamento_id)
     assert conta_pagamento["saldo"] == 1790.0
-    cartao = next(c for c in contas.json() if c["id"] == conta_cartao_id)
+    cartao = next(c for c in contas.json()["data"] if c["id"] == conta_cartao_id)
     assert cartao["valor_fatura_fechada"] == 0
     assert cartao["valor_fatura_fechada_pago"] == 210.0
     assert cartao["valor_fatura_fechada_total"] == 210.0
@@ -280,8 +280,8 @@ def test_listar_contas_retorna_resumo_fatura_aberta_por_cartao(client):
     contas = client.get("/api/v1/contas", headers=headers)
     assert contas.status_code == 200
 
-    cartao_a = next(c for c in contas.json() if c["id"] == cartao_a_id)
-    cartao_b = next(c for c in contas.json() if c["id"] == cartao_b_id)
+    cartao_a = next(c for c in contas.json()["data"] if c["id"] == cartao_a_id)
+    cartao_b = next(c for c in contas.json()["data"] if c["id"] == cartao_b_id)
 
     assert cartao_a["valor_fatura_aberta"] == 150.0
     assert cartao_a["valor_fatura_fechada_total"] == 0
@@ -392,7 +392,7 @@ def test_ajustar_ciclo_fatura_atual_aplica_datas_reais_e_observacao(client):
 
     contas = client.get("/api/v1/contas", headers=headers)
     assert contas.status_code == 200
-    cartao = next(c for c in contas.json() if c["id"] == conta_cartao_id)
+    cartao = next(c for c in contas.json()["data"] if c["id"] == conta_cartao_id)
     assert cartao["data_fechamento_fatura"] == data_fechamento_real.isoformat()
     assert cartao["data_vencimento_fatura"] == data_vencimento_real.isoformat()
 

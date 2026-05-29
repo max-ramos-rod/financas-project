@@ -1,33 +1,28 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
 
-from app.db.session import get_db
 from app.api.deps import AccessContext, get_access_context
+from app.core.pagination import PaginationMetaBuilder, PaginationParams
+from app.core.responses import PagedResponse
+from app.crud import crud_categoria as crud
+from app.db.session import get_db
 from app.schemas.categoria import (
     CategoriaCreate,
     CategoriaUpdate,
     CategoriaResponse,
 )
 
-from app.crud import crud_categoria as crud
-
 router = APIRouter()
 
-@router.get("", response_model=List[CategoriaResponse])
+@router.get("", response_model=PagedResponse[CategoriaResponse])
 def listar_categorias(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context)
 ):
-    """
-    Lista categorias disponíveis para o usuário.
-    
-    Retorna:
-    - Categorias padrão do sistema (user_id=NULL, padrao=true)
-    - Categorias customizadas do usuário (user_id=current_user.id, padrao=false)
-    """
     categorias = crud.get_categorias(db, access_ctx.effective_user.id)
-    return categorias
+    total = len(categorias)
+    params = PaginationParams(page=1, page_size=max(total, 1))
+    return PagedResponse(data=categorias, meta=PaginationMetaBuilder.build(total, params))
 
 
 @router.post("", response_model=CategoriaResponse, status_code=status.HTTP_201_CREATED)

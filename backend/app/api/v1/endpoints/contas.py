@@ -8,6 +8,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import AccessContext, get_access_context
+from app.core.pagination import PaginationMetaBuilder, PaginationParams
+from app.core.responses import PagedResponse
 from app.crud import crud_conta as crud
 from app.db.session import get_db
 from app.domain.cartao_fatura import (
@@ -105,7 +107,7 @@ def _obter_resumo_fatura_ciclo_ou_erro(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-@router.get("", response_model=List[ContaResponse])
+@router.get("", response_model=PagedResponse[ContaResponse])
 def listar_contas(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
@@ -143,7 +145,9 @@ def listar_contas(
         conta.periodo_fatura_fechada_fim = resumo_fechado.periodo_fim
         conta.data_vencimento_fatura_fechada = resumo_fechado.data_vencimento_fatura
 
-    return contas
+    total = len(contas)
+    params = PaginationParams(page=1, page_size=max(total, 1))
+    return PagedResponse(data=contas, meta=PaginationMetaBuilder.build(total, params))
 
 
 @router.get("/{conta_id}", response_model=ContaResponse)

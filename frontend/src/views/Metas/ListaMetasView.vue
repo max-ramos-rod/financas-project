@@ -1,16 +1,17 @@
 ﻿<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Meta } from '@/types'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Target } from '@lucide/vue'
+import { useMetasStore } from '@/stores/metas'
 
 const router = useRouter()
-
-const loading = ref(true)
-const metas = ref<Meta[]>([])
+const metasStore = useMetasStore()
+const { metas, loading } = storeToRefs(metasStore)
 const metaADeletar = ref<Meta | null>(null)
 const mostraModalDelete = ref(false)
 const showErrorModal = ref(false)
@@ -65,16 +66,7 @@ const temFiltrosAtivos = computed(() =>
   filtros.value.status !== 'todas' || filtros.value.busca !== ''
 )
 
-const fetchDados = async () => {
-  loading.value = true
-  try {
-    const res = await api.get('/metas')
-    metas.value = (res.data as { data: Meta[] }).data
-  } catch {
-  } finally {
-    loading.value = false
-  }
-}
+const fetchDados = () => metasStore.fetchMetas()
 
 const novaMeta = () => router.push('/metas/nova')
 const editarMeta = (id: number) => router.push(`/metas/${id}/editar`)

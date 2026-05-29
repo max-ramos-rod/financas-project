@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Orcamento } from '@/types'
 import { useCategoriasStore } from '@/stores/categorias'
+import { useOrcamentosStore } from '@/stores/orcamentos'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { LayoutList } from '@lucide/vue'
@@ -12,7 +13,8 @@ import { LayoutList } from '@lucide/vue'
 const router = useRouter()
 
 const loading = ref(true)
-const orcamentos = ref<Orcamento[]>([])
+const orcamentosStore = useOrcamentosStore()
+const { orcamentos } = storeToRefs(orcamentosStore)
 const categoriasStore = useCategoriasStore()
 const { categorias } = storeToRefs(categoriasStore)
 const orcamentoADeletar = ref<Orcamento | null>(null)
@@ -96,11 +98,10 @@ const totais = computed(() => {
 const fetchDados = async () => {
   loading.value = true
   try {
-    const [orcamentosRes] = await Promise.all([
-      api.get('/orcamentos', { params: { mes: filtros.value.mes, ano: filtros.value.ano } }),
+    await Promise.all([
+      orcamentosStore.fetchOrcamentos({ mes: filtros.value.mes, ano: filtros.value.ano }),
       categoriasStore.fetchCategorias(),
     ])
-    orcamentos.value = orcamentosRes.data
   } catch {
   } finally {
     loading.value = false
@@ -116,7 +117,7 @@ const deletarOrcamento = async () => {
   const id = orcamentoADeletar.value.id
   try {
     await api.delete(`/orcamentos/${id}`)
-    orcamentos.value = orcamentos.value.filter(o => o.id !== id)
+    orcamentosStore.orcamentos = orcamentosStore.orcamentos.filter(o => o.id !== id)
   } catch (error) {
     errorMessages.value = formatApiError(error)
     showErrorModal.value = true

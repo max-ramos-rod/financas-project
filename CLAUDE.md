@@ -37,7 +37,11 @@
 
 ## Arquitetura atual que deve ser respeitada
 - Backend atual e modular por endpoint, com forte uso de `crud_*`.
+- `app/core/` contem infra transversal: `pagination.py` (PaginationParams, PageMeta, PaginationMetaBuilder), `responses.py` (PagedResponse, ResponseEnvelope) e `repositories.py` (SQLAlchemyRepository — reservado para future service layer).
+- Todas as rotas de listagem retornam envelope padrao `{ data: [...], meta: { page, page_size, total, total_pages, has_next } }`. Nunca retornar lista plana.
 - Frontend e organizado por dominio em `views/`, com `services/api.ts` centralizando HTTP.
+- Chamadas de listagem de recursos nunca devem ser feitas diretamente nas views; todo estado de lista vive em stores Pinia (`src/stores/`).
+- Stores cobrem: `auth`, `contas`, `categorias`, `orcamentos`, `metas`, `delegacoes`.
 - Delegacao de acesso existe e usa `X-Act-As-User`; nao remover esse fluxo por acidente.
 - Existe logica de cartao/fatura, dizimo automatico, parcelamento, metas e orcamentos; essas regras sao sensiveis.
 

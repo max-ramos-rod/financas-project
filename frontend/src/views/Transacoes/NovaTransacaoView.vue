@@ -3,10 +3,10 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
-import type { Meta } from '@/types'
 import { formatDateForInput } from '@/utils/date'
 import { useContasStore } from '@/stores/contas'
 import { useCategoriasStore } from '@/stores/categorias'
+import { useMetasStore } from '@/stores/metas'
 
 const router = useRouter()
 const route = useRoute()
@@ -17,9 +17,10 @@ const carregando = ref(true)
 const erroGeral = ref('')
 const contasStore = useContasStore()
 const categoriasStore = useCategoriasStore()
+const metasStore = useMetasStore()
 const { contas } = storeToRefs(contasStore)
 const { categorias } = storeToRefs(categoriasStore)
-const metas = ref<Meta[]>([])
+const { metas } = storeToRefs(metasStore)
 const modoCristao = ref(import.meta.env.VITE_MODO_CRISTAO === 'true')
 const editando = ref(false)
 const transacaoId = ref<number | null>(null)
@@ -128,13 +129,11 @@ watch(
 const fetchDados = async () => {
   carregando.value = true
   try {
-    const [metasRes] = await Promise.all([
-      api.get('/metas'),
+    await Promise.all([
+      metasStore.fetchMetas(),
       contasStore.fetchContas(),
       categoriasStore.fetchCategorias(),
     ])
-
-    metas.value = (metasRes.data as { data: Meta[] }).data
 
     const primeiraAtiva = contas.value.find((c) => c.ativa)
     if (primeiraAtiva && !editando.value) {

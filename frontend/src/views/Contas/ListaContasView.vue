@@ -1,5 +1,6 @@
 ﻿<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Conta } from '@/types'
@@ -8,11 +9,11 @@ import { LABELS, labelTipoConta } from '@/utils/strings'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Landmark } from '@lucide/vue'
+import { useContasStore } from '@/stores/contas'
 
 const router = useRouter()
-
-const loading = ref(true)
-const contas = ref<Conta[]>([])
+const contasStore = useContasStore()
+const { contas, loading } = storeToRefs(contasStore)
 const contaADeletar = ref<Conta | null>(null)
 const mostraModalDelete = ref(false)
 const showErrorModal = ref(false)
@@ -69,16 +70,7 @@ const temFiltrosAtivos = computed(() =>
   filtros.value.tipo !== 'todas' || filtros.value.busca !== '' || filtros.value.status !== 'todas'
 )
 
-const fetchDados = async () => {
-  loading.value = true
-  try {
-    const res = await api.get('/contas')
-    contas.value = res.data
-  } catch {
-  } finally {
-    loading.value = false
-  }
-}
+const fetchDados = () => contasStore.fetchContas()
 
 const novaConta = () => router.push('/contas/nova')
 const editarConta = (id: number) => router.push(`/contas/${id}/editar`)

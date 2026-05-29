@@ -2,12 +2,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import api from '@/services/api'
-import type { Transacao, Meta, Orcamento } from '@/types'
+import type { Transacao, Meta } from '@/types'
 import { parseDate } from '@/utils/date'
 import { valorEfetivo as valorEfetivoTransacao, formatarMoeda } from '@/utils/financeiro'
 import { LABELS } from '@/utils/strings'
 import { useContasStore } from '@/stores/contas'
 import { useCategoriasStore } from '@/stores/categorias'
+import { useOrcamentosStore } from '@/stores/orcamentos'
+import { useMetasStore } from '@/stores/metas'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Calendar, TrendingDown } from '@lucide/vue'
 
@@ -17,11 +19,13 @@ import OrcamentoComparativoChart from '@/components/charts/OrcamentoComparativoC
 
 const contasStore = useContasStore()
 const categoriasStore = useCategoriasStore()
+const orcamentosStore = useOrcamentosStore()
+const metasStore = useMetasStore()
 const { contas } = storeToRefs(contasStore)
 const { categorias } = storeToRefs(categoriasStore)
+const { orcamentos } = storeToRefs(orcamentosStore)
+const { metas } = storeToRefs(metasStore)
 const transacoes = ref<Transacao[]>([])
-const metas = ref<Meta[]>([])
-const orcamentos = ref<Orcamento[]>([])
 const loading = ref(true)
 const erro = ref('')
 
@@ -259,16 +263,14 @@ const fetchDados = async () => {
   erro.value = ''
 
   try {
-    const [transacoesRes, metasRes, orcamentosRes] = await Promise.all([
+    const [transacoesRes] = await Promise.all([
       api.get('/transacoes', { params: { page: 1, page_size: 500 } }),
-      api.get('/metas'),
-      api.get('/orcamentos'),
       contasStore.fetchContas(),
       categoriasStore.fetchCategorias(),
+      orcamentosStore.fetchOrcamentos(),
+      metasStore.fetchMetas(),
     ])
     transacoes.value = (transacoesRes.data as { data: Transacao[] }).data
-    metas.value = (metasRes.data as { data: Meta[] }).data
-    orcamentos.value = orcamentosRes.data
   } catch {
     erro.value = 'Não foi possível carregar o painel. Verifique sua conexão e tente novamente.'
   } finally {

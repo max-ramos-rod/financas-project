@@ -1,29 +1,32 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
 
-from app.db.session import get_db
 from app.api.deps import AccessContext, get_access_context
+from app.core.pagination import PaginationMetaBuilder, PaginationParams
+from app.core.responses import PagedResponse
+from app.crud import crud_orcamento as crud
+from app.db.session import get_db
 from app.schemas.orcamento import (
     OrcamentoCreate,
     OrcamentoUpdate,
     OrcamentoResponse,
 )
 
-from app.crud import crud_orcamento as crud
-
 router = APIRouter()
 
-@router.get("", response_model=List[OrcamentoResponse])
+@router.get("", response_model=PagedResponse[OrcamentoResponse])
 def listar_orcamentos(
     mes: Optional[int] = None,
     ano: Optional[int] = None,
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context)
 ):
-    """Lista todos os orçamentos do usuário"""
     orcamentos = crud.get_orcamentos(db, access_ctx.effective_user.id, mes, ano)
-    return orcamentos
+    total = len(orcamentos)
+    params = PaginationParams(page=1, page_size=max(total, 1))
+    return PagedResponse(data=orcamentos, meta=PaginationMetaBuilder.build(total, params))
 
 
 @router.get("/{orcamento_id}", response_model=OrcamentoResponse)

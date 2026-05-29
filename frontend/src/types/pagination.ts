@@ -2,6 +2,7 @@ export interface PageMeta {
   total: number
   page: number
   page_size: number
+  has_next: boolean
   total_pages: number
 }
 

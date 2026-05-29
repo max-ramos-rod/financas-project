@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import { storage } from '@/services/storage'
-import type { Conta, ImportacaoResult } from '@/types'
+import type { ImportacaoResult } from '@/types'
+import { useContasStore } from '@/stores/contas'
 
 const router = useRouter()
-
-const contas = ref<Conta[]>([])
+const contasStore = useContasStore()
+const { contas } = storeToRefs(contasStore)
 const contaId = ref<number | null>(null)
 const arquivo = ref<File | null>(null)
 const loading = ref(false)
@@ -56,10 +58,7 @@ const formatarDataHora = (iso: string): string => {
   return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-onMounted(async () => {
-  const res = await api.get<Conta[]>('/contas')
-  contas.value = (res.data as any).items ?? res.data
-})
+onMounted(() => contasStore.fetchContas())
 
 const onArquivo = async (e: Event) => {
   const input = e.target as HTMLInputElement

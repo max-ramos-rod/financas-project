@@ -77,4 +77,4 @@ def test_protected_endpoint_requires_valid_token(client):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert valid_response.status_code == 200
-    assert isinstance(valid_response.json(), list)
+    assert isinstance(valid_response.json()["data"], list)

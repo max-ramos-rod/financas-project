@@ -1,12 +1,14 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import api from '@/services/api'
 import type { Categoria } from '@/types'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
+import { useCategoriasStore } from '@/stores/categorias'
 
-const loading = ref(true)
+const categoriasStore = useCategoriasStore()
+const { categorias, loading } = storeToRefs(categoriasStore)
 const salvando = ref(false)
-const categorias = ref<Categoria[]>([])
 const erro = ref('')
 
 const filtros = ref({
@@ -38,18 +40,7 @@ const categoriasFiltradas = computed(() => {
 const minhasCategorias = computed(() => categoriasFiltradas.value.filter((c) => !c.padrao))
 const categoriasPadrao = computed(() => categoriasFiltradas.value.filter((c) => c.padrao))
 
-const fetchCategorias = async () => {
-  loading.value = true
-  erro.value = ''
-  try {
-    const response = await api.get('/categorias')
-    categorias.value = response.data
-  } catch (error: any) {
-    erro.value = error?.response?.data?.detail || 'Erro ao carregar categorias'
-  } finally {
-    loading.value = false
-  }
-}
+const fetchCategorias = () => categoriasStore.fetchCategorias()
 
 const abrirNovaCategoria = () => {
   editandoId.value = null

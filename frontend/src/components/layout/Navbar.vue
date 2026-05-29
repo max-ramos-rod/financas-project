@@ -2,9 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
-import type { Delegacao, DelegacaoContextOption } from '@/types'
+import { useDelegacoesStore } from '@/stores/delegacoes'
 import Lockup from './Lockup.vue'
 import { LABELS } from '@/utils/strings'
 
@@ -36,10 +35,11 @@ const iconPaths: Record<NavIconKey, string> = {
 const navItemsPrincipais = navItems.filter((item) => ['dashboard', 'transacoes', 'contas'].includes(item.rota))
 const navItemsGestao = navItems.filter((item) => ['metas', 'orcamentos', 'categorias', 'relatorios'].includes(item.rota))
 
+const delegacoesStore = useDelegacoesStore()
 const rotaAtiva = computed(() => router.currentRoute.value.name)
-const contextOptions = ref<DelegacaoContextOption[]>([])
+const contextOptions = delegacoesStore.actAsOptions
+const pendingInviteCount = computed(() => delegacoesStore.pendingInviteCount)
 const selectedContextId = ref<string>('')
-const pendingInviteCount = ref(0)
 
 const closeMobileMenu = () => {
   const activeElement = document.activeElement as HTMLElement | null
@@ -87,33 +87,23 @@ const logoutMobile = () => {
 const fetchContextOptions = async () => {
   if (!authStore.token) return
 
-  try {
-    const response = await api.get('/delegacoes/act-as-options')
-    contextOptions.value = response.data
+  await delegacoesStore.fetchActAsOptions()
 
-    const stored = localStorage.getItem('act_as_user_id')
-    const ownId = String(authStore.user?.id || '')
+  const stored = localStorage.getItem('act_as_user_id')
+  const ownId = String(authStore.user?.id || '')
 
-    if (stored && contextOptions.value.some((opt) => String(opt.user_id) === stored)) {
-      selectedContextId.value = stored
-      return
-    }
-
-    selectedContextId.value = ownId
-    localStorage.removeItem('act_as_user_id')
-  } catch {
-    contextOptions.value = []
+  if (stored && delegacoesStore.actAsOptions.some((opt) => String(opt.user_id) === stored)) {
+    selectedContextId.value = stored
+    return
   }
+
+  selectedContextId.value = ownId
+  localStorage.removeItem('act_as_user_id')
 }
 
 const fetchPendingInvites = async () => {
   if (!authStore.token) return
-  try {
-    const response = await api.get('/delegacoes/received')
-    pendingInviteCount.value = response.data.filter((item: Delegacao) => item.status === 'pending').length
-  } catch {
-    pendingInviteCount.value = 0
-  }
+  await delegacoesStore.fetchPendingInvites()
 }
 
 const aplicarContexto = async () => {

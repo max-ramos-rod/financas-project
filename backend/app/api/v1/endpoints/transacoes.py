@@ -1,6 +1,5 @@
 import csv
 import io
-import math
 from datetime import date
 from calendar import monthrange
 
@@ -13,7 +12,8 @@ from app.db.session import get_db
 from app.api.deps import AccessContext, get_access_context
 from app.domain.cartao_fatura import obter_resumo_fatura_por_competencia, valor_efetivo_transacao
 from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao
-from app.schemas.pagination import PageMeta, PagedResponse
+from app.core.pagination import PaginationMetaBuilder, PaginationParams
+from app.core.responses import PagedResponse
 from app.schemas.transacao import (
     TransacaoCreate,
     TransacaoUpdate,
@@ -175,15 +175,11 @@ def listar_transacoes(
         valor_ref=valor_ref_num,
         orcamento=orcamento,
     )
+    params = PaginationParams(page=page, page_size=page_size)
     skip = (page - 1) * page_size
     return PagedResponse(
         data=all_items[skip: skip + page_size],
-        meta=PageMeta(
-            total=total,
-            page=page,
-            page_size=page_size,
-            total_pages=max(1, math.ceil(total / page_size)),
-        ),
+        meta=PaginationMetaBuilder.build(total, params),
     )
 
 
@@ -308,15 +304,11 @@ def listar_transacoes_visao_financeira(
 
     itens.sort(key=lambda item: (item.data, item.id), reverse=True)
     total = len(itens)
+    params = PaginationParams(page=page, page_size=page_size)
     skip = (page - 1) * page_size
     return PagedResponse(
         data=itens[skip: skip + page_size],
-        meta=PageMeta(
-            total=total,
-            page=page,
-            page_size=page_size,
-            total_pages=max(1, math.ceil(total / page_size)),
-        ),
+        meta=PaginationMetaBuilder.build(total, params),
     )
 
 

@@ -1,21 +1,21 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '@/services/api'
-import type { Categoria } from '@/types'
+import type { Meta } from '@/types'
 
-export const useCategoriasStore = defineStore('categorias', () => {
-  const categorias = ref<Categoria[]>([])
+export const useMetasStore = defineStore('metas', () => {
+  const metas = ref<Meta[]>([])
   const loading = ref(false)
 
   let fetchPromise: Promise<void> | null = null
 
-  async function fetchCategorias(): Promise<void> {
+  async function fetchMetas(): Promise<void> {
     if (fetchPromise) return fetchPromise
     loading.value = true
     fetchPromise = api
-      .get('/categorias')
+      .get('/metas')
       .then((res) => {
-        categorias.value = (res.data as { data: Categoria[] }).data
+        metas.value = (res.data as { data: Meta[] }).data
       })
       .finally(() => {
         loading.value = false
@@ -25,13 +25,8 @@ export const useCategoriasStore = defineStore('categorias', () => {
   }
 
   function reset() {
-    categorias.value = []
+    metas.value = []
   }
 
-  return {
-    categorias,
-    loading,
-    fetchCategorias,
-    reset,
-  }
+  return { metas, loading, fetchMetas, reset }
 })

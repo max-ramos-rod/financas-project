@@ -504,7 +504,7 @@ def test_duplicar_transacao_copia_dados_com_datas_atuais_e_status_previsto(clien
 
     contas = client.get("/api/v1/contas", headers=headers)
     assert contas.status_code == 200
-    conta = next(c for c in contas.json() if c["id"] == conta_id)
+    conta = next(c for c in contas.json()["data"] if c["id"] == conta_id)
     assert conta["saldo"] == 872.55
 
 

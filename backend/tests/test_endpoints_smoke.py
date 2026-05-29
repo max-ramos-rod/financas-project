@@ -38,7 +38,7 @@ def test_categorias_requires_auth_and_returns_list(client):
     headers = _auth_headers(client)
     authorized = client.get("/api/v1/categorias", headers=headers)
     assert authorized.status_code == 200
-    assert isinstance(authorized.json(), list)
+    assert isinstance(authorized.json()["data"], list)
 
 
 def test_categorias_crud_usuario_e_bloqueio_padrao(client):
@@ -260,5 +260,5 @@ def test_orcamento_lista_recalcula_valor_gasto(client):
         headers=headers,
     )
     assert lista.status_code == 200
-    assert len(lista.json()) >= 1
-    assert lista.json()[0]["valor_gasto"] == 210.0
+    assert len(lista.json()["data"]) >= 1
+    assert lista.json()["data"][0]["valor_gasto"] == 210.0

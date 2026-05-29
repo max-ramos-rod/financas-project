@@ -1,8 +1,10 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
-import type { Conta, FaturaResumo } from '@/types'
+import type { FaturaResumo } from '@/types'
+import { useContasStore } from '@/stores/contas'
 import { formatDateBR, formatDateForInput } from '@/utils/date'
 import { formatarMoeda } from '@/utils/financeiro'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
@@ -11,6 +13,8 @@ import { Pencil } from '@lucide/vue'
 const route = useRoute()
 const router = useRouter()
 const contaId = Number(route.params.id)
+const contasStore = useContasStore()
+const { contas } = storeToRefs(contasStore)
 
 const loading = ref(true)
 const carregandoFatura = ref(false)
@@ -20,7 +24,6 @@ const error = ref('')
 const success = ref('')
 const faturaAtualReferencia = ref<FaturaResumo | null>(null)
 const faturaSelecionada = ref<FaturaResumo | null>(null)
-const contas = ref<Conta[]>([])
 const cicloSelecionado = ref('')
 const contaPagamentoId = ref<number | null>(null)
 const dataPagamento = ref(formatDateForInput(new Date()))
@@ -150,13 +153,12 @@ const carregar = async () => {
   loading.value = true
   error.value = ''
   try {
-    const [faturaAtualRes, contasRes] = await Promise.all([
+    const [faturaAtualRes] = await Promise.all([
       api.get<FaturaResumo>(`/contas/${contaId}/fatura-atual`),
-      api.get<Conta[]>('/contas'),
+      contasStore.fetchContas(),
     ])
 
     faturaAtualReferencia.value = faturaAtualRes.data
-    contas.value = contasRes.data
 
     const anoQuery = Number(route.query.ano)
     const mesQuery = Number(route.query.mes)
