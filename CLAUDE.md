@@ -38,14 +38,14 @@
 ## Arquitetura atual que deve ser respeitada
 
 ### Backend
-- Padrao predominante: `api -> service -> repository -> db` para dominios migrados; `api -> crud_* -> db` para endpoints residuais.
+- Padrao unico: `api -> service -> repository -> db` para todos os dominios. O diretorio `app/crud/` e legado historico; nenhum endpoint o importa diretamente.
 - `app/core/` contem infra transversal: `pagination.py` (PaginationParams, PageMeta, PaginationMetaBuilder), `responses.py` (PagedResponse, ResponseEnvelope), `errors.py` (handlers RFC 7807), `limiter.py` (rate limiting slowapi), `repositories.py` (SQLAlchemyRepository base — flush, nao commit).
 - `app/contracts/` — Protocol interfaces (CategoriaRepositoryProtocol, ContaRepositoryProtocol, etc.); definem o contrato entre services e repositories.
 - `app/repositories/` — implementacoes concretas dos contratos (CategoriaRepository, ContaRepository, etc.).
 - `app/services/` — orchestracao de negocio por dominio (TransacaoService, ContaService, CategoriaService, MetaService, OrcamentoService, DelegacaoService, DizimoService, ParcelamentoService); `importacao/` para upload de extratos.
 - `app/domain/` — regras de dominio puras: `cartao_fatura.py` (ciclos e faturas) e `transacao.py` (impacto_no_saldo, recalcular_meta, recalcular_orcamento_mes).
 - Todas as rotas de listagem retornam envelope padrao `{ data: [...], meta: { page, page_size, total, total_pages, has_next } }`. Sem excecoes ativas.
-- `app/crud/` ainda existe como legado — nao acrescentar logica nova; migrar para services quando mexer.
+- `app/crud/` ainda existe como legado historico — nenhum endpoint o importa; nao acrescentar logica nova.
 
 ### Frontend
 - Organizado por dominio em `views/`, com `services/api.ts` centralizando HTTP.

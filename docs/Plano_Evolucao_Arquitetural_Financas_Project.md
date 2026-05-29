@@ -27,7 +27,7 @@ Ultima atualizacao: 2026-05-29
 | **Fase 3** | **Repositories concretos (6 dominios)** | **Concluido** |
 | **Fase 3** | **Contratos Protocol (`app/contracts/`)** | **Concluido** |
 | **Fase 4** | **Testes unitarios (tests/unit/ — 7 suites com FakeRepository)** | **Concluido** |
-| Fase 5 | Completar migracao endpoints para services (crud_* residual) | Em andamento |
+| **Fase 5** | **Completar migracao endpoints para services (crud_* residual)** | **Concluido** |
 | Fase 6 | Observabilidade, logs estruturados, correlation id | Pendente |
 
 ### O que foi entregue na Fase 1 (2026-05-29)
@@ -66,9 +66,9 @@ Ultima atualizacao: 2026-05-29
 **Fase 4 — Testes unitarios:**
 - `tests/unit/` — 7 suites com FakeRepository (sem banco): `test_service_transacao.py`, `test_service_conta.py`, `test_service_categoria.py`, `test_service_meta.py`, `test_service_orcamento.py`, `test_service_delegacao.py`, `test_domain_transacao.py`
 
-### Proximo passo recomendado
+### Estado das fases
 
-Fase 5: completar migracao dos endpoints que ainda chamam `crud_*` diretamente para usar os services. Prioridade: `crud_transacao.py` (maior acumulacao de logica residual).
+Fases 0–5 concluidas. Nenhum endpoint em `app/api/` importa `app/crud/` diretamente. O `app/crud/` e legado historico mantido para referencia; nenhuma logica nova deve ser adicionada a ele.
 
 ## 1. Objetivo
 
@@ -243,10 +243,9 @@ Conclusao:
 
 ### Estado atual (2026-05-29)
 
-`api -> service -> repository -> db`  (para os dominios migrados)
-`api -> crud_* -> db`  (para os endpoints ainda nao migrados)
+`api -> service -> repository -> db`  (todos os dominios)
 
-A arquitetura alvo esta parcialmente implementada. Services e repositories existem para todos os dominios; endpoints residuais ainda chamam `crud_*` diretamente e sao candidatos a migracao na Fase 5.
+A arquitetura alvo esta completamente implementada. Nenhum endpoint chama `crud_*` diretamente. O `app/crud/` permanece como legado historico mas nao e mais consumido pela camada de API.
 
 ### Estado alvo incremental
 

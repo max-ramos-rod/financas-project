@@ -83,11 +83,6 @@ Backlog técnico: trocar os remanescentes por `<ConfirmModal>` ou toast inline.
 
 ## Médio prazo — Arquitetura
 
-### Completar service layer
-Endpoints que ainda usam `crud_*` diretamente devem migrar para services. Prioridade: `crud_transacao.py` (maior acumulação de regras).
-- Dificuldade: média · Impacto: alto
-- Referência: `docs/Plano_Evolucao_Arquitetural_Financas_Project.md` § Fase 2
-
 ### Testes unitários de service — cobertura completa
 Expandir `tests/unit/` para cobrir todos os branches críticos dos services existentes.
 - Dificuldade: média · Impacto: muito alto

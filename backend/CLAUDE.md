@@ -32,23 +32,16 @@
 - `app/domain/` — regras de dominio puras, sem IO:
   - `cartao_fatura.py` — calculo de ciclos e faturas de cartao
   - `transacao.py` — `impacto_no_saldo`, `normalizar_atraso`, `valor_meta`, `recalcular_meta`, `recalcular_orcamento_mes`, `obter_categoria_dizimo`
-- `app/crud/` acesso a dados legado; ainda usado por endpoints nao migrados para services (nao acrescentar logica nova; migrar ao tocar)
+- `app/crud/` acesso a dados legado; nenhum endpoint importa diretamente (nao acrescentar logica nova)
 - `app/models/` modelos SQLAlchemy (um arquivo por dominio + `enums.py`)
 - `app/schemas/` contratos Pydantic
 
 ## Padrões arquiteturais atuais
 
-O padrao para novos endpoints e:
+O padrao para todos os endpoints e:
 ```
 endpoint -> service -> repository -> db
 ```
-
-Endpoints legados ainda usam:
-```
-endpoint -> crud_* -> db
-```
-
-Ao modificar um endpoint legado, considere migrá-lo para o padrao com service se o contexto permitir.
 
 Services sao instanciados no topo do modulo do endpoint (ex: `_service = TransacaoService()`). O repositorio concreto e injetado pelo proprio service como default, mas pode ser substituido em testes via `TransacaoService(repo=FakeRepo())`.
 
@@ -115,7 +108,7 @@ Os arquivos `crud_*` existentes NAO devem usar esses metodos de mutacao — eles
 ## Recuperação de Senha
 - Fluxo: `POST /auth/forgot-password` → gera token (TTL 1h) → `POST /auth/reset-password` → invalida token.
 - Token armazenado em `password_reset_tokens` (model: `app/models/password_reset_token.py`).
-- CRUD: `app/crud/crud_password_reset.py` — `criar_token`, `buscar_token_valido`, `marcar_usado`.
+- Service: `app/services/password_reset.py` — `PasswordResetService` com `criar_token`, `buscar_token_valido`, `marcar_usado`.
 - Resposta sempre 200 no forgot-password para nao revelar existencia do e-mail.
 - SMTP integrado: `send_password_reset_email` em `app/services/email.py`; se SMTP nao estiver configurado, mantem fallback para log `[DEV]`.
 
@@ -145,7 +138,7 @@ Os arquivos `crud_*` existentes NAO devem usar esses metodos de mutacao — eles
 - Nao acrescentar logica de negocio em `crud_*` — usar services.
 
 ## Direcao arquitetural
-- Fases 0–4 do plano arquitetural concluidas: padronizacao de contracts/responses/errors, service layer, repositories, testes unitarios.
-- Proximo passo (Fase 5): migrar endpoints que ainda usam `crud_*` para chamar services. Prioridade: `transacoes.py` (maior volume de logica residual em crud).
+- Fases 0–5 do plano arquitetural concluidas: padronizacao de contracts/responses/errors, service layer, repositories, testes unitarios, migracao completa de endpoints.
+- Nenhum endpoint em `app/api/` importa `app/crud/` diretamente. O diretorio `app/crud/` e legado historico; nao adicionar logica nova.
 - Consulte `docs/Plano_Evolucao_Arquitetural_Financas_Project.md` para o roadmap completo.
 - Ruff linting ativo: `python -m ruff check .` passa sem erros; step adicionado ao CI.

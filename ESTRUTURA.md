@@ -120,7 +120,8 @@ backend/
 │   │   ├── meta.py                     # MetaService
 │   │   ├── orcamento.py                # OrcamentoService
 │   │   ├── parcelamento.py             # criar_parcelamento
-│   │   └── transacao.py                # TransacaoService (criar, atualizar, excluir)
+│   │   ├── password_reset.py           # PasswordResetService
+│   │   └── transacao.py                # TransacaoService
 │   └── main.py                         # FastAPI + middleware + exception handlers
 ├── alembic/
 │   └── versions/                       # migrations versionadas
