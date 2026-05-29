@@ -5,7 +5,6 @@ usuários e validações 400/422 que não tinham teste dedicado.
 import uuid
 from datetime import date
 
-
 # ---------------------------------------------------------------------------
 # Helpers compartilhados
 # ---------------------------------------------------------------------------

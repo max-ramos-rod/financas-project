@@ -11,24 +11,25 @@ from app.core.security import create_access_token, get_session_expire_delta, get
 from app.crud import crud_password_reset
 from app.crud.crud_user import (
     authenticate_user,
+    create_google_user,
     create_user,
     get_user_by_email,
     get_user_by_google_id,
-    create_google_user,
     link_google_account,
 )
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    GoogleLoginRequest,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
     Token,
     UserCreate,
     UserResponse,
-    GoogleLoginRequest,
-    ForgotPasswordRequest,
-    ForgotPasswordResponse,
-    ResetPasswordRequest,
-    ResetPasswordResponse,
 )
+from app.services.email import send_password_reset_email
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -111,8 +112,8 @@ def login_google(
         )
 
     try:
-        from google.oauth2 import id_token
         from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token
 
         idinfo = id_token.verify_oauth2_token(
             body.credential,
@@ -163,8 +164,12 @@ def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session =
     user = get_user_by_email(db, body.email)
     if user:
         token_obj = crud_password_reset.criar_token(db, user.id)
-        # TODO: integrar SMTP — por ora log em dev
-        logger.info(f"[DEV] Password reset token for {body.email}: {token_obj.token}")
+        reset_url = f"{settings.FRONTEND_URL}/redefinir-senha?token={token_obj.token}"
+        try:
+            send_password_reset_email(to_email=body.email, reset_url=reset_url)
+        except RuntimeError:
+            # SMTP não configurado — mantém token acessível via log em dev
+            logger.info(f"[DEV] Password reset token for {body.email}: {token_obj.token}")
     # Sempre retorna 200 — não revela se e-mail existe
     return ForgotPasswordResponse(message="Se o e-mail existir em nossa base, você receberá as instruções em breve.")
 

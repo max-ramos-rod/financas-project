@@ -1,27 +1,26 @@
 import csv
 import io
-from datetime import date
 from calendar import monthrange
+from datetime import date
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List
 
-from app.db.session import get_db
 from app.api.deps import AccessContext, get_access_context
-from app.domain.cartao_fatura import obter_resumo_fatura_por_competencia, valor_efetivo_transacao
-from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao
 from app.core.pagination import PaginationMetaBuilder, PaginationParams
 from app.core.responses import PagedResponse
+from app.crud import crud_transacao as crud
+from app.db.session import get_db
+from app.domain.cartao_fatura import obter_resumo_fatura_por_competencia, valor_efetivo_transacao
+from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao
 from app.schemas.transacao import (
     TransacaoCreate,
-    TransacaoUpdate,
-    TransacaoResponse,
     TransacaoFinanceiraResponse,
+    TransacaoResponse,
+    TransacaoUpdate,
 )
-
-from app.crud import crud_transacao as crud
 
 router = APIRouter()
 
@@ -320,13 +319,13 @@ def buscar_transacao(
 ):
     """Busca uma transação específica"""
     transacao = crud.get_transacao(db, transacao_id, access_ctx.effective_user.id)
-    
+
     if not transacao:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Transação não encontrada"
         )
-    
+
     return transacao
 
 
@@ -340,14 +339,14 @@ def criar_transacao(
 ):
     """
     Cria uma nova transação.
-    
+
     **Sistema de Dízimo Automático:**
     - Se `tem_dizimo=true` e `tipo=entrada`:
       - Cria a entrada normalmente
       - Cria automaticamente uma SAÍDA de dízimo
       - Ambas relacionadas via `transacao_dizimo_uuid`
       - Dízimo criado com `e_dizimo=true`
-    
+
     **Exemplo:**
     ```json
     {
@@ -361,7 +360,7 @@ def criar_transacao(
       "percentual_dizimo": 10.0
     }
     ```
-    
+
     **Resultado:**
     - Entrada: R$ 5.000 (id=1, uuid=abc-123)
     - Saída: R$ 500 (Dízimo, id=2, uuid=abc-123, e_dizimo=true)
@@ -418,7 +417,7 @@ def atualizar_transacao(
 ):
     """
     Atualiza uma transação existente.
-    
+
     ⚠️ **Importante:**
     - Não é possível editar transações de dízimo diretamente (e_dizimo=true)
     - Para alterar o dízimo, edite a entrada original
@@ -434,13 +433,13 @@ def atualizar_transacao(
         transacao_atualizada = crud.atualizar_transacao(
             db, transacao_id, access_ctx.effective_user.id, transacao
         )
-        
+
         if not transacao_atualizada:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Transação não encontrada"
             )
-        
+
         return transacao_atualizada
     except ValueError as e:
         raise HTTPException(

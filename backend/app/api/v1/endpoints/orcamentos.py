@@ -10,8 +10,8 @@ from app.crud import crud_orcamento as crud
 from app.db.session import get_db
 from app.schemas.orcamento import (
     OrcamentoCreate,
-    OrcamentoUpdate,
     OrcamentoResponse,
+    OrcamentoUpdate,
 )
 
 router = APIRouter()
@@ -37,13 +37,13 @@ def buscar_orcamento(
 ):
     """Busca um orçamento específico"""
     orcamento = crud.get_orcamento(db, orcamento_id, access_ctx.effective_user.id)
-    
+
     if not orcamento:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Orçamento não encontrado"
         )
-    
+
     return orcamento
 
 
@@ -76,13 +76,13 @@ def atualizar_orcamento(
         orcamento_atualizado = crud.atualizar_orcamento(
             db, orcamento_id, access_ctx.effective_user.id, orcamento
         )
-        
+
         if not orcamento_atualizado:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Orçamento não encontrado"
             )
-        
+
         return orcamento_atualizado
     except ValueError as e:
         raise HTTPException(
@@ -100,13 +100,13 @@ def deletar_orcamento(
     """Deleta um orçamento"""
     try:
         sucesso = crud.deletar_orcamento(db, orcamento_id, access_ctx.effective_user.id)
-        
+
         if not sucesso:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Orçamento não encontrado"
             )
-        
+
         return None
     except ValueError as e:
         raise HTTPException(

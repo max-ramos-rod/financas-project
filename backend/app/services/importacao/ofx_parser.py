@@ -40,7 +40,7 @@ def parse_ofx(content: bytes) -> List[TransacaoImportada]:
     result: List[TransacaoImportada] = []
 
     for block in blocks:
-        trntype = (_get_tag(block, "TRNTYPE") or "other").lower()
+        (_get_tag(block, "TRNTYPE") or "other").lower()
         dtposted = _get_tag(block, "DTPOSTED")
         amount_str = _get_tag(block, "TRNAMT")
         memo = _get_tag(block, "MEMO") or _get_tag(block, "NAME") or ""

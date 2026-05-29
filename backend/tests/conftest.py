@@ -16,9 +16,9 @@ if str(BACKEND_ROOT) not in sys.path:
 # Garante secret key para subir a app em ambiente de teste.
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
+from app.core.limiter import limiter  # noqa: E402
 from app.db.session import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.core.limiter import limiter  # noqa: E402
 
 SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite://")
 

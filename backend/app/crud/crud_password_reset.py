@@ -1,7 +1,9 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
 from sqlalchemy.orm import Session
+
 from app.models.password_reset_token import PasswordResetToken
 
 TOKEN_TTL_HOURS = 1

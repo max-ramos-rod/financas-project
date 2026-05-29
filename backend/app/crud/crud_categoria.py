@@ -1,6 +1,7 @@
+from typing import List, Optional
+
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
-from typing import List, Optional
 
 from app.models import Categoria, Transacao
 from app.schemas.categoria import CategoriaCreate, CategoriaUpdate
@@ -9,14 +10,14 @@ from app.schemas.categoria import CategoriaCreate, CategoriaUpdate
 def get_categorias(db: Session, user_id: int) -> List[Categoria]:
     """Lista categorias padrao + categorias do usuario"""
     return db.query(Categoria).filter(
-        (Categoria.user_id == None) | (Categoria.user_id == user_id)
+        Categoria.user_id.is_(None) | (Categoria.user_id == user_id)
     ).all()
 
 
 def get_categoria(db: Session, categoria_id: int, user_id: int) -> Optional[Categoria]:
     return db.query(Categoria).filter(
         Categoria.id == categoria_id,
-        (Categoria.user_id == user_id) | (Categoria.user_id == None),
+        (Categoria.user_id == user_id) | Categoria.user_id.is_(None),
     ).first()
 
 

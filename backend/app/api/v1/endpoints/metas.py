@@ -1,18 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
 from typing import List
 
-from app.db.session import get_db
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.api.deps import AccessContext, get_access_context
-from app.schemas.meta import (
-    MetaCreate,
-    MetaUpdate,
-    MetaResponse,
-)
 from app.core.pagination import PaginationMetaBuilder, PaginationParams
 from app.core.responses import PagedResponse
-
 from app.crud import crud_meta as crud
+from app.db.session import get_db
+from app.schemas.meta import (
+    MetaCreate,
+    MetaResponse,
+    MetaUpdate,
+)
 
 router = APIRouter()
 
@@ -41,13 +41,13 @@ def buscar_meta(
 ):
     """Busca uma meta específica"""
     meta = crud.get_meta(db, meta_id, access_ctx.effective_user.id)
-    
+
     if not meta:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Meta não encontrada"
         )
-    
+
     return meta
 
 
@@ -80,13 +80,13 @@ def atualizar_meta(
         meta_atualizada = crud.atualizar_meta(
             db, meta_id, access_ctx.effective_user.id, meta
         )
-        
+
         if not meta_atualizada:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Meta não encontrada"
             )
-        
+
         return meta_atualizada
     except ValueError as e:
         raise HTTPException(
@@ -104,13 +104,13 @@ def deletar_meta(
     """Deleta uma meta"""
     try:
         sucesso = crud.deletar_meta(db, meta_id, access_ctx.effective_user.id)
-        
+
         if not sucesso:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Meta não encontrada"
             )
-        
+
         return None
     except ValueError as e:
         raise HTTPException(

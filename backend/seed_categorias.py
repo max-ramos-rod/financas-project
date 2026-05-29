@@ -6,9 +6,9 @@ python seed_categorias.py
 """
 
 from sqlalchemy.orm import Session
+
 from app.db.session import SessionLocal, engine
 from app.models import Categoria, TipoTransacao
-
 
 # ========== CATEGORIAS PADRÃO ==========
 
@@ -56,7 +56,7 @@ CATEGORIAS_PADRAO = [
         "tipo": "entrada",
         "descricao": "Outras fontes de renda"
     },
-    
+
     # ===== SAÍDAS - MORADIA =====
     {
         "nome": "Aluguel",
@@ -100,7 +100,7 @@ CATEGORIAS_PADRAO = [
         "tipo": "saida",
         "descricao": "Gás de cozinha"
     },
-    
+
     # ===== SAÍDAS - ALIMENTAÇÃO =====
     {
         "nome": "Mercado",
@@ -123,7 +123,7 @@ CATEGORIAS_PADRAO = [
         "tipo": "saida",
         "descricao": "Lanches e cafés"
     },
-    
+
     # ===== SAÍDAS - TRANSPORTE =====
     {
         "nome": "Combustível",
@@ -153,7 +153,7 @@ CATEGORIAS_PADRAO = [
         "tipo": "saida",
         "descricao": "Estacionamento"
     },
-    
+
     # ===== SAÍDAS - SAÚDE =====
     {
         "nome": "Farmácia",
@@ -176,7 +176,7 @@ CATEGORIAS_PADRAO = [
         "tipo": "saida",
         "descricao": "Mensalidade do plano"
     },
-    
+
     # ===== SAÍDAS - EDUCAÇÃO =====
     {
         "nome": "Mensalidade Escola",
@@ -199,7 +199,7 @@ CATEGORIAS_PADRAO = [
         "tipo": "saida",
         "descricao": "Cursos online e presenciais"
     },
-    
+
     # ===== SAÍDAS - LAZER =====
     {
         "nome": "Cinema",
@@ -229,7 +229,7 @@ CATEGORIAS_PADRAO = [
         "tipo": "saida",
         "descricao": "Academia e esportes"
     },
-    
+
     # ===== SAÍDAS - PESSOAL =====
     {
         "nome": "Vestuário",
@@ -252,7 +252,7 @@ CATEGORIAS_PADRAO = [
         "tipo": "saida",
         "descricao": "Maquiagem e cosméticos"
     },
-    
+
     # ===== SAÍDAS - OUTROS =====
     {
         "nome": "Cartão de Crédito",
@@ -289,7 +289,7 @@ CATEGORIAS_PADRAO = [
         "tipo": "saida",
         "descricao": "Outras despesas"
     },
-    
+
     # ===== CATEGORIAS CRISTÃS =====
     {
         "nome": "Dízimo",
@@ -333,7 +333,7 @@ CATEGORIAS_PADRAO = [
         "tipo": "saida",
         "descricao": "Cursos e seminários teológicos"
     },
-    
+
     # ===== CATEGORIAS FLEXÍVEIS (tipo=NULL) =====
     {
         "nome": "Transferência",
@@ -348,25 +348,25 @@ CATEGORIAS_PADRAO = [
 def seed_categorias():
     """Popula o banco com categorias padrão"""
     db: Session = SessionLocal()
-    
+
     try:
         print("🌱 Iniciando seed de categorias padrão...")
-        
+
         # Verifica se já existem categorias padrão
-        count = db.query(Categoria).filter(Categoria.padrao == True).count()
-        
+        count = db.query(Categoria).filter(Categoria.padrao is True).count()
+
         if count > 0:
             print(f"⚠️  Já existem {count} categorias padrão no banco.")
             resposta = input("Deseja recriar? (s/N): ")
             if resposta.lower() != 's':
                 print("❌ Operação cancelada.")
                 return
-            
+
             # Remove categorias padrão antigas
-            db.query(Categoria).filter(Categoria.padrao == True).delete()
+            db.query(Categoria).filter(Categoria.padrao is True).delete()
             db.commit()
             print("🗑️  Categorias antigas removidas.")
-        
+
         # Cria categorias padrão
         categorias_criadas = 0
         for cat_data in CATEGORIAS_PADRAO:
@@ -380,33 +380,33 @@ def seed_categorias():
             )
             db.add(categoria)
             categorias_criadas += 1
-        
+
         db.commit()
-        
+
         print(f"✅ {categorias_criadas} categorias padrão criadas com sucesso!")
         print("\nResumo:")
-        
+
         # Estatísticas
         entradas = db.query(Categoria).filter(
-            Categoria.padrao == True,
+            Categoria.padrao is True,
             Categoria.tipo == TipoTransacao.ENTRADA
         ).count()
-        
+
         saidas = db.query(Categoria).filter(
-            Categoria.padrao == True,
+            Categoria.padrao is True,
             Categoria.tipo == TipoTransacao.SAIDA
         ).count()
-        
+
         flexiveis = db.query(Categoria).filter(
-            Categoria.padrao == True,
-            Categoria.tipo == None
+            Categoria.padrao is True,
+            Categoria.tipo is None
         ).count()
-        
+
         print(f"  📈 Entradas: {entradas}")
         print(f"  📉 Saídas: {saidas}")
         print(f"  🔄 Flexíveis: {flexiveis}")
         print(f"  📊 Total: {categorias_criadas}")
-        
+
     except Exception as e:
         print(f"❌ Erro ao criar categorias: {e}")
         db.rollback()
@@ -418,14 +418,14 @@ def seed_categorias():
 def listar_categorias():
     """Lista todas as categorias padrão"""
     db: Session = SessionLocal()
-    
+
     try:
         categorias = db.query(Categoria).filter(
-            Categoria.padrao == True
+            Categoria.padrao is True
         ).order_by(Categoria.tipo, Categoria.nome).all()
-        
+
         print("\n📋 CATEGORIAS PADRÃO DO SISTEMA:\n")
-        
+
         tipo_atual = None
         for cat in categorias:
             if cat.tipo != tipo_atual:
@@ -438,20 +438,20 @@ def listar_categorias():
                 else:
                     print("🔄 FLEXÍVEIS (Entrada ou Saída)")
                 print(f"{'='*50}\n")
-            
+
             print(f"{cat.icone}  {cat.nome:30} (cor: {cat.cor})")
-        
+
         print(f"\n{'='*50}")
         print(f"Total: {len(categorias)} categorias")
         print(f"{'='*50}\n")
-        
+
     finally:
         db.close()
 
 
 if __name__ == "__main__":
     import sys
-    
+
     if len(sys.argv) > 1 and sys.argv[1] == "--listar":
         listar_categorias()
     else:

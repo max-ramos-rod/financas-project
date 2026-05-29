@@ -1,7 +1,9 @@
-from sqlalchemy.orm import Session
-from app.models.user import User
-from app.core.security import get_password_hash, verify_password
 from typing import Optional
+
+from sqlalchemy.orm import Session
+
+from app.core.security import get_password_hash, verify_password
+from app.models.user import User
 
 
 def get_user(db: Session, user_id: int) -> Optional[User]:
@@ -75,11 +77,11 @@ def update_user(db: Session, user_id: int, **kwargs) -> Optional[User]:
     user = get_user(db, user_id)
     if not user:
         return None
-    
+
     for key, value in kwargs.items():
         if hasattr(user, key) and value is not None:
             setattr(user, key, value)
-    
+
     db.commit()
     db.refresh(user)
     return user

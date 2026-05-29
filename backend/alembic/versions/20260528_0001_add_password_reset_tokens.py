@@ -4,8 +4,9 @@ Revision ID: add_password_reset_tokens
 Revises: a1f3e9b2d704
 Create Date: 2026-05-28
 """
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "add_password_reset_tokens"
 down_revision = "a1f3e9b2d704"

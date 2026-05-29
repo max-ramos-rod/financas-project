@@ -1,7 +1,7 @@
 ﻿import io
+import uuid
 from datetime import date
 from typing import List
-import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -648,11 +648,11 @@ def exportar_fatura_pdf(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
     from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     resumo = _obter_resumo_fatura_ciclo_ou_erro(
         db,
@@ -665,7 +665,7 @@ def exportar_fatura_pdf(
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=15 * mm, bottomMargin=15 * mm)
     styles = getSampleStyleSheet()
-    mono = ParagraphStyle("mono", parent=styles["Normal"], fontName="Courier", fontSize=8)
+    ParagraphStyle("mono", parent=styles["Normal"], fontName="Courier", fontSize=8)
     title_style = ParagraphStyle("title", parent=styles["Heading1"], fontSize=14, spaceAfter=4)
     sub_style = ParagraphStyle("sub", parent=styles["Normal"], fontSize=9, textColor=colors.HexColor("#555555"))
 

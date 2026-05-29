@@ -1,7 +1,10 @@
 from datetime import date, datetime
+from typing import List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from typing import Optional, List
+
 from app.models import TipoConta
+
 
 class ContaBase(BaseModel):
     nome: str = Field(..., min_length=1, max_length=100)
@@ -66,7 +69,7 @@ class ContaResponse(ContaBase):
     data_vencimento_fatura: Optional[date] = None
     data_vencimento_fatura_fechada: Optional[date] = None
     created_at: Optional[datetime] = None
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 

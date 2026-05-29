@@ -1,6 +1,7 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
 from typing import List, Optional
+
+from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
 from app.models import Conta, TipoConta
 from app.schemas.conta import ContaCreate, ContaUpdate
@@ -42,7 +43,7 @@ def atualizar_conta(db: Session, conta_id: int, user_id: int, conta_update: Cont
     db_conta = get_conta(db, conta_id, user_id)
     if not db_conta:
         return None
-    
+
     # Atualiza apenas os campos fornecidos
     update_data = conta_update.model_dump(exclude_unset=True)
 
@@ -64,7 +65,7 @@ def atualizar_conta(db: Session, conta_id: int, user_id: int, conta_update: Cont
 
     for key, value in update_data.items():
         setattr(db_conta, key, value)
-    
+
     db.add(db_conta)
     db.commit()
     db.refresh(db_conta)
@@ -76,7 +77,7 @@ def deletar_conta(db: Session, conta_id: int, user_id: int) -> bool:
     db_conta = get_conta(db, conta_id, user_id)
     if not db_conta:
         return False
-    
+
     db.delete(db_conta)
     db.commit()
     return True

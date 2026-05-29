@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.config import settings
+from app.core.pagination import PaginationMetaBuilder, PaginationParams
+from app.core.responses import PagedResponse
 from app.crud.crud_delegacao import (
     accept_delegacao,
     get_delegacao_by_id,
@@ -74,20 +76,26 @@ def convidar_delegacao(
     )
 
 
-@router.get("/sent", response_model=List[DelegacaoResponse])
+@router.get("/sent", response_model=PagedResponse[DelegacaoResponse])
 def listar_delegacoes_enviadas(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return list_delegacoes_sent(db, current_user.id)
+    items = list_delegacoes_sent(db, current_user.id)
+    total = len(items)
+    params = PaginationParams(page=1, page_size=max(total, 1))
+    return PagedResponse(data=items, meta=PaginationMetaBuilder.build(total, params))
 
 
-@router.get("/received", response_model=List[DelegacaoResponse])
+@router.get("/received", response_model=PagedResponse[DelegacaoResponse])
 def listar_delegacoes_recebidas(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return list_delegacoes_received(db, current_user.id)
+    items = list_delegacoes_received(db, current_user.id)
+    total = len(items)
+    params = PaginationParams(page=1, page_size=max(total, 1))
+    return PagedResponse(data=items, meta=PaginationMetaBuilder.build(total, params))
 
 
 @router.post("/{delegacao_id}/accept", response_model=DelegacaoResponse)

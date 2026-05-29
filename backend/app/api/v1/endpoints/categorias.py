@@ -8,8 +8,8 @@ from app.crud import crud_categoria as crud
 from app.db.session import get_db
 from app.schemas.categoria import (
     CategoriaCreate,
-    CategoriaUpdate,
     CategoriaResponse,
+    CategoriaUpdate,
 )
 
 router = APIRouter()

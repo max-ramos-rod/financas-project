@@ -1,3 +1,3 @@
-from .session import Base, get_db, engine
+from .session import Base, engine, get_db
 
 __all__ = ["Base", "get_db", "engine"]

@@ -3,9 +3,16 @@ from datetime import date, datetime
 from typing import List, Optional
 
 from .base import (
+    COLS_CREDIT,
+    COLS_DATE,
+    COLS_DEBIT,
+    COLS_DESC,
+    COLS_VALUE,
     TransacaoImportada,
-    COLS_DATE, COLS_DESC, COLS_VALUE, COLS_CREDIT, COLS_DEBIT,
-    _find_col, _norm, _parse_date, _parse_value,
+    _find_col,
+    _norm,
+    _parse_date,
+    _parse_value,
 )
 
 

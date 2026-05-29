@@ -3,12 +3,13 @@ from dataclasses import dataclass
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from app.db.session import get_db
+
 from app.core.security import decode_token
-from app.models.user import User
-from app.models import DelegacaoStatus
-from app.crud.crud_user import get_user_by_email
 from app.crud.crud_delegacao import get_active_delegacao
+from app.crud.crud_user import get_user_by_email
+from app.db.session import get_db
+from app.models import DelegacaoStatus
+from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -32,11 +33,11 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     payload = decode_token(token)
     if payload is None:
         raise credentials_exception
-    
+
     subject = payload.get("sub")
     if not isinstance(subject, str):
         raise credentials_exception
@@ -44,11 +45,11 @@ async def get_current_user(
     email = subject.strip()
     if not email:
         raise credentials_exception
-    
+
     user = get_user_by_email(db, email=email)
     if user is None:
         raise credentials_exception
-    
+
     return user
 
 

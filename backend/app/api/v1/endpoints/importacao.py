@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import AccessContext, get_access_context
 from app.crud.crud_transacao import criar_transacao
 from app.db.session import get_db
-from app.models import Conta, TipoConta, TipoTransacao, StatusLiquidacao
+from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao
 from app.schemas.importacao import ImportacaoErro, ImportacaoResult
 from app.schemas.transacao import TransacaoCreate
 from app.services.importacao.detector import detectar_e_parsear

@@ -1,7 +1,10 @@
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-from typing import Optional
 from datetime import date, datetime
-from app.models import TipoTransacao, StatusLiquidacao
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.models import StatusLiquidacao, TipoTransacao
+
 
 class TransacaoBase(BaseModel):
     conta_id: int
@@ -16,19 +19,19 @@ class TransacaoBase(BaseModel):
     fixa: bool = False
     recorrente: bool = False
     confirmada: bool = True
-    
+
     # Dízimo
     tem_dizimo: bool = False
     percentual_dizimo: float = Field(default=10.0, ge=0, le=100)
-    
+
     # Parcelamento
     parcelado: bool = False
     total_parcelas: Optional[int] = Field(None, ge=2, le=48)
-    
+
     # Empréstimo
     e_emprestimo: bool = False
     pessoa_emprestimo: Optional[str] = Field(None, max_length=100)
-    
+
     # Extras
     observacoes: Optional[str] = None
     tags: Optional[str] = None
@@ -77,22 +80,22 @@ class TransacaoResponse(TransacaoBase):
     """Schema de resposta com dados completos"""
     id: int
     user_id: int
-    
+
     # UUID único desta transação
     transacao_uuid: str
-    
+
     # Campos de dízimo
     transacao_dizimo_uuid: Optional[str] = None
     e_dizimo: bool = False
     entrada_origem_id: Optional[int] = None
-    
+
     # Parcelamento
     parcela_atual: Optional[int] = None
     grupo_parcelamento_uuid: Optional[str] = None
-    
+
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
