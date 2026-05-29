@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     SESSION_INACTIVITY_MINUTES: int = 10
     SESSION_REFRESH_THRESHOLD_SECONDS: int = 300
     DATABASE_URL: str = "postgresql://financas_user:financas_pass@localhost:5432/financas_db"
-    BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:5173"]
     ENVIRONMENT: str = "development"
     FRONTEND_URL: str = "http://localhost:5173"
     SMTP_HOST: str | None = None
