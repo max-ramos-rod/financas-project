@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
-import type { Conta, Categoria, Meta } from '@/types'
+import type { Meta } from '@/types'
 import { formatDateForInput } from '@/utils/date'
+import { useContasStore } from '@/stores/contas'
+import { useCategoriasStore } from '@/stores/categorias'
 
 const router = useRouter()
 const route = useRoute()
@@ -12,8 +15,10 @@ const loading = ref(false)
 const duplicando = ref(false)
 const carregando = ref(true)
 const erroGeral = ref('')
-const contas = ref<Conta[]>([])
-const categorias = ref<Categoria[]>([])
+const contasStore = useContasStore()
+const categoriasStore = useCategoriasStore()
+const { contas } = storeToRefs(contasStore)
+const { categorias } = storeToRefs(categoriasStore)
 const metas = ref<Meta[]>([])
 const modoCristao = ref(import.meta.env.VITE_MODO_CRISTAO === 'true')
 const editando = ref(false)
@@ -123,14 +128,12 @@ watch(
 const fetchDados = async () => {
   carregando.value = true
   try {
-    const [contasRes, categoriasRes, metasRes] = await Promise.all([
-      api.get('/contas'),
-      api.get('/categorias'),
+    const [metasRes] = await Promise.all([
       api.get('/metas'),
+      contasStore.fetchContas(),
+      categoriasStore.fetchCategorias(),
     ])
 
-    contas.value = contasRes.data
-    categorias.value = categoriasRes.data
     metas.value = metasRes.data
 
     const primeiraAtiva = contas.value.find((c) => c.ativa)

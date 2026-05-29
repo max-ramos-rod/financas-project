@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
-import type { Orcamento, Categoria } from '@/types'
+import type { Orcamento } from '@/types'
+import { useCategoriasStore } from '@/stores/categorias'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { LayoutList } from '@lucide/vue'
@@ -11,7 +13,8 @@ const router = useRouter()
 
 const loading = ref(true)
 const orcamentos = ref<Orcamento[]>([])
-const categorias = ref<Categoria[]>([])
+const categoriasStore = useCategoriasStore()
+const { categorias } = storeToRefs(categoriasStore)
 const orcamentoADeletar = ref<Orcamento | null>(null)
 const mostraModalDelete = ref(false)
 const showErrorModal = ref(false)
@@ -93,12 +96,11 @@ const totais = computed(() => {
 const fetchDados = async () => {
   loading.value = true
   try {
-    const [orcamentosRes, categoriasRes] = await Promise.all([
+    const [orcamentosRes] = await Promise.all([
       api.get('/orcamentos', { params: { mes: filtros.value.mes, ano: filtros.value.ano } }),
-      api.get('/categorias'),
+      categoriasStore.fetchCategorias(),
     ])
     orcamentos.value = orcamentosRes.data
-    categorias.value = categoriasRes.data
   } catch {
   } finally {
     loading.value = false

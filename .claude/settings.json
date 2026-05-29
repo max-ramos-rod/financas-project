@@ -10,7 +10,17 @@
       "Bash(timeout 5 ./venv/Scripts/python.exe -c ' *)",
       "Bash(timeout 15 ./venv/Scripts/python.exe -c ' *)",
       "Bash(git worktree *)",
-      "Bash(.\\\\venv\\\\Scripts\\\\python.exe -m pytest -q tests/)"
+      "Bash(.\\\\venv\\\\Scripts\\\\python.exe -m pytest -q tests/)",
+      "PowerShell(ls \"C:\\\\Projetos\\\\smart-audit\\\\backend\" -Recurse -Directory | Select-Object FullName | ForEach-Object {$_.FullName.Replace\\('C:\\\\Projetos\\\\smart-audit\\\\backend\\\\', ''\\)} | Sort-Object)",
+      "PowerShell(ls \"C:\\\\Projetos\\\\financas-project\\\\backend\" -Recurse -Directory | Select-Object FullName | ForEach-Object {$_.FullName.Replace\\('C:\\\\Projetos\\\\financas-project\\\\backend\\\\', ''\\)} | Sort-Object)",
+      "PowerShell(ls \"C:\\\\Projetos\\\\financas-project\\\\frontend\\\\src\" -Recurse -Directory | Select-Object FullName | ForEach-Object {$_.FullName.Replace\\('C:\\\\Projetos\\\\financas-project\\\\frontend\\\\src\\\\', ''\\)} | Sort-Object)",
+      "Bash(Get-ChildItem -Recurse -Path \"C:\\\\Projetos\\\\financas-project\\\\backend\\\\app\" -Directory)",
+      "Bash(Select-Object FullName)",
+      "Bash(awk '{print $9, $5}')",
+      "Bash(del \"c:\\\\Projetos\\\\financas-project\\\\backend\\\\app\\\\models\\\\financeiro.py\")",
+      "PowerShell(Remove-Item \"c:\\\\Projetos\\\\financas-project\\\\backend\\\\app\\\\models\\\\financeiro.py\" -Confirm:$false)",
+      "Bash(.\\\\venv\\\\Scripts\\\\python.exe -m pytest -q)",
+      "Bash(python -c \"import os; [print\\(f'{os.path.getsize\\(os.path.join\\(r,f\\)\\)//1024}KB\\\\t{os.path.join\\(r,f\\)}'\\) for r,_,fs in os.walk\\('app/domain'\\) for f in fs if f.endswith\\('.py'\\)]\")"
     ]
   }
 }

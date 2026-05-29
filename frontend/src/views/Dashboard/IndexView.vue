@@ -1,10 +1,13 @@
 ﻿<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import api from '@/services/api'
-import type { Conta, Transacao, Meta, Categoria, Orcamento } from '@/types'
+import type { Transacao, Meta, Orcamento } from '@/types'
 import { parseDate } from '@/utils/date'
 import { valorEfetivo as valorEfetivoTransacao, formatarMoeda } from '@/utils/financeiro'
 import { LABELS } from '@/utils/strings'
+import { useContasStore } from '@/stores/contas'
+import { useCategoriasStore } from '@/stores/categorias'
 import EmptyState from '@/components/EmptyState.vue'
 import { Calendar, TrendingDown } from '@lucide/vue'
 
@@ -12,10 +15,12 @@ import FluxoFinanceiroChart from '@/components/charts/FluxoFinanceiroChart.vue'
 import DespesasCategoriaChart from '@/components/charts/DespesasCategoriaChart.vue'
 import OrcamentoComparativoChart from '@/components/charts/OrcamentoComparativoChart.vue'
 
-const contas = ref<Conta[]>([])
+const contasStore = useContasStore()
+const categoriasStore = useCategoriasStore()
+const { contas } = storeToRefs(contasStore)
+const { categorias } = storeToRefs(categoriasStore)
 const transacoes = ref<Transacao[]>([])
 const metas = ref<Meta[]>([])
-const categorias = ref<Categoria[]>([])
 const orcamentos = ref<Orcamento[]>([])
 const loading = ref(true)
 const erro = ref('')
@@ -254,19 +259,15 @@ const fetchDados = async () => {
   erro.value = ''
 
   try {
-    const [contasRes, transacoesRes, metasRes, categoriasRes, orcamentosRes] =
-      await Promise.all([
-        api.get('/contas'),
-        api.get('/transacoes'),
-        api.get('/metas'),
-        api.get('/categorias'),
-        api.get('/orcamentos')
-      ])
-
-    contas.value = contasRes.data
+    const [transacoesRes, metasRes, orcamentosRes] = await Promise.all([
+      api.get('/transacoes'),
+      api.get('/metas'),
+      api.get('/orcamentos'),
+      contasStore.fetchContas(),
+      categoriasStore.fetchCategorias(),
+    ])
     transacoes.value = transacoesRes.data
     metas.value = metasRes.data
-    categorias.value = categoriasRes.data
     orcamentos.value = orcamentosRes.data
   } catch {
     erro.value = 'Não foi possível carregar o painel. Verifique sua conexão e tente novamente.'

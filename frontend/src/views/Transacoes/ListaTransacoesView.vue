@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import api from '@/services/api'
-import type { Categoria, Conta, Transacao } from '@/types'
+import type { Transacao } from '@/types'
 import { parseDate, formatDateForInput } from '@/utils/date'
 import { valorEfetivo, formatarMoeda, formatarCompacto } from '@/utils/financeiro'
 import { useTransacoesFiltros } from '@/composables/useTransacoesFiltros'
+import { useContasStore } from '@/stores/contas'
+import { useCategoriasStore } from '@/stores/categorias'
 import { TransacoesLoadControl } from './transacoesLoadControl'
 import { buscarTransacoesFiltradas } from './transacoesFetch'
 import { LABELS } from '@/utils/strings'
@@ -17,9 +20,12 @@ const router = useRouter()
 const loading = ref(true)
 const duplicandoId = ref<number | null>(null)
 const transacoes = ref<Transacao[]>([])
-const contas = ref<Conta[]>([])
-const categorias = ref<Categoria[]>([])
 const loadControl = new TransacoesLoadControl()
+
+const contasStore = useContasStore()
+const categoriasStore = useCategoriasStore()
+const { contas } = storeToRefs(contasStore)
+const { categorias } = storeToRefs(categoriasStore)
 
 const {
   filtros,
@@ -76,12 +82,7 @@ const totais = computed(() => {
 })
 
 const fetchApoio = async () => {
-  const [contasRes, categoriasRes] = await Promise.all([
-    api.get('/contas'),
-    api.get('/categorias'),
-  ])
-  contas.value = contasRes.data
-  categorias.value = categoriasRes.data
+  await Promise.all([contasStore.fetchContas(), categoriasStore.fetchCategorias()])
 }
 
 const fetchTransacoes = async () => {

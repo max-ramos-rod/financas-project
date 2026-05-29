@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
-import type { Categoria } from '@/types'
+import { useCategoriasStore } from '@/stores/categorias'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,7 +12,8 @@ const route = useRoute()
 const loading = ref(false)
 const carregando = ref(true)
 const erro = ref('')
-const categorias = ref<Categoria[]>([])
+const categoriasStore = useCategoriasStore()
+const { categorias } = storeToRefs(categoriasStore)
 const editando = ref(false)
 const orcamentoId = ref<number | null>(null)
 
@@ -43,8 +45,7 @@ const categoriaSelecionada = computed(() => {
 const fetchDados = async () => {
   carregando.value = true
   try {
-    const categoriasRes = await api.get('/categorias')
-    categorias.value = categoriasRes.data
+    await categoriasStore.fetchCategorias()
 
     // Se for edição, carrega o orçamento
     if (editando.value && orcamentoId.value) {
