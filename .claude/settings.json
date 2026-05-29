@@ -8,7 +8,9 @@
       "Bash(timeout 10 ./venv/Scripts/python.exe -c \"from app.core.config import settings; print\\(settings.DATABASE_URL[:30]\\)\")",
       "Bash(timeout 10 ./venv/Scripts/python.exe -c ' *)",
       "Bash(timeout 5 ./venv/Scripts/python.exe -c ' *)",
-      "Bash(timeout 15 ./venv/Scripts/python.exe -c ' *)"
+      "Bash(timeout 15 ./venv/Scripts/python.exe -c ' *)",
+      "Bash(git worktree *)",
+      "Bash(.\\\\venv\\\\Scripts\\\\python.exe -m pytest -q tests/)"
     ]
   }
 }

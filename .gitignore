@@ -55,6 +55,8 @@ Thumbs.db
 # Claude Code local notes
 ############################
 CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
 
 ############################
 # Design handoff (material de referência local)
