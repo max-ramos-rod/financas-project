@@ -10,12 +10,13 @@ import { LABELS } from '@/utils/strings'
 const router = useRouter()
 const authStore = useAuthStore()
 
-type NavIconKey = 'dashboard' | 'transacoes' | 'contas' | 'metas' | 'orcamentos' | 'categorias' | 'relatorios'
+type NavIconKey = 'dashboard' | 'transacoes' | 'contas' | 'busca' | 'metas' | 'orcamentos' | 'categorias' | 'relatorios'
 
 const navItems: Array<{ rota: string; label: string; icon: NavIconKey }> = [
   { rota: 'dashboard', label: LABELS.dashboard, icon: 'dashboard' },
   { rota: 'transacoes', label: LABELS.transacoes, icon: 'transacoes' },
   { rota: 'contas', label: LABELS.contas, icon: 'contas' },
+  { rota: 'busca', label: LABELS.busca, icon: 'busca' },
   { rota: 'metas', label: LABELS.metas, icon: 'metas' },
   { rota: 'orcamentos', label: LABELS.orcamentos, icon: 'orcamentos' },
   { rota: 'categorias', label: LABELS.categorias, icon: 'categorias' },
@@ -26,6 +27,7 @@ const iconPaths: Record<NavIconKey, string> = {
   dashboard: 'M3 13.5 12 3l9 10.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-7.5Z',
   transacoes: 'M21 9H7l3-3-1.5-1.5L2 11l6.5 6.5L10 16l-3-3h14V9zm-10 6h10v-2H11v2zm-9 5h20v-2H2v2z',
   contas: 'M3 7.5 12 3l9 4.5v2H3v-2Zm2 4h2v6H5v-6Zm6 0h2v6h-2v-6Zm6 0h2v6h-2v-6ZM3 20h18v2H3v-2Z',
+  busca: 'M10 2a8 8 0 1 0 5.293 14.121l4.293 4.293 1.414-1.414-4.293-4.293A8 8 0 0 0 10 2Zm0 2a6 6 0 1 1 0 12A6 6 0 0 1 10 4Z',
   metas: 'M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm0 2a7 7 0 0 1 6.71 5h-2.17A5 5 0 0 0 12 7Zm0 14a7 7 0 0 1-6.71-5h2.17A5 5 0 0 0 12 17Zm1-8 4.5-4.5 1.5 1.5L14.5 12.5 13 11Z',
   orcamentos: 'M4 6h16v3H4V6Zm0 5h10v3H4v-3Zm0 5h16v3H4v-3Z',
   categorias: 'M4 7h7l2 2h7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z',
@@ -33,7 +35,7 @@ const iconPaths: Record<NavIconKey, string> = {
 }
 
 const navItemsPrincipais = navItems.filter((item) => ['dashboard', 'transacoes', 'contas'].includes(item.rota))
-const navItemsGestao = navItems.filter((item) => ['metas', 'orcamentos', 'categorias', 'relatorios'].includes(item.rota))
+const navItemsGestao = navItems.filter((item) => ['busca', 'metas', 'orcamentos', 'categorias', 'relatorios'].includes(item.rota))
 
 const delegacoesStore = useDelegacoesStore()
 const rotaAtiva = computed(() => router.currentRoute.value.name)

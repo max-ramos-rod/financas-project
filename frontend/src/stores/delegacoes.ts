@@ -19,11 +19,11 @@ export const useDelegacoesStore = defineStore('delegacoes', () => {
     error.value = ''
     try {
       const [sentRes, receivedRes] = await Promise.all([
-        api.get<Delegacao[]>('/delegacoes/sent'),
-        api.get<Delegacao[]>('/delegacoes/received'),
+        api.get('/delegacoes/sent'),
+        api.get('/delegacoes/received'),
       ])
-      convitesEnviados.value = sentRes.data
-      convitesRecebidos.value = receivedRes.data
+      convitesEnviados.value = (sentRes.data as { data: Delegacao[] }).data
+      convitesRecebidos.value = (receivedRes.data as { data: Delegacao[] }).data
     } catch (err: any) {
       error.value = err?.response?.data?.detail || 'Falha ao carregar convites.'
     } finally {
@@ -42,8 +42,8 @@ export const useDelegacoesStore = defineStore('delegacoes', () => {
 
   async function fetchPendingInvites(): Promise<void> {
     try {
-      const res = await api.get<Delegacao[]>('/delegacoes/received')
-      convitesRecebidos.value = res.data
+      const res = await api.get('/delegacoes/received')
+      convitesRecebidos.value = (res.data as { data: Delegacao[] }).data
     } catch {
       // mantém valor atual em caso de falha
     }

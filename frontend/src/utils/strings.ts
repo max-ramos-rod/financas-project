@@ -17,6 +17,7 @@ export const LABELS = {
   dashboard: 'Dashboard',
   transacoes: 'Transações',
   contas: 'Contas',
+  busca: 'Busca',
   metas: 'Metas',
   orcamentos: 'Orçamentos',
   categorias: 'Categorias',

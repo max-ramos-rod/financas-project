@@ -1,7 +1,6 @@
 ﻿<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import api from '@/services/api'
 import type { Transacao, Meta } from '@/types'
 import { parseDate } from '@/utils/date'
 import { valorEfetivo as valorEfetivoTransacao, formatarMoeda } from '@/utils/financeiro'
@@ -10,6 +9,7 @@ import { useContasStore } from '@/stores/contas'
 import { useCategoriasStore } from '@/stores/categorias'
 import { useOrcamentosStore } from '@/stores/orcamentos'
 import { useMetasStore } from '@/stores/metas'
+import { useTransacoesStore } from '@/stores/transacoes'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { Calendar, TrendingDown } from '@lucide/vue'
 
@@ -21,11 +21,12 @@ const contasStore = useContasStore()
 const categoriasStore = useCategoriasStore()
 const orcamentosStore = useOrcamentosStore()
 const metasStore = useMetasStore()
+const transacoesStore = useTransacoesStore()
 const { contas } = storeToRefs(contasStore)
 const { categorias } = storeToRefs(categoriasStore)
 const { orcamentos } = storeToRefs(orcamentosStore)
 const { metas } = storeToRefs(metasStore)
-const transacoes = ref<Transacao[]>([])
+const { transacoes } = storeToRefs(transacoesStore)
 const loading = ref(true)
 const erro = ref('')
 
@@ -263,14 +264,13 @@ const fetchDados = async () => {
   erro.value = ''
 
   try {
-    const [transacoesRes] = await Promise.all([
-      api.get('/transacoes', { params: { page: 1, page_size: 500 } }),
+    await Promise.all([
+      transacoesStore.fetchTransacoes({ page: 1, page_size: 500 }),
       contasStore.fetchContas(),
       categoriasStore.fetchCategorias(),
       orcamentosStore.fetchOrcamentos(),
       metasStore.fetchMetas(),
     ])
-    transacoes.value = (transacoesRes.data as { data: Transacao[] }).data
   } catch {
     erro.value = 'Não foi possível carregar o painel. Verifique sua conexão e tente novamente.'
   } finally {
