@@ -2,8 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import List, Optional
 
-from app.models import Conta
-from app.models.financeiro import TipoConta
+from app.models import Conta, TipoConta
 from app.schemas.conta import ContaCreate, ContaUpdate
 
 

@@ -5,8 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import AccessContext, get_access_context
 from app.db.session import get_db
-from app.models import Conta, TipoConta
-from app.models.financeiro import Transacao
+from app.models import Conta, TipoConta, Transacao
 
 router = APIRouter()
 

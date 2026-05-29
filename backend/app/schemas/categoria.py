@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from typing import Optional
 
-from app.models.financeiro import TipoTransacao
+from app.models import TipoTransacao
 
 class CategoriaBase(BaseModel):
     user_id: Optional[int] = None
