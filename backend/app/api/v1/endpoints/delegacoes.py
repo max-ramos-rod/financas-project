@@ -8,18 +8,14 @@ from app.core.config import settings
 from app.core.pagination import PaginationMetaBuilder, PaginationParams
 from app.core.responses import PagedResponse
 from app.crud.crud_delegacao import (
-    accept_delegacao,
     get_delegacao_by_id,
     get_delegacao_by_token,
-    invite_delegacao,
     is_invite_expired,
     list_delegacoes_received,
     list_delegacoes_sent,
-    revoke_delegacao,
 )
-from app.crud.crud_user import create_user, get_user_by_email
 from app.db.session import get_db
-from app.models import DelegacaoStatus, User, UserRole
+from app.models import DelegacaoStatus, User
 from app.schemas.delegacao import (
     DelegacaoConfirmRequest,
     DelegacaoContextOption,
@@ -28,9 +24,11 @@ from app.schemas.delegacao import (
     DelegacaoInviteTokenInfo,
     DelegacaoResponse,
 )
+from app.services.delegacao import DelegacaoService
 from app.services.email import send_invitation_email
 
 router = APIRouter()
+_service = DelegacaoService()
 
 
 @router.post("/invite", response_model=DelegacaoInviteResponse, status_code=status.HTTP_201_CREATED)
@@ -47,7 +45,7 @@ def convidar_delegacao(
         )
 
     try:
-        delegacao, has_account = invite_delegacao(
+        delegacao, has_account = _service.invite(
             db=db,
             owner_user_id=current_user.id,
             invited_email=invited_email,
@@ -111,7 +109,7 @@ def aceitar_delegacao(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sem permissao para aceitar")
 
     try:
-        return accept_delegacao(db, delegacao)
+        return _service.accept(db, delegacao)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -132,7 +130,7 @@ def revogar_delegacao(
     if delegacao.status == DelegacaoStatus.REVOKED:
         return delegacao
 
-    return revoke_delegacao(db, delegacao)
+    return _service.revoke(db, delegacao)
 
 
 @router.get("/act-as-options", response_model=List[DelegacaoContextOption])
@@ -149,7 +147,6 @@ def listar_contextos_disponiveis(
             is_owner=True,
         )
     ]
-
     delegacoes_ativas = [
         item for item in list_delegacoes_received(db, current_user.id)
         if item.status == DelegacaoStatus.ACTIVE
@@ -198,32 +195,7 @@ def confirmar_convite(
     if is_invite_expired(delegacao):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Convite expirado")
 
-    if not delegacao.delegate_user_id:
-        existing_user = get_user_by_email(db, delegacao.invited_email)
-        if existing_user:
-            delegacao.delegate_user_id = existing_user.id
-            db.add(delegacao)
-            db.commit()
-            db.refresh(delegacao)
-        else:
-            if not payload.nome or not payload.password:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Nome e senha sao obrigatorios para concluir o cadastro",
-                )
-            new_user = create_user(
-                db=db,
-                email=delegacao.invited_email,
-                password=payload.password,
-                nome=payload.nome,
-                role=UserRole.USER,
-            )
-            delegacao.delegate_user_id = new_user.id
-            db.add(delegacao)
-            db.commit()
-            db.refresh(delegacao)
-
     try:
-        return accept_delegacao(db, delegacao)
+        return _service.confirm(db, delegacao, payload)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

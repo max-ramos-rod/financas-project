@@ -10,7 +10,17 @@ if str(BACKEND_ROOT) not in sys.path:
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
-from app.models import Conta, Meta, Orcamento, StatusLiquidacao, TipoConta, TipoTransacao  # noqa: E402
+from app.models import (  # noqa: E402
+    Categoria,
+    Conta,
+    Delegacao,
+    DelegacaoStatus,
+    Meta,
+    Orcamento,
+    StatusLiquidacao,
+    TipoConta,
+    TipoTransacao,
+)
 from app.schemas.transacao import TransacaoCreate  # noqa: E402
 
 
@@ -90,6 +100,40 @@ def make_orcamento(id: int = 1, user_id: int = 1) -> Orcamento:
     orcamento.valor_planejado = 500.0
     orcamento.valor_gasto = 0.0
     return orcamento
+
+
+def make_categoria(id: int = 1, user_id: int = 1, padrao: bool = False) -> Categoria:
+    cat = Categoria()
+    cat.id = id
+    cat.user_id = user_id
+    cat.nome = "Alimentação"
+    cat.tipo = TipoTransacao.SAIDA
+    cat.padrao = padrao
+    cat.icone = None
+    cat.cor = "#6B7280"
+    return cat
+
+
+def make_delegacao(
+    id: int = 1,
+    owner_user_id: int = 1,
+    delegate_user_id: int = 2,
+    status: DelegacaoStatus = DelegacaoStatus.PENDING,
+) -> Delegacao:
+    from datetime import datetime, timedelta, timezone
+
+    d = Delegacao()
+    d.id = id
+    d.owner_user_id = owner_user_id
+    d.delegate_user_id = delegate_user_id
+    d.invited_email = "delegate@example.com"
+    d.invite_token = "test-token-abc"
+    d.invite_expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    d.status = status
+    d.can_write = True
+    d.accepted_at = None
+    d.revoked_at = None
+    return d
 
 
 def make_transacao_create(**overrides) -> TransacaoCreate:
