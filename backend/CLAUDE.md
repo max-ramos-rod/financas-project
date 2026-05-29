@@ -35,11 +35,26 @@
 - Ao mexer em datas de fatura ou competencia, validar cenarios com mes/ano e fechamento real vs previsto.
 - Em regras financeiras, prefira testes de API cobrindo o fluxo completo.
 
+## Rate Limiting
+- Implementado via `slowapi` em `app/core/limiter.py`.
+- Endpoints protegidos: `/auth/login` (20/min), `/auth/register` (5/min), `/auth/forgot-password` (3/min), `/auth/reset-password` (5/min).
+- Em testes, o limiter é **desabilitado automaticamente** pelo fixture `disable_rate_limiting` em `conftest.py` (`autouse=True`).
+- Para testar rate limiting explicitamente, use o fixture `client_with_limiter` de `tests/test_auth_rate_limiting.py` como referência.
+
+## Recuperação de Senha
+- Fluxo: `POST /auth/forgot-password` → gera token (TTL 1h) → `POST /auth/reset-password` → invalida token.
+- Token armazenado em `password_reset_tokens` (model: `app/models/password_reset_token.py`).
+- CRUD: `app/crud/crud_password_reset.py` — `criar_token`, `buscar_token_valido`, `marcar_usado`.
+- Resposta sempre 200 no forgot-password para não revelar existência do e-mail.
+- Integração SMTP pendente — por ora o token é logado em nível INFO (`[DEV]`).
+
 ## Testes
 - Suite completa:
   - `.\venv\Scripts\python.exe -m pytest -q`
 - Suites focadas comuns:
   - `.\venv\Scripts\python.exe -m pytest -q tests/test_auth.py`
+  - `.\venv\Scripts\python.exe -m pytest -q tests/test_auth_password_reset.py`
+  - `.\venv\Scripts\python.exe -m pytest -q tests/test_auth_rate_limiting.py`
   - `.\venv\Scripts\python.exe -m pytest -q tests/test_contas_fatura.py`
   - `.\venv\Scripts\python.exe -m pytest -q tests/test_transacoes_cartao_meta_orcamento.py`
   - `.\venv\Scripts\python.exe -m pytest -q tests/test_transacoes_filtros.py`

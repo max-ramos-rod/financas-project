@@ -54,6 +54,10 @@
 - Ao usar `storeToRefs(store)` para estado Pinia reativo no template; destructuring direto perde reatividade.
 - Evitar `getByText()` sem `.first()` quando o texto pode aparecer em multiplos elementos (ex: nome em tabela e header).
 
+## Serviços utilitários
+- `src/services/storage.ts` — **única fonte de acesso ao localStorage**. Nunca usar `localStorage.*` diretamente nas stores ou views; usar `storage.*` em vez disso. As keys reais são definidas internamente no módulo.
+- `src/services/apiError.ts` — helper `extractApiError(err)` para extrair mensagem legível de erros Axios (suporta `detail` string, array Pydantic e objeto com `msg`). Usar em todos os `catch` que exibem erro ao usuário.
+
 ## O que evitar
 - Nao fazer chamadas Axios diretas espalhadas quando ja existe helper/fetch do dominio.
 - Nao duplicar logica de filtro no componente se ela puder viver em helper isolado.
