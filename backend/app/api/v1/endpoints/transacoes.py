@@ -10,7 +10,7 @@ from typing import List
 
 from app.db.session import get_db
 from app.api.deps import AccessContext, get_access_context
-from app.domain.cartao_fatura import obter_resumo_fatura_por_competencia
+from app.domain.cartao_fatura import obter_resumo_fatura_por_competencia, valor_efetivo_transacao
 from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao
 from app.schemas.transacao import (
     TransacaoCreate,
@@ -32,15 +32,6 @@ def _parse_valor_ref(valor_ref: str | None) -> float | None:
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="valor_ref invalido")
 
-
-def _valor_efetivo_item(item) -> float:
-    return max(
-        0.0,
-        (item.valor or 0)
-        + (getattr(item, "valor_multa", 0) or 0)
-        + (getattr(item, "valor_juros", 0) or 0)
-        - (getattr(item, "valor_desconto", 0) or 0),
-    )
 
 
 def _status_fatura(valor_a_pagar: float) -> StatusLiquidacao:
@@ -125,11 +116,11 @@ def _aplicar_filtros_financeiros(
         filtrados = [item for item in filtrados if busca_lower in item.descricao.lower()]
     if valor_modo and valor_ref is not None:
         if valor_modo == "igual":
-            filtrados = [item for item in filtrados if abs(_valor_efetivo_item(item) - valor_ref) < 0.005]
+            filtrados = [item for item in filtrados if abs(valor_efetivo_transacao(item) - valor_ref) < 0.005]
         elif valor_modo == "gte":
-            filtrados = [item for item in filtrados if _valor_efetivo_item(item) >= valor_ref]
+            filtrados = [item for item in filtrados if valor_efetivo_transacao(item) >= valor_ref]
         elif valor_modo == "lte":
-            filtrados = [item for item in filtrados if _valor_efetivo_item(item) <= valor_ref]
+            filtrados = [item for item in filtrados if valor_efetivo_transacao(item) <= valor_ref]
     return filtrados
 
 @router.get("", response_model=List[TransacaoResponse])

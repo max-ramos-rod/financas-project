@@ -2,12 +2,19 @@ from datetime import date
 from calendar import monthrange
 import uuid
 from typing import List, Optional
-import unicodedata
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.models import Categoria, Conta, Meta, Orcamento, StatusLiquidacao, TipoConta, TipoTransacao, Transacao
+from app.domain.cartao_fatura import valor_efetivo_transacao
+from app.domain.transacao import (
+    impacto_no_saldo,
+    normalizar_atraso,
+    obter_categoria_dizimo,
+    recalcular_meta,
+    recalcular_orcamento_mes,
+)
+from app.models import Conta, Meta, Orcamento, StatusLiquidacao, TipoConta, TipoTransacao, Transacao
 from app.schemas.transacao import TransacaoCreate, TransacaoUpdate
 
 
@@ -17,120 +24,6 @@ def _add_months(base_date: date, months: int) -> date:
     month = (month_index % 12) + 1
     day = min(base_date.day, monthrange(year, month)[1])
     return date(year, month, day)
-
-
-def _valor_efetivo(transacao: Transacao) -> float:
-    return max(0.0, (transacao.valor or 0) + (transacao.valor_multa or 0) + (transacao.valor_juros or 0) - (transacao.valor_desconto or 0))
-
-
-def _impacto_no_saldo(transacao: Transacao) -> float:
-    if transacao.status_liquidacao != StatusLiquidacao.LIQUIDADO:
-        return 0.0
-    efetivo = _valor_efetivo(transacao)
-    return efetivo if transacao.tipo == TipoTransacao.ENTRADA else -efetivo
-
-
-def _normalizar_atraso(transacao: Transacao) -> None:
-    if (
-        transacao.status_liquidacao == StatusLiquidacao.PREVISTO
-        and transacao.data_vencimento
-        and transacao.data_vencimento < date.today()
-    ):
-        transacao.status_liquidacao = StatusLiquidacao.ATRASADO
-
-
-def _normalize_text(value: str) -> str:
-    normalized = unicodedata.normalize("NFKD", value)
-    ascii_only = "".join(ch for ch in normalized if not unicodedata.combining(ch))
-    return ascii_only.strip().lower()
-
-
-def _obter_categoria_dizimo(db: Session, user_id: int) -> Categoria:
-    candidatas = db.query(Categoria).filter(
-        Categoria.tipo == TipoTransacao.SAIDA
-    ).all()
-
-    categoria_usuario = next(
-        (
-            c for c in candidatas
-            if c.user_id == user_id and _normalize_text(c.nome) == "dizimo"
-        ),
-        None,
-    )
-    if categoria_usuario:
-        return categoria_usuario
-
-    categoria_padrao = next(
-        (
-            c for c in candidatas
-            if c.user_id is None and c.padrao and _normalize_text(c.nome) == "dizimo"
-        ),
-        None,
-    )
-    if categoria_padrao:
-        return categoria_padrao
-
-    nova_categoria = Categoria(
-        user_id=user_id,
-        nome="Dizimo",
-        icone="",
-        cor="#10B981",
-        tipo=TipoTransacao.SAIDA,
-        padrao=False,
-    )
-    db.add(nova_categoria)
-    db.flush()
-    return nova_categoria
-
-
-def _valor_meta(transacao: Transacao) -> float:
-    if transacao.status_liquidacao == StatusLiquidacao.CANCELADO:
-        return 0.0
-    efetivo = _valor_efetivo(transacao)
-    if transacao.tipo == TipoTransacao.ENTRADA:
-        return efetivo
-    if transacao.tipo == TipoTransacao.SAIDA:
-        return -efetivo
-    return 0.0
-
-
-def _recalcular_meta(db: Session, user_id: int, meta_id: int) -> None:
-    meta = db.query(Meta).filter(Meta.id == meta_id, Meta.user_id == user_id).first()
-    if not meta:
-        return
-
-    transacoes_meta = db.query(Transacao).filter(
-        Transacao.user_id == user_id,
-        Transacao.meta_id == meta_id,
-    ).all()
-
-    meta.valor_atual = sum(_valor_meta(t) for t in transacoes_meta)
-    meta.concluida = meta.valor_atual >= meta.valor_alvo
-    db.add(meta)
-
-
-def _recalcular_orcamento_mes(db: Session, user_id: int, categoria_id: int, mes: int, ano: int) -> None:
-    orcamento = db.query(Orcamento).filter(
-        Orcamento.user_id == user_id,
-        Orcamento.categoria_id == categoria_id,
-        Orcamento.mes == mes,
-        Orcamento.ano == ano,
-    ).first()
-    if not orcamento:
-        return
-
-    inicio = date(ano, mes, 1)
-    fim = date(ano, mes, monthrange(ano, mes)[1])
-    transacoes = db.query(Transacao).filter(
-        Transacao.user_id == user_id,
-        Transacao.categoria_id == categoria_id,
-        Transacao.tipo == TipoTransacao.SAIDA,
-        Transacao.data >= inicio,
-        Transacao.data <= fim,
-        Transacao.status_liquidacao != StatusLiquidacao.CANCELADO,
-    ).all()
-    orcamento.valor_gasto = sum(_valor_efetivo(t) for t in transacoes)
-    db.add(orcamento)
 
 
 def get_transacoes(
@@ -185,15 +78,15 @@ def get_transacoes(
     transacoes = query.order_by(Transacao.data.desc(), Transacao.id.desc()).all()
 
     for transacao in transacoes:
-        _normalizar_atraso(transacao)
+        normalizar_atraso(transacao)
 
     if valor_modo and valor_ref is not None:
         if valor_modo == "igual":
-            transacoes = [t for t in transacoes if abs(_valor_efetivo(t) - valor_ref) < 0.005]
+            transacoes = [t for t in transacoes if abs(valor_efetivo_transacao(t) - valor_ref) < 0.005]
         elif valor_modo == "gte":
-            transacoes = [t for t in transacoes if _valor_efetivo(t) >= valor_ref]
+            transacoes = [t for t in transacoes if valor_efetivo_transacao(t) >= valor_ref]
         elif valor_modo == "lte":
-            transacoes = [t for t in transacoes if _valor_efetivo(t) <= valor_ref]
+            transacoes = [t for t in transacoes if valor_efetivo_transacao(t) <= valor_ref]
 
     if orcamento in {"fora", "dentro"}:
         hoje = date.today()
@@ -215,7 +108,7 @@ def get_transacoes(
         for t in transacoes_mes:
             if t.categoria_id is None:
                 continue
-            gastos_por_categoria[t.categoria_id] = gastos_por_categoria.get(t.categoria_id, 0.0) + _valor_efetivo(t)
+            gastos_por_categoria[t.categoria_id] = gastos_por_categoria.get(t.categoria_id, 0.0) + valor_efetivo_transacao(t)
 
         orcamentos_mes = db.query(Orcamento).filter(
             Orcamento.user_id == user_id,
@@ -259,7 +152,7 @@ def get_transacao(db: Session, transacao_id: int, user_id: int) -> Optional[Tran
     ).first()
 
     if transacao:
-        _normalizar_atraso(transacao)
+        normalizar_atraso(transacao)
 
     return transacao
 
@@ -341,7 +234,7 @@ def criar_transacao(
                 meta_id=transacao.meta_id,
             )
             db.add(parcela)
-            conta.saldo += _impacto_no_saldo(parcela)
+            conta.saldo += impacto_no_saldo(parcela)
             transacoes_criadas.append(parcela)
             if parcela.meta_id:
                 metas_afetadas.add(parcela.meta_id)
@@ -350,9 +243,9 @@ def criar_transacao(
 
         db.flush()
         for meta_id in metas_afetadas:
-            _recalcular_meta(db, user_id, meta_id)
+            recalcular_meta(db, user_id, meta_id)
         for categoria_id, mes, ano in orcamentos_afetados:
-            _recalcular_orcamento_mes(db, user_id, categoria_id, mes, ano)
+            recalcular_orcamento_mes(db, user_id, categoria_id, mes, ano)
         db.commit()
         db.refresh(transacoes_criadas[0])
         return transacoes_criadas[0]
@@ -384,7 +277,7 @@ def criar_transacao(
         db.flush()
 
         valor_dizimo = db_transacao.valor * (transacao.percentual_dizimo / 100)
-        categoria_dizimo = _obter_categoria_dizimo(db, user_id)
+        categoria_dizimo = obter_categoria_dizimo(db, user_id)
 
         dizimo_criado = Transacao(
             user_id=user_id,
@@ -409,13 +302,13 @@ def criar_transacao(
     else:
         db.add(db_transacao)
 
-    conta.saldo += _impacto_no_saldo(db_transacao)
+    conta.saldo += impacto_no_saldo(db_transacao)
     if dizimo_criado:
-        conta.saldo += _impacto_no_saldo(dizimo_criado)
+        conta.saldo += impacto_no_saldo(dizimo_criado)
 
     db.flush()
     if db_transacao.meta_id:
-        _recalcular_meta(db, user_id, db_transacao.meta_id)
+        recalcular_meta(db, user_id, db_transacao.meta_id)
 
     orcamentos_afetados = set()
     if db_transacao.categoria_id and db_transacao.tipo == TipoTransacao.SAIDA:
@@ -423,7 +316,7 @@ def criar_transacao(
     if dizimo_criado and dizimo_criado.categoria_id and dizimo_criado.tipo == TipoTransacao.SAIDA:
         orcamentos_afetados.add((dizimo_criado.categoria_id, dizimo_criado.data.month, dizimo_criado.data.year))
     for categoria_id, mes, ano in orcamentos_afetados:
-        _recalcular_orcamento_mes(db, user_id, categoria_id, mes, ano)
+        recalcular_orcamento_mes(db, user_id, categoria_id, mes, ano)
 
     db.commit()
     db.refresh(db_transacao)
@@ -456,11 +349,11 @@ def atualizar_transacao(
         if not conta:
             raise ValueError("Conta da transacao nao encontrada")
 
-        impacto_antigo = _impacto_no_saldo(db_transacao)
+        impacto_antigo = impacto_no_saldo(db_transacao)
         for field, value in update_data.items():
             setattr(db_transacao, field, value)
 
-        impacto_novo = _impacto_no_saldo(db_transacao)
+        impacto_novo = impacto_no_saldo(db_transacao)
         conta.saldo += impacto_novo - impacto_antigo
 
         db.add(db_transacao)
@@ -487,7 +380,7 @@ def atualizar_transacao(
     if db_transacao.categoria_id and db_transacao.tipo == TipoTransacao.SAIDA:
         orcamentos_afetados.add((db_transacao.categoria_id, db_transacao.data.month, db_transacao.data.year))
 
-    impacto_antigo = _impacto_no_saldo(db_transacao)
+    impacto_antigo = impacto_no_saldo(db_transacao)
     update_data = transacao_update.model_dump(exclude_unset=True)
 
     nova_conta_id = update_data.get("conta_id")
@@ -511,7 +404,7 @@ def atualizar_transacao(
         db_transacao.status_liquidacao = StatusLiquidacao.PREVISTO
         db_transacao.data_liquidacao = None
 
-    impacto_novo = _impacto_no_saldo(db_transacao)
+    impacto_novo = impacto_no_saldo(db_transacao)
 
     conta_antiga.saldo -= impacto_antigo
     conta_nova.saldo += impacto_novo
@@ -525,7 +418,7 @@ def atualizar_transacao(
         if dizimo:
             if dizimo.categoria_id and dizimo.tipo == TipoTransacao.SAIDA:
                 orcamentos_afetados.add((dizimo.categoria_id, dizimo.data.month, dizimo.data.year))
-            impacto_dizimo_antigo = _impacto_no_saldo(dizimo)
+            impacto_dizimo_antigo = impacto_no_saldo(dizimo)
             valor_dizimo = db_transacao.valor * (db_transacao.percentual_dizimo / 100)
             dizimo.valor = valor_dizimo
             dizimo.descricao = f"Dizimo de {db_transacao.descricao}"
@@ -533,15 +426,15 @@ def atualizar_transacao(
             dizimo.data_vencimento = db_transacao.data_vencimento or db_transacao.data
             dizimo.conta_id = db_transacao.conta_id
             if dizimo.categoria_id is None:
-                dizimo.categoria_id = _obter_categoria_dizimo(db, user_id).id
-            impacto_dizimo_novo = _impacto_no_saldo(dizimo)
+                dizimo.categoria_id = obter_categoria_dizimo(db, user_id).id
+            impacto_dizimo_novo = impacto_no_saldo(dizimo)
             if dizimo.categoria_id and dizimo.tipo == TipoTransacao.SAIDA:
                 orcamentos_afetados.add((dizimo.categoria_id, dizimo.data.month, dizimo.data.year))
 
             conta_antiga.saldo -= impacto_dizimo_antigo
             conta_nova.saldo += impacto_dizimo_novo
         else:
-            categoria_dizimo = _obter_categoria_dizimo(db, user_id)
+            categoria_dizimo = obter_categoria_dizimo(db, user_id)
             novo_dizimo = Transacao(
                 user_id=user_id,
                 transacao_uuid=str(uuid.uuid4()),
@@ -569,12 +462,12 @@ def atualizar_transacao(
                 valor_desconto=0.0,
             )
             db.add(novo_dizimo)
-            conta_nova.saldo += _impacto_no_saldo(novo_dizimo)
+            conta_nova.saldo += impacto_no_saldo(novo_dizimo)
             if novo_dizimo.categoria_id and novo_dizimo.tipo == TipoTransacao.SAIDA:
                 orcamentos_afetados.add((novo_dizimo.categoria_id, novo_dizimo.data.month, novo_dizimo.data.year))
     else:
         if dizimo:
-            impacto_dizimo_antigo = _impacto_no_saldo(dizimo)
+            impacto_dizimo_antigo = impacto_no_saldo(dizimo)
             conta_origem_dizimo = conta_nova if dizimo.conta_id == conta_nova.id else conta_antiga
             conta_origem_dizimo.saldo -= impacto_dizimo_antigo
             if dizimo.categoria_id and dizimo.tipo == TipoTransacao.SAIDA:
@@ -589,9 +482,9 @@ def atualizar_transacao(
     db.flush()
     metas_afetadas = {meta_id for meta_id in [meta_antiga_id, db_transacao.meta_id] if meta_id}
     for meta_id in metas_afetadas:
-        _recalcular_meta(db, user_id, meta_id)
+        recalcular_meta(db, user_id, meta_id)
     for categoria_id, mes, ano in orcamentos_afetados:
-        _recalcular_orcamento_mes(db, user_id, categoria_id, mes, ano)
+        recalcular_orcamento_mes(db, user_id, categoria_id, mes, ano)
 
     db.commit()
     db.refresh(db_transacao)
@@ -651,9 +544,9 @@ def duplicar_transacao(
         db.flush()
 
         if nova_transacao.meta_id:
-            _recalcular_meta(db, user_id, nova_transacao.meta_id)
+            recalcular_meta(db, user_id, nova_transacao.meta_id)
         if nova_transacao.categoria_id and nova_transacao.tipo == TipoTransacao.SAIDA:
-            _recalcular_orcamento_mes(
+            recalcular_orcamento_mes(
                 db,
                 user_id,
                 nova_transacao.categoria_id,
@@ -717,7 +610,7 @@ def deletar_transacao(
     if db_transacao.categoria_id and db_transacao.tipo == TipoTransacao.SAIDA:
         orcamentos_afetados.add((db_transacao.categoria_id, db_transacao.data.month, db_transacao.data.year))
 
-    conta.saldo -= _impacto_no_saldo(db_transacao)
+    conta.saldo -= impacto_no_saldo(db_transacao)
 
     if db_transacao.tem_dizimo and db_transacao.transacao_dizimo_uuid:
         dizimo = db.query(Transacao).filter(
@@ -728,7 +621,7 @@ def deletar_transacao(
         ).first()
 
         if dizimo:
-            conta.saldo -= _impacto_no_saldo(dizimo)
+            conta.saldo -= impacto_no_saldo(dizimo)
             if dizimo.categoria_id and dizimo.tipo == TipoTransacao.SAIDA:
                 orcamentos_afetados.add((dizimo.categoria_id, dizimo.data.month, dizimo.data.year))
             db.delete(dizimo)
@@ -736,8 +629,8 @@ def deletar_transacao(
     db.delete(db_transacao)
     db.flush()
     for meta_id in metas_afetadas:
-        _recalcular_meta(db, user_id, meta_id)
+        recalcular_meta(db, user_id, meta_id)
     for categoria_id, mes, ano in orcamentos_afetados:
-        _recalcular_orcamento_mes(db, user_id, categoria_id, mes, ano)
+        recalcular_orcamento_mes(db, user_id, categoria_id, mes, ano)
     db.commit()
     return True
