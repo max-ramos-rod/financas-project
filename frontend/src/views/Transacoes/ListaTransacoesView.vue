@@ -221,6 +221,33 @@ const statusColor = (t: Transacao) => {
 
 const novaTransacao = () => router.push({ path: '/transacoes/nova', query: queryAtualDosFiltros() })
 const editarTransacao = (id: number) => router.push({ path: `/transacoes/${id}/editar`, query: queryAtualDosFiltros() })
+
+const exportandoCsv = ref(false)
+const exportarCsv = async () => {
+  exportandoCsv.value = true
+  try {
+    const params: Record<string, string> = {}
+    const f = filtros.value
+    if (f.tipo !== 'todas') params.tipo = f.tipo
+    if (f.status_liquidacao !== 'todos') params.status_liquidacao = f.status_liquidacao
+    if (f.fixa !== 'todas') params.fixa = f.fixa
+    if (f.conta_id != null) params.conta_id = String(f.conta_id)
+    if (f.categoria_id != null) params.categoria_id = String(f.categoria_id)
+    if (f.mes) params.mes = String(f.mes)
+    if (f.ano) params.ano = String(f.ano)
+    if (f.busca.trim()) params.busca = f.busca.trim()
+
+    const res = await api.get('/transacoes/export', { params, responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'text/csv' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `transacoes_${f.ano || ''}_${f.mes ? String(f.mes).padStart(2, '0') : ''}.csv`.replace(/__+/g, '_').replace(/_$/, '') + '.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  } finally {
+    exportandoCsv.value = false
+  }
+}
 const abrirFaturaCartao = (t: Transacao) => {
   if (!t.fatura_conta_id || !t.fatura_competencia_ano || !t.fatura_competencia_mes) return
   router.push({ path: `/contas/${t.fatura_conta_id}/fatura`, query: { ano: String(t.fatura_competencia_ano), mes: String(t.fatura_competencia_mes) } })
@@ -316,6 +343,14 @@ onMounted(async () => {
           </p>
         </div>
         <div class="flex gap-2">
+          <button
+            class="btn btn-ghost btn-sm sm:btn-md whitespace-nowrap"
+            :disabled="exportandoCsv"
+            @click="exportarCsv"
+          >
+            <span v-if="exportandoCsv" class="loading loading-spinner loading-xs"></span>
+            <span v-else>↓ CSV</span>
+          </button>
           <button
             class="btn btn-ghost btn-sm sm:btn-md whitespace-nowrap"
             @click="router.push({ name: 'importar-transacoes' })"

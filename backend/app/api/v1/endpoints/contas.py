@@ -1,8 +1,10 @@
-﻿from datetime import date
+﻿import io
+from datetime import date
 from typing import List
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import AccessContext, get_access_context
@@ -631,4 +633,107 @@ def pagar_fatura(
         payload=payload,
         access_ctx=access_ctx,
         resumo_fatura=resumo_fatura,
+    )
+
+
+@router.get("/{conta_id}/faturas/{competencia_ano}/{competencia_mes}/pdf")
+def exportar_fatura_pdf(
+    conta_id: int,
+    competencia_ano: int,
+    competencia_mes: int,
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context),
+):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+    resumo = _obter_resumo_fatura_ciclo_ou_erro(
+        db,
+        conta_id=conta_id,
+        competencia_ano=competencia_ano,
+        competencia_mes=competencia_mes,
+        access_ctx=access_ctx,
+    )
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=15 * mm, bottomMargin=15 * mm)
+    styles = getSampleStyleSheet()
+    mono = ParagraphStyle("mono", parent=styles["Normal"], fontName="Courier", fontSize=8)
+    title_style = ParagraphStyle("title", parent=styles["Heading1"], fontSize=14, spaceAfter=4)
+    sub_style = ParagraphStyle("sub", parent=styles["Normal"], fontSize=9, textColor=colors.HexColor("#555555"))
+
+    meses_pt = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    mes_nome = meses_pt[competencia_mes] if 1 <= competencia_mes <= 12 else str(competencia_mes)
+
+    story = [
+        Paragraph(f"Fatura — {resumo.conta_nome}", title_style),
+        Paragraph(f"{mes_nome} {competencia_ano}  •  Período: {resumo.periodo_inicio.strftime('%d/%m/%Y')} a {resumo.periodo_fim.strftime('%d/%m/%Y')}", sub_style),
+        Spacer(1, 6 * mm),
+    ]
+
+    header = ["Data", "Descrição", "Tipo", "Valor (R$)", "Status"]
+    rows = [header]
+    for item in resumo.itens:
+        data_str = item.data.strftime("%d/%m/%Y") if item.data else ""
+        efetivo = valor_efetivo_transacao(item)
+        rows.append([
+            data_str,
+            item.descricao or "",
+            item.tipo.value if item.tipo else "",
+            f"{efetivo:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+            item.status_liquidacao.value if item.status_liquidacao else "",
+        ])
+
+    col_widths = [22 * mm, None, 20 * mm, 28 * mm, 22 * mm]
+    table = Table(rows, colWidths=col_widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e40af")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f1f5f9")]),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
+        ("ALIGN", (3, 0), (3, -1), "RIGHT"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    story.append(table)
+    story.append(Spacer(1, 6 * mm))
+
+    def _fmt(v: float) -> str:
+        return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    totals_data = [
+        ["Total da fatura", _fmt(resumo.valor_total)],
+        ["Pago", _fmt(resumo.valor_pago)],
+        ["A pagar", _fmt(resumo.valor_a_pagar)],
+    ]
+    totals_table = Table(totals_data, colWidths=[50 * mm, 40 * mm])
+    totals_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("LINEABOVE", (0, -1), (-1, -1), 0.5, colors.black),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+    story.append(totals_table)
+
+    doc.build(story)
+    buf.seek(0)
+
+    filename = f"fatura_{conta_id}_{competencia_ano}_{competencia_mes:02d}.pdf"
+    return StreamingResponse(
+        buf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

@@ -1,7 +1,10 @@
+import csv
+import io
 from datetime import date
 from calendar import monthrange
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -463,7 +466,7 @@ def deletar_transacao(
 ):
     """
     Deleta uma transação.
-    
+
     ⚠️ **Importante:**
     - Não é possível deletar transações de dízimo diretamente
     - Ao deletar uma entrada com dízimo, o dízimo é deletado automaticamente
@@ -471,16 +474,86 @@ def deletar_transacao(
     """
     try:
         sucesso = crud.deletar_transacao(db, transacao_id, access_ctx.effective_user.id)
-        
+
         if not sucesso:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Transação não encontrada"
             )
-        
+
         return None
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+@router.get("/export")
+def exportar_csv(
+    tipo: TipoTransacao | None = Query(default=None),
+    status_liquidacao: StatusLiquidacao | None = Query(default=None),
+    fixa: str | None = Query(default=None, pattern="^(fixas|nao_fixas)$"),
+    conta_id: int | None = None,
+    categoria_id: int | None = None,
+    mes: int | None = Query(default=None, ge=1, le=12),
+    ano: int | None = Query(default=None, ge=2000, le=2100),
+    busca: str | None = None,
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context),
+):
+    fixa_bool = None
+    if fixa == "fixas":
+        fixa_bool = True
+    elif fixa == "nao_fixas":
+        fixa_bool = False
+
+    sem_categoria = categoria_id == -1
+    categoria_normalizada = None if sem_categoria else categoria_id
+
+    transacoes = crud.get_transacoes(
+        db=db,
+        user_id=access_ctx.effective_user.id,
+        skip=0,
+        limit=None,
+        tipo=tipo,
+        status_liquidacao=status_liquidacao,
+        fixa=fixa_bool,
+        conta_id=conta_id,
+        categoria_id=categoria_normalizada,
+        sem_categoria=sem_categoria,
+        mes=mes,
+        ano=ano,
+        busca=busca,
+    )
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["id", "data", "descricao", "tipo", "valor", "status_liquidacao", "conta_id", "categoria_id", "fixa", "observacoes"])
+    for t in transacoes:
+        writer.writerow([
+            t.id,
+            t.data.isoformat() if t.data else "",
+            t.descricao or "",
+            t.tipo.value if t.tipo else "",
+            t.valor,
+            t.status_liquidacao.value if t.status_liquidacao else "",
+            t.conta_id or "",
+            t.categoria_id or "",
+            "sim" if t.fixa else "nao",
+            (t.observacoes or "").replace("\n", " "),
+        ])
+
+    buf.seek(0)
+    filename = "transacoes"
+    if ano:
+        filename += f"_{ano}"
+        if mes:
+            filename += f"_{mes:02d}"
+    filename += ".csv"
+
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

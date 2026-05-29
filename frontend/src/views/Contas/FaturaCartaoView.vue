@@ -241,6 +241,26 @@ const pagarFatura = async () => {
   }
 }
 
+const exportandoPdf = ref(false)
+const exportarPdf = async () => {
+  if (!faturaSelecionada.value) return
+  exportandoPdf.value = true
+  try {
+    const { competencia_ano: ano, competencia_mes: mes } = faturaSelecionada.value
+    const res = await api.get(`/contas/${contaId}/faturas/${ano}/${mes}/pdf`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/pdf' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `fatura_${contaId}_${ano}_${String(mes).padStart(2, '0')}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err: any) {
+    error.value = err?.response?.data?.detail || 'Erro ao gerar PDF.'
+  } finally {
+    exportandoPdf.value = false
+  }
+}
+
 onMounted(carregar)
 </script>
 
@@ -270,6 +290,14 @@ onMounted(carregar)
         <div class="flex gap-2">
           <button class="btn btn-ghost btn-sm sm:btn-md" @click="router.push('/contas')">
             ← Contas
+          </button>
+          <button
+            class="btn btn-ghost btn-sm sm:btn-md whitespace-nowrap"
+            :disabled="!faturaSelecionada || exportandoPdf"
+            @click="exportarPdf"
+          >
+            <span v-if="exportandoPdf" class="loading loading-spinner loading-xs"></span>
+            <span v-else>↓ PDF</span>
           </button>
           <button
             class="btn btn-primary btn-sm sm:btn-md whitespace-nowrap"
