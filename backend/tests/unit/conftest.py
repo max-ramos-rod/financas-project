@@ -4,15 +4,13 @@ from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
-from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao  # noqa: E402
+from app.models import Conta, Meta, Orcamento, StatusLiquidacao, TipoConta, TipoTransacao  # noqa: E402
 from app.schemas.transacao import TransacaoCreate  # noqa: E402
 
 
@@ -69,6 +67,29 @@ def make_conta(
     conta.saldo = saldo
     conta.tipo = tipo
     return conta
+
+
+def make_meta(id: int = 1, user_id: int = 1) -> Meta:
+    meta = Meta()
+    meta.id = id
+    meta.user_id = user_id
+    meta.nome = "Meta Teste"
+    meta.valor_alvo = 1000.0
+    meta.valor_atual = 0.0
+    meta.data_inicio = date(2024, 1, 1)
+    return meta
+
+
+def make_orcamento(id: int = 1, user_id: int = 1) -> Orcamento:
+    orcamento = Orcamento()
+    orcamento.id = id
+    orcamento.user_id = user_id
+    orcamento.categoria_id = 1
+    orcamento.mes = 1
+    orcamento.ano = 2024
+    orcamento.valor_planejado = 500.0
+    orcamento.valor_gasto = 0.0
+    return orcamento
 
 
 def make_transacao_create(**overrides) -> TransacaoCreate:
