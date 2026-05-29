@@ -1,7 +1,5 @@
 ﻿import io
-import uuid
 from datetime import date
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -19,7 +17,7 @@ from app.domain.cartao_fatura import (
     obter_resumo_fatura_por_competencia,
     valor_efetivo_transacao,
 )
-from app.models import ContaCartaoCiclo, StatusLiquidacao, TipoConta, TipoTransacao, Transacao
+from app.models import ContaCartaoCiclo, TipoConta
 from app.schemas.conta import (
     ContaCreate,
     ContaResponse,
@@ -29,6 +27,9 @@ from app.schemas.conta import (
     FaturaResumoResponse,
     PagarFaturaRequest,
 )
+from app.services.conta import ContaService
+
+_service = ContaService()
 
 router = APIRouter()
 
@@ -202,13 +203,9 @@ def criar_conta(
     access_ctx: AccessContext = Depends(get_access_context),
 ):
     try:
-        nova_conta = crud.criar_conta(db, conta, access_ctx.effective_user.id)
-        return nova_conta
+        return _service.criar(db, conta, access_ctx.effective_user.id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.put("/{conta_id}", response_model=ContaResponse)
@@ -219,20 +216,12 @@ def atualizar_conta(
     access_ctx: AccessContext = Depends(get_access_context),
 ):
     try:
-        conta_atualizada = crud.atualizar_conta(db, conta_id, access_ctx.effective_user.id, conta)
-
+        conta_atualizada = _service.atualizar(db, conta_id, access_ctx.effective_user.id, conta)
         if not conta_atualizada:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Conta nao encontrada",
-            )
-
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
         return conta_atualizada
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.delete("/{conta_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -241,21 +230,9 @@ def deletar_conta(
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context),
 ):
-    try:
-        sucesso = crud.deletar_conta(db, conta_id, access_ctx.effective_user.id)
-
-        if not sucesso:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Conta nao encontrada",
-            )
-
-        return None
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    if not _service.deletar(db, conta_id, access_ctx.effective_user.id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada")
+    return None
 
 
 @router.get("/{conta_id}/faturas/{competencia_ano}/{competencia_mes}", response_model=FaturaResumoResponse)
@@ -502,94 +479,6 @@ def limpar_ajuste_ciclo_fatura_atual(
     return obter_fatura_atual(conta_id=conta_id, db=db, access_ctx=access_ctx)
 
 
-def _pagar_resumo_fatura(
-    db: Session,
-    *,
-    conta_id: int,
-    payload: PagarFaturaRequest,
-    access_ctx: AccessContext,
-    resumo_fatura,
-) -> FaturaResumoResponse:
-    conta_cartao = _buscar_cartao_ou_erro(db, conta_id, access_ctx.effective_user.id)
-    conta_pagamento = crud.get_conta(db, payload.conta_pagamento_id, access_ctx.effective_user.id)
-    if not conta_pagamento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conta de pagamento nao encontrada")
-    if conta_pagamento.id == conta_cartao.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Conta de pagamento deve ser diferente do cartao")
-    if conta_pagamento.tipo == TipoConta.CARTAO_CREDITO:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pagamento deve sair de conta nao cartao")
-
-    periodo_inicio = resumo_fatura.periodo_inicio
-    periodo_fim = resumo_fatura.periodo_fim
-    transacoes = (
-        db.query(Transacao)
-        .filter(
-            Transacao.user_id == access_ctx.effective_user.id,
-            Transacao.conta_id == conta_cartao.id,
-            Transacao.tipo == TipoTransacao.SAIDA,
-            Transacao.data >= periodo_inicio,
-            Transacao.data <= periodo_fim,
-            Transacao.status_liquidacao.in_([StatusLiquidacao.PREVISTO, StatusLiquidacao.ATRASADO]),
-        )
-        .order_by(Transacao.data.asc(), Transacao.id.asc())
-        .all()
-    )
-
-    if not transacoes:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nao ha itens em aberto nesta fatura")
-
-    valor_total = sum(valor_efetivo_transacao(t) for t in transacoes)
-    data_pagamento = payload.data_pagamento or date.today()
-    descricao_pagamento = payload.descricao or (
-        f"FTPG {conta_cartao.nome} ({periodo_inicio.strftime('%d/%m')} a {periodo_fim.strftime('%d/%m')})"
-    )
-
-    conta_pagamento.saldo -= valor_total
-    pagamento = Transacao(
-        user_id=access_ctx.effective_user.id,
-        conta_id=conta_pagamento.id,
-        categoria_id=None,
-        descricao=descricao_pagamento,
-        valor=valor_total,
-        tipo=TipoTransacao.TRANSFERENCIA,
-        data=data_pagamento,
-        data_vencimento=data_pagamento,
-        data_liquidacao=data_pagamento,
-        status_liquidacao=StatusLiquidacao.LIQUIDADO,
-        fixa=False,
-        recorrente=False,
-        confirmada=True,
-        transacao_uuid=str(uuid.uuid4()),
-        tem_dizimo=False,
-        percentual_dizimo=0,
-        e_dizimo=False,
-        parcelado=False,
-        e_emprestimo=False,
-        valor_multa=0,
-        valor_juros=0,
-        valor_desconto=0,
-        tags="pagamento_fatura",
-    )
-    db.add(pagamento)
-
-    for item in transacoes:
-        item.status_liquidacao = StatusLiquidacao.LIQUIDADO
-        item.data_liquidacao = data_pagamento
-        db.add(item)
-
-    db.add(conta_pagamento)
-    db.commit()
-
-    resumo_atualizado = _obter_resumo_fatura_ciclo_ou_erro(
-        db,
-        conta_id=conta_id,
-        competencia_ano=resumo_fatura.competencia_ano,
-        competencia_mes=resumo_fatura.competencia_mes,
-        access_ctx=access_ctx,
-    )
-    return _resposta_fatura(resumo_atualizado)
-
-
 @router.post("/{conta_id}/faturas/{competencia_ano}/{competencia_mes}/pagar", response_model=FaturaResumoResponse)
 def pagar_fatura_por_ciclo(
     conta_id: int,
@@ -602,19 +491,18 @@ def pagar_fatura_por_ciclo(
     if competencia_mes < 1 or competencia_mes > 12:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mes da fatura invalido")
     resumo_fatura = _obter_resumo_fatura_ciclo_ou_erro(
-        db,
-        conta_id=conta_id,
-        competencia_ano=competencia_ano,
-        competencia_mes=competencia_mes,
-        access_ctx=access_ctx,
+        db, conta_id=conta_id, competencia_ano=competencia_ano,
+        competencia_mes=competencia_mes, access_ctx=access_ctx,
     )
-    return _pagar_resumo_fatura(
-        db,
-        conta_id=conta_id,
-        payload=payload,
-        access_ctx=access_ctx,
-        resumo_fatura=resumo_fatura,
+    try:
+        _service.pagar_fatura(db, conta_id, access_ctx.effective_user.id, payload, resumo_fatura)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    resumo_atualizado = _obter_resumo_fatura_ciclo_ou_erro(
+        db, conta_id=conta_id, competencia_ano=competencia_ano,
+        competencia_mes=competencia_mes, access_ctx=access_ctx,
     )
+    return _resposta_fatura(resumo_atualizado)
 
 
 @router.post("/{conta_id}/pagar-fatura", response_model=FaturaResumoResponse)
@@ -626,18 +514,18 @@ def pagar_fatura(
 ):
     conta_cartao = _buscar_cartao_ou_erro(db, conta_id, access_ctx.effective_user.id)
     resumo_fatura = obter_resumo_fatura_fechada_atual(
-        db,
-        user_id=access_ctx.effective_user.id,
-        conta=conta_cartao,
-        ref_date=date.today(),
+        db, user_id=access_ctx.effective_user.id,
+        conta=conta_cartao, ref_date=date.today(),
     )
-    return _pagar_resumo_fatura(
-        db,
-        conta_id=conta_id,
-        payload=payload,
-        access_ctx=access_ctx,
-        resumo_fatura=resumo_fatura,
+    try:
+        _service.pagar_fatura(db, conta_id, access_ctx.effective_user.id, payload, resumo_fatura)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    resumo = obter_resumo_fatura_fechada_atual(
+        db, user_id=access_ctx.effective_user.id,
+        conta=conta_cartao, ref_date=date.today(),
     )
+    return _resposta_fatura(resumo)
 
 
 @router.get("/{conta_id}/faturas/{competencia_ano}/{competencia_mes}/pdf")
