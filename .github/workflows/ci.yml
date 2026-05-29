@@ -10,6 +10,22 @@ jobs:
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: financas_user
+          POSTGRES_PASSWORD: financas_pass
+          POSTGRES_DB: financas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -28,7 +44,7 @@ jobs:
         working-directory: backend
         env:
           SECRET_KEY: ci-test-secret-key
-          DATABASE_URL: sqlite:///
+          DATABASE_URL: postgresql://financas_user:financas_pass@localhost:5432/financas_test
 
   frontend:
     name: Frontend lint + unit tests

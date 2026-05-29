@@ -20,13 +20,16 @@ from app.db.session import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.core.limiter import limiter  # noqa: E402
 
-SQLALCHEMY_DATABASE_URL = "sqlite://"
+SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite://")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+else:
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

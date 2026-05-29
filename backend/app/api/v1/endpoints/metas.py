@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import math
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -9,21 +11,31 @@ from app.schemas.meta import (
     MetaUpdate,
     MetaResponse,
 )
+from app.schemas.pagination import PageMeta, PagedResponse
 
 from app.crud import crud_meta as crud
 
 router = APIRouter()
 
-@router.get("", response_model=List[MetaResponse])
+@router.get("", response_model=PagedResponse[MetaResponse])
 def listar_metas(
-    skip: int = 0,
-    limit: int = 1000,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=200),
     db: Session = Depends(get_db),
     access_ctx: AccessContext = Depends(get_access_context)
 ):
-    """Lista todas as metas do usuário"""
-    metas = crud.get_metas(db, access_ctx.effective_user.id)
-    return metas[skip:skip + limit]
+    all_metas = crud.get_metas(db, access_ctx.effective_user.id)
+    total = len(all_metas)
+    skip = (page - 1) * page_size
+    return PagedResponse(
+        data=all_metas[skip: skip + page_size],
+        meta=PageMeta(
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=max(1, math.ceil(total / page_size)),
+        ),
+    )
 
 
 @router.get("/{meta_id}", response_model=MetaResponse)

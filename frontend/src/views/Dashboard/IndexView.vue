@@ -267,7 +267,7 @@ const fetchDados = async () => {
       categoriasStore.fetchCategorias(),
     ])
     transacoes.value = (transacoesRes.data as { data: Transacao[] }).data
-    metas.value = metasRes.data
+    metas.value = (metasRes.data as { data: Meta[] }).data
     orcamentos.value = orcamentosRes.data
   } catch {
     erro.value = 'Não foi possível carregar o painel. Verifique sua conexão e tente novamente.'

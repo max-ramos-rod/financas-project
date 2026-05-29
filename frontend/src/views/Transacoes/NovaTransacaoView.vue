@@ -134,7 +134,7 @@ const fetchDados = async () => {
       categoriasStore.fetchCategorias(),
     ])
 
-    metas.value = metasRes.data
+    metas.value = (metasRes.data as { data: Meta[] }).data
 
     const primeiraAtiva = contas.value.find((c) => c.ativa)
     if (primeiraAtiva && !editando.value) {

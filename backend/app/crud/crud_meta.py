@@ -1,61 +1,35 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
-from typing import List, Optional
 
+from app.crud.base import CRUDBase
 from app.models import Meta
 from app.schemas.meta import MetaCreate, MetaUpdate
 
 
-def get_metas(db: Session, user_id: int) -> List[Meta]:
-    """Lista todas as metas do usuário"""
-    return db.query(Meta).filter(Meta.user_id == user_id).all()
+class CRUDMeta(CRUDBase[Meta, MetaCreate, MetaUpdate]):
+    def get_metas(self, db: Session, user_id: int):
+        return self.get_multi(db, user_id)
+
+    def get_meta(self, db: Session, meta_id: int, user_id: int):
+        return self.get(db, meta_id, user_id)
+
+    def criar_meta(self, db: Session, meta: MetaCreate, user_id: int) -> Meta:
+        return self.create(db, meta, user_id)
+
+    def atualizar_meta(self, db: Session, meta_id: int, user_id: int, meta_update: MetaUpdate):
+        db_meta = self.get(db, meta_id, user_id)
+        if not db_meta:
+            return None
+        return self.update(db, db_meta, meta_update)
+
+    def deletar_meta(self, db: Session, meta_id: int, user_id: int) -> bool:
+        return self.remove(db, meta_id, user_id)
 
 
-def get_meta(db: Session, meta_id: int, user_id: int) -> Optional[Meta]:
-    """Busca uma meta específica"""
-    return db.query(Meta).filter(
-        and_(
-            Meta.id == meta_id,
-            Meta.user_id == user_id
-        )
-    ).first()
+crud_meta = CRUDMeta(Meta)
 
-
-def criar_meta(db: Session, meta: MetaCreate, user_id: int) -> Meta:
-    """Cria uma nova meta"""
-    db_meta = Meta(
-        user_id=user_id,
-        **meta.model_dump()
-    )
-    db.add(db_meta)
-    db.commit()
-    db.refresh(db_meta)
-    return db_meta
-
-
-def atualizar_meta(db: Session, meta_id: int, user_id: int, meta_update: MetaUpdate) -> Optional[Meta]:
-    """Atualiza uma meta existente"""
-    db_meta = get_meta(db, meta_id, user_id)
-    if not db_meta:
-        return None
-    
-    # Atualiza apenas os campos fornecidos
-    update_data = meta_update.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_meta, key, value)
-    
-    db.add(db_meta)
-    db.commit()
-    db.refresh(db_meta)
-    return db_meta
-
-
-def deletar_meta(db: Session, meta_id: int, user_id: int) -> bool:
-    """Deleta uma meta"""
-    db_meta = get_meta(db, meta_id, user_id)
-    if not db_meta:
-        return False
-    
-    db.delete(db_meta)
-    db.commit()
-    return True
+# Module-level aliases preserve the existing `crud.get_metas(db, user_id)` call style
+get_metas = crud_meta.get_metas
+get_meta = crud_meta.get_meta
+criar_meta = crud_meta.criar_meta
+atualizar_meta = crud_meta.atualizar_meta
+deletar_meta = crud_meta.deletar_meta

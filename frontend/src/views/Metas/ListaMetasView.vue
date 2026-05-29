@@ -69,7 +69,7 @@ const fetchDados = async () => {
   loading.value = true
   try {
     const res = await api.get('/metas')
-    metas.value = res.data
+    metas.value = (res.data as { data: Meta[] }).data
   } catch {
   } finally {
     loading.value = false
