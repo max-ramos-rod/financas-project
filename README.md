@@ -32,9 +32,18 @@ Controle financeiro pessoal com suporte a múltiplas contas, orçamentos, metas 
 - Despesas por categoria (barras horizontais)
 - Orçamento × gasto por categoria (barras de progresso)
 
+### Busca global
+- Endpoint `GET /api/v1/busca?q=termo` pesquisa em transações e contas
+- Tela `BuscaView` com debounce de 300ms e navegação direta ao resultado
+
 ### Colaboração
 - Delegação de acesso: compartilhar visão da conta com outro usuário via convite por e-mail
 - Impersonação via `X-Act-As-User` no header
+
+### Segurança
+- Rate limiting em endpoints de autenticação (slowapi)
+- Recuperação de senha via e-mail (`/auth/forgot-password` + `/auth/reset-password`)
+- Erros padronizados no formato RFC 7807
 
 ## Stack
 
@@ -77,6 +86,44 @@ docker compose up -d
 ```
 
 O `docker-compose.yml` sobe PostgreSQL 17, backend (Gunicorn + Uvicorn workers) e frontend (Nginx servindo o build estático). Veja `INSTALACAO.md` para configuração das variáveis de ambiente de produção.
+
+## Testes
+
+```bash
+# Backend — suite completa (pytest + SQLite em memória)
+cd backend
+.\venv\Scripts\python.exe -m pytest -q
+
+# Frontend — type check
+cd frontend
+npm run lint
+
+# Frontend — unit tests (Vitest)
+npm run test
+
+# Frontend — E2E (Playwright, sobe dev server automaticamente)
+npm run test:e2e
+```
+
+## CI/CD
+
+Pipeline GitHub Actions em `.github/workflows/ci.yml`, disparado em push e pull request para `main`:
+
+- **backend** — `pytest -q` com SQLite em memória
+- **frontend** — `vue-tsc --noEmit` + `vitest run`
+- **e2e** — Playwright (Chromium), sobe o dev server via `webServer` no config
+
+## Decisões de arquitetura
+
+| Decisão | Detalhe |
+|---|---|
+| `AccessContext` | Toda rota protegida usa `AccessContext` de `app/api/deps.py`. Nunca confiar em `user_id` vindo do cliente. |
+| Delegação | Usuário pode operar como outro via `X-Act-As-User`. Gerenciado por `AccessContext`. |
+| Rate limiting | Endpoints de auth protegidos com slowapi. Desabilitado automaticamente em testes. |
+| `storage.ts` | Único ponto de acesso ao `localStorage`. Nunca usar `localStorage.*` diretamente. |
+| `apiError.ts` | Helper `extractApiError(err)` para extrair mensagem de erros Axios (suporta Pydantic, string e objeto). |
+| Stores Pinia | `useContasStore` e `useCategoriasStore` com deduplicação de fetch — chamadas concorrentes são mescladas. |
+| `app/domain/` | Regras de negócio transversais extraídas de `crud_*`. Referência: `domain/cartao_fatura.py`. |
 
 ## Documentação
 
