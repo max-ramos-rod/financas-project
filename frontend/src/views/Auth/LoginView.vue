@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import Lockup from '@/components/Lockup.vue'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
+const mensagemSucesso = computed(() => route.query.mensagem === 'senha_redefinida' ? 'Senha redefinida com sucesso. Faça login.' : '')
 const { login, loading, error } = authStore
 
 const email = ref('')
@@ -92,6 +94,8 @@ onMounted(() => {
               <h3 class="text-2xl font-semibold tracking-tight mb-1">Entrar</h3>
               <p class="text-sm text-base-content/50 mb-7">Acesse com seu e-mail e senha.</p>
 
+              <div v-if="mensagemSucesso" class="alert alert-success mb-5"><span>{{ mensagemSucesso }}</span></div>
+
               <div v-if="error" class="alert alert-error mb-5">
                 <span>{{ error }}</span>
               </div>
@@ -140,7 +144,7 @@ onMounted(() => {
                     <input type="checkbox" class="checkbox checkbox-sm" />
                     <span class="text-base-content/70">Continuar conectado</span>
                   </label>
-                  <a href="#" class="text-primary font-medium hover:underline">Esqueci a senha</a>
+                  <router-link to="/recuperar-senha" class="text-primary font-medium hover:underline">Esqueci a senha</router-link>
                 </div>
 
                 <button

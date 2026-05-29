@@ -7,6 +7,8 @@ const router = createRouter({
     { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
     { path: '/login', name: 'login', component: () => import('@/views/Auth/LoginView.vue') },
     { path: '/convites/confirmar', name: 'confirmar-convite', component: () => import('@/views/Delegacoes/ConfirmarConviteView.vue') },
+    { path: '/recuperar-senha', name: 'recuperar-senha', component: () => import('@/views/Auth/ForgotPasswordView.vue') },
+    { path: '/redefinir-senha', name: 'redefinir-senha', component: () => import('@/views/Auth/ResetPasswordView.vue') },
     { path: '/dashboard', name: 'dashboard', component: () => import('@/views/Dashboard/IndexView.vue'), meta: { requiresAuth: true } },
     { path: '/registro', name: 'registro', component: () => import('@/views/Auth/RegistroView.vue'), meta: { requiresAuth: false } },
     { 

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import { storage } from '@/services/storage'
 import type { Conta, ImportacaoResult } from '@/types'
 
 const router = useRouter()
@@ -17,7 +18,6 @@ const mostrarErros = ref(false)
 const avisoReimport = ref<{ filename: string; importedAt: string; count: number } | null>(null)
 
 const FORMATOS_ACEITOS = '.ofx,.qfx,.xlsx,.xls,.txt,.ret,.rem,.cnab'
-const STORAGE_KEY = 'financas_import_history'
 
 interface HistoricoImport {
   hash: string
@@ -27,11 +27,7 @@ interface HistoricoImport {
 }
 
 const lerHistorico = (): HistoricoImport[] => {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-  } catch {
-    return []
-  }
+  return storage.getImportHistory() as unknown as HistoricoImport[]
 }
 
 const salvarNoHistorico = (hash: string, filename: string, count: number) => {
@@ -44,7 +40,7 @@ const salvarNoHistorico = (hash: string, filename: string, count: number) => {
     historico.unshift(registro)
     if (historico.length > 50) historico.length = 50
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(historico))
+  storage.setImportHistory(historico as unknown as string[])
 }
 
 const hashArquivo = async (file: File): Promise<string> => {

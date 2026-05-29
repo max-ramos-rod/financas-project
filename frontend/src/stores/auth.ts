@@ -2,12 +2,9 @@
 import { computed, ref } from 'vue'
 
 import api from '@/services/api'
+import { storage } from '@/services/storage'
 import type { AuthTokenResponse, LoginCredentials, RegisterData, User } from '@/types'
 
-const ACCESS_TOKEN_KEY = 'access_token'
-const ACCESS_TOKEN_EXPIRES_AT_KEY = 'access_token_expires_at'
-const SESSION_TIMEOUT_SECONDS_KEY = 'session_timeout_seconds'
-const LAST_ACTIVITY_AT_KEY = 'last_activity_at'
 const ACTIVITY_THROTTLE_MS = 15000
 const SESSION_CHECK_INTERVAL_MS = 30000
 const DEFAULT_TIMEOUT_SECONDS = 30 * 60
@@ -16,11 +13,11 @@ const activityEvents = ['click', 'keydown', 'mousedown', 'scroll', 'touchstart']
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
-  const token = ref<string | null>(localStorage.getItem(ACCESS_TOKEN_KEY))
+  const token = ref<string | null>(storage.getToken())
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const sessionExpiresAt = ref<number | null>(Number(localStorage.getItem(ACCESS_TOKEN_EXPIRES_AT_KEY)) || null)
-  const sessionTimeoutSeconds = ref<number>(Number(localStorage.getItem(SESSION_TIMEOUT_SECONDS_KEY)) || DEFAULT_TIMEOUT_SECONDS)
+  const sessionExpiresAt = ref<number | null>(Number(storage.getTokenExpiresAt()) || null)
+  const sessionTimeoutSeconds = ref<number>(Number(storage.getSessionTimeout()) || DEFAULT_TIMEOUT_SECONDS)
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
   const isUser = computed(() => user.value?.role === 'user')
@@ -52,47 +49,43 @@ export const useAuthStore = defineStore('auth', () => {
     sessionExpiresAt.value = expiresAt
     sessionTimeoutSeconds.value = payload.expires_in
 
-    localStorage.setItem(ACCESS_TOKEN_KEY, payload.access_token)
-    localStorage.setItem(ACCESS_TOKEN_EXPIRES_AT_KEY, String(expiresAt))
-    localStorage.setItem(SESSION_TIMEOUT_SECONDS_KEY, String(payload.expires_in))
+    storage.setToken(payload.access_token)
+    storage.setTokenExpiresAt(String(expiresAt))
+    storage.setSessionTimeout(String(payload.expires_in))
 
     markActivity(true)
   }
 
   const syncSessionFromStorage = () => {
-    token.value = localStorage.getItem(ACCESS_TOKEN_KEY)
+    token.value = storage.getToken()
 
     if (!token.value) {
       sessionExpiresAt.value = null
       return
     }
 
-    const storedExpiresAt = Number(localStorage.getItem(ACCESS_TOKEN_EXPIRES_AT_KEY))
+    const storedExpiresAt = Number(storage.getTokenExpiresAt())
     sessionExpiresAt.value = Number.isFinite(storedExpiresAt) && storedExpiresAt > 0
       ? storedExpiresAt
       : decodeJwtExpiresAt(token.value)
 
     if (sessionExpiresAt.value) {
-      localStorage.setItem(ACCESS_TOKEN_EXPIRES_AT_KEY, String(sessionExpiresAt.value))
+      storage.setTokenExpiresAt(String(sessionExpiresAt.value))
     }
 
-    const storedTimeout = Number(localStorage.getItem(SESSION_TIMEOUT_SECONDS_KEY))
+    const storedTimeout = Number(storage.getSessionTimeout())
     sessionTimeoutSeconds.value = Number.isFinite(storedTimeout) && storedTimeout > 0
       ? storedTimeout
       : DEFAULT_TIMEOUT_SECONDS
-    localStorage.setItem(SESSION_TIMEOUT_SECONDS_KEY, String(sessionTimeoutSeconds.value))
+    storage.setSessionTimeout(String(sessionTimeoutSeconds.value))
 
-    if (!localStorage.getItem(LAST_ACTIVITY_AT_KEY)) {
-      localStorage.setItem(LAST_ACTIVITY_AT_KEY, String(Date.now()))
+    if (!storage.getLastActivity()) {
+      storage.setLastActivity(String(Date.now()))
     }
   }
 
   const clearSessionStorage = () => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY)
-    localStorage.removeItem(ACCESS_TOKEN_EXPIRES_AT_KEY)
-    localStorage.removeItem(SESSION_TIMEOUT_SECONDS_KEY)
-    localStorage.removeItem(LAST_ACTIVITY_AT_KEY)
-    localStorage.removeItem('act_as_user_id')
+    storage.clearSession()
   }
 
   const redirectToLogin = () => {
@@ -115,7 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     lastActivityWriteAt = now
-    localStorage.setItem(LAST_ACTIVITY_AT_KEY, String(now))
+    storage.setLastActivity(String(now))
   }
 
   async function refreshSession() {
@@ -144,7 +137,7 @@ export const useAuthStore = defineStore('auth', () => {
     const now = Date.now()
     const timeoutMs = sessionTimeoutSeconds.value * 1000
     const expiresAt = sessionExpiresAt.value ?? 0
-    const lastActivityAt = Number(localStorage.getItem(LAST_ACTIVITY_AT_KEY) || now)
+    const lastActivityAt = Number(storage.getLastActivity() || now)
 
     if (now - lastActivityAt >= timeoutMs) {
       handleSessionExpired()
