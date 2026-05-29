@@ -29,10 +29,13 @@ describe('transacoesFetch', () => {
     expect(params.categoria_id).toBeUndefined()
     expect(params.mes).toBe(3)
     expect(params.ano).toBe(2026)
+    expect(params.page).toBe(1)
+    expect(params.page_size).toBe(50)
   })
 
-  it('chama api.get uma vez com params filtrados', async () => {
-    const apiGet = vi.fn().mockResolvedValue({ data: [{ id: 1 }] })
+  it('chama api.get uma vez com params filtrados e retorna data[]', async () => {
+    const mockResponse = { data: { data: [{ id: 1 }], meta: { total: 1, page: 1, page_size: 50, total_pages: 1 } } }
+    const apiGet = vi.fn().mockResolvedValue(mockResponse)
     const apiClient = { get: apiGet }
     const filtros: FiltrosTransacoes = {
       ...filtrosBase,
@@ -45,9 +48,10 @@ describe('transacoesFetch', () => {
       busca: 'mercado',
     }
 
-    const data = await buscarTransacoesFiltradas(apiClient, filtros)
+    const result = await buscarTransacoesFiltradas(apiClient, filtros)
 
-    expect(data).toEqual([{ id: 1 }])
+    expect(result.data).toEqual([{ id: 1 }])
+    expect(result.meta.total).toBe(1)
     expect(apiGet).toHaveBeenCalledTimes(1)
     expect(apiGet).toHaveBeenCalledWith('/transacoes/visao-financeira', {
       params: {
@@ -62,6 +66,8 @@ describe('transacoesFetch', () => {
         mes: 3,
         ano: 2026,
         busca: 'mercado',
+        page: 1,
+        page_size: 50,
       },
     })
   })

@@ -510,11 +510,9 @@ def exportar_csv(
     sem_categoria = categoria_id == -1
     categoria_normalizada = None if sem_categoria else categoria_id
 
-    transacoes = crud.get_transacoes(
+    transacoes, _ = crud.get_transacoes(
         db=db,
         user_id=access_ctx.effective_user.id,
-        skip=0,
-        limit=None,
         tipo=tipo,
         status_liquidacao=status_liquidacao,
         fixa=fixa_bool,
