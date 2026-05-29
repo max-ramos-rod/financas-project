@@ -22,6 +22,7 @@
   - `orcamentos.ts` — lista de orcamentos; aceita `{ mes, ano }` como params opcionais
   - `metas.ts` — lista de metas; `fetchPromise` dedup
   - `delegacoes.ts` — convites enviados/recebidos, actAsOptions, pendingInviteCount
+  - `transacoes.ts` — fetch em bloco para o Dashboard (page_size=500); NAO cobre ListaTransacoesView (usa `transacoesFetch.ts` com filtros e paginacao proprios)
 - `src/types/index.ts` contratos principais; `src/types/pagination.ts` — `PageMeta` com `has_next`
 - `src/utils/date.ts` normalizacao e formatacao de datas
 - `e2e/` testes Playwright (auth, transacoes, fatura)

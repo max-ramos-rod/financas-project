@@ -4,6 +4,8 @@ import api from '@/services/api'
 import type { DREMensal } from '@/types'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { RefreshCw } from '@lucide/vue'
+import { formatarMoeda } from '@/utils/financeiro'
+import { extractApiError } from '@/services/apiError'
 
 const loading = ref(false)
 const erro = ref('')
@@ -12,9 +14,6 @@ const filtros = ref({
   ano: new Date().getFullYear(),
 })
 const dre = ref<DREMensal | null>(null)
-
-const formatarMoeda = (valor: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
 
 const carregarDre = async () => {
   loading.value = true
@@ -27,8 +26,8 @@ const carregarDre = async () => {
       },
     })
     dre.value = response.data
-  } catch (error: any) {
-    erro.value = error?.response?.data?.detail || 'Erro ao carregar relatorio gerencial'
+  } catch (error) {
+    erro.value = extractApiError(error, 'Erro ao carregar relatorio gerencial')
   } finally {
     loading.value = false
   }
