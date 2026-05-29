@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(npm run *)",
-      "Bash(./venv/Scripts/python.exe -m pytest -q)"
+      "Bash(./venv/Scripts/python.exe -m pytest -q)",
+      "Bash(timeout 10 ./venv/Scripts/python.exe -c \"from app.core.limiter import limiter; print\\('OK'\\)\")",
+      "Bash(timeout 15 ./venv/Scripts/python.exe -c \"from app.api.v1.api import api_router; print\\('OK'\\)\")",
+      "Bash(timeout 10 ./venv/Scripts/python.exe -c \"from app.api.v1.endpoints import auth; print\\('auth OK'\\)\")",
+      "Bash(timeout 10 ./venv/Scripts/python.exe -c \"from app.crud import crud_password_reset; print\\('OK'\\)\")"
     ]
   }
 }

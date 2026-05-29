@@ -36,3 +36,6 @@ class User(Base):
         foreign_keys="Delegacao.delegate_user_id",
         back_populates="delegate",
     )
+    password_reset_tokens = relationship(
+        "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
+    )

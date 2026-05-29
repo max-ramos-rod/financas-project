@@ -18,6 +18,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
 from app.db.session import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
+from app.core.limiter import limiter  # noqa: E402
 
 SQLALCHEMY_DATABASE_URL = "sqlite://"
 
@@ -45,6 +46,14 @@ def setup_database():
     yield
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def disable_rate_limiting():
+    original = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = original
 
 
 @pytest.fixture
