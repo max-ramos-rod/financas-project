@@ -76,6 +76,25 @@ SMTP_FROM_EMAIL=no-reply@example.com
 
 Sem SMTP configurado, o convite é criado mas o e-mail automático não é enviado.
 
+## Contrato de resposta
+
+Todos os endpoints de listagem retornam envelope padronizado:
+
+```json
+{
+  "data": [...],
+  "meta": {
+    "page": 1,
+    "page_size": 50,
+    "total": 123,
+    "total_pages": 3,
+    "has_next": true
+  }
+}
+```
+
+Implementado em `app/core/responses.py` (`PagedResponse[T]`) e `app/core/pagination.py` (`PaginationMetaBuilder`).
+
 ## Testes
 
 ```bash

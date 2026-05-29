@@ -10,10 +10,13 @@
 ## Estrutura relevante
 - `app/api/v1/endpoints/` rotas HTTP
 - `app/api/deps.py` autenticacao, `AccessContext` e delegacao
-- `app/crud/` acesso a dados + parte relevante da regra de negocio atual
+- `app/core/pagination.py` — `PaginationParams`, `PageMeta`, `PaginationMetaBuilder`
+- `app/core/responses.py` — `ResponseEnvelope[T]`, `PaginatedResponseEnvelope[T]`, alias `PagedResponse`; helpers `success_response()` e `paginated_response()`
+- `app/core/repositories.py` — `SQLAlchemyRepository[ModelT]` (ABC generico; reservado para futura service layer — mutation methods usam `flush()`, nao `commit()`, requer UoW externo)
+- `app/crud/` acesso a dados + parte relevante da regra de negocio atual (todos usam `db.commit()` diretamente)
 - `app/domain/` regras de dominio extraidas de casos mais complexos
 - `app/models/` modelos SQLAlchemy
-- `app/schemas/` contratos Pydantic
+- `app/schemas/` contratos Pydantic (nota: `schemas/pagination.py` foi removido — usar `app/core/pagination.py`)
 - `tests/` cobertura funcional da API
 
 ## Padrões arquiteturais atuais
@@ -21,6 +24,45 @@
 - Parte da regra de negocio ainda esta em `crud_*`; nao espalhar mais sem necessidade.
 - Quando a regra ficar muito grande ou transversal, prefira extrair para `app/domain/`.
 - `app/domain/cartao_fatura.py` e a referencia atual para calculo de ciclos e faturas de cartao.
+
+## Contrato de resposta padrao
+
+Toda rota de listagem deve retornar `PagedResponse[T]` de `app/core/responses.py`:
+
+```python
+from app.core.pagination import PaginationMetaBuilder, PaginationParams
+from app.core.responses import PagedResponse
+
+@router.get("/recurso", response_model=PagedResponse[RecursoResponse])
+def listar(page: int = 1, page_size: int = 50, ...):
+    total = len(items)  # ou query COUNT(*)
+    params = PaginationParams(page=page, page_size=page_size)
+    return PagedResponse(data=items, meta=PaginationMetaBuilder.build(total, params))
+```
+
+Shape da resposta:
+```json
+{
+  "data": [...],
+  "meta": {
+    "page": 1,
+    "page_size": 50,
+    "total": 123,
+    "total_pages": 3,
+    "has_next": true
+  }
+}
+```
+
+Recursos sem paginacao real (contas, categorias, orcamentos) retornam todos os itens com `page=1, page_size=max(total,1)`.
+
+Nunca retornar lista plana em rotas de listagem. Os testes esperam `response.json()["data"]`.
+
+## SQLAlchemyRepository — aviso importante
+
+`app/core/repositories.py` contem `SQLAlchemyRepository` com metodos `create`, `update_fields` e `delete` que usam `db.flush()`, NAO `db.commit()`. O `get_db()` nao faz commit automatico.
+
+Por isso, os arquivos `crud_*` existentes NAO devem usar esses metodos de mutacao — eles continuam usando `db.commit()` diretamente. O `SQLAlchemyRepository` e infraestrutura para a futura service layer (onde o commit sera responsabilidade do service).
 
 ## Regras de negocio sensiveis
 - Transacoes alteram saldo, metas, orcamentos e, em alguns casos, dizimo automatico.
@@ -67,4 +109,5 @@
 
 ## Direcao arquitetural
 - Quando possivel, mover logica pesada de `crud_*` para servicos/dominio pequenos e testaveis.
-- Padronizacao maior de responses e erros e desejavel, mas deve ser incremental.
+- Padronizacao de responses concluida (Fase 1 do plano arquitetural). Proximo passo: criar service layer com `SQLAlchemyRepository` como camada de persistencia.
+- Consulte `docs/Plano_Evolucao_Arquitetural_Financas_Project.md` para o roadmap completo.

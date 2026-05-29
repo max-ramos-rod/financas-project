@@ -1,6 +1,42 @@
 # Plano de Evolucao Arquitetural - financas-project
 
 Data: 2026-03-12
+Ultima atualizacao: 2026-05-29
+
+## Status de execucao
+
+| Fase | Item | Status |
+|---|---|---|
+| Fase 0 | auth-sessao-inatividade | Concluido |
+| Fase 0 | rate limiting (slowapi) | Concluido |
+| Fase 0 | recuperacao de senha | Concluido |
+| Fase 0 | substituicao de alert/confirm | Em andamento |
+| **Fase 1** | **Envelope padronizado de resposta** | **Concluido** |
+| **Fase 1** | **Paginacao reutilizavel** | **Concluido** |
+| **Fase 1** | **Fortalecer stores por dominio** | **Concluido** |
+| Fase 2 | Service layer (TransacaoService) | Pendente |
+| Fase 3 | Repositories explicitos | Pendente |
+| Fase 4 | Testes unitarios de service | Pendente |
+
+### O que foi entregue na Fase 1 (2026-05-29)
+
+**Backend:**
+- `app/core/pagination.py` — `PaginationParams`, `PageMeta`, `PaginationMetaBuilder`
+- `app/core/responses.py` — `ResponseEnvelope[T]`, `PaginatedResponseEnvelope[T]`, alias `PagedResponse`
+- `app/core/repositories.py` — `SQLAlchemyRepository[ModelT]` (infra para futura service layer)
+- Todos os endpoints de listagem padronizados em `PagedResponse`: contas, categorias, orcamentos, transacoes, metas
+- Removidos: `app/schemas/pagination.py` e `app/crud/base.py` (descontinuados)
+- `app/crud/crud_meta.py` reescrito sem CRUDBase, alinhado ao padrao dos demais CRUDs
+
+**Frontend:**
+- Novas stores: `stores/orcamentos.ts`, `stores/metas.ts`, `stores/delegacoes.ts`
+- Stores existentes (`contas.ts`, `categorias.ts`) atualizadas para extrair `.data` do envelope paginado
+- `types/pagination.ts` atualizado com `has_next: boolean`
+- Todas as views migradas: ListaCategoriasView, ListaContasView, FaturaCartaoView, ImportacaoView, ListaMetasView, ListaOrcamentosView, NovaTransacaoView, Dashboard/IndexView, Delegacoes/ConvitesView, Navbar
+
+### Proximo passo recomendado
+
+`feat/transacao-service` — criar `TransacaoService` como primeira service layer real, usando `SQLAlchemyRepository` como camada de persistencia. Ver Fase 2 abaixo.
 
 ## 1. Objetivo
 
@@ -172,9 +208,11 @@ Conclusao:
 
 ## 7. Direcao arquitetural recomendada
 
-### Estado atual
+### Estado atual (2026-05-29)
 
 `api -> crud_* -> db`
+
+com infra pronta em `app/core/`: envelope de resposta padronizado, paginacao reutilizavel, `SQLAlchemyRepository` aguardando service layer.
 
 ### Estado alvo incremental
 
@@ -464,13 +502,9 @@ frontend/src/
 - dependencias: nenhuma estrutural
 - ordem recomendada: agora, neste branch
 
-### 2. Envelope padronizado de resposta
-- descricao: `SuccessResponse`, `PaginatedResponse`, `PaginationMeta`
-- motivo: contrato estavel backend/frontend
-- dificuldade: media
-- impacto: alto
-- dependencias: nenhuma
-- ordem recomendada: logo apos o branch atual
+### 2. Envelope padronizado de resposta ✅ CONCLUIDO
+- descricao: `ResponseEnvelope[T]`, `PaginatedResponseEnvelope[T]`, alias `PagedResponse`
+- entregue em: 2026-05-29 — `app/core/responses.py`
 
 ### 3. RFC 7807 para erros
 - descricao: padronizar erros como `problem+json`
@@ -478,23 +512,15 @@ frontend/src/
 - dificuldade: media
 - impacto: alto
 - dependencias: nenhuma
-- ordem recomendada: junto com item 2
+- ordem recomendada: proximo branch
 
-### 4. Paginacao reutilizavel
-- descricao: `PaginationParams`, `Page`
-- motivo: remover duplicacao
-- dificuldade: baixa
-- impacto: medio
-- dependencias: item 2
-- ordem recomendada: depois de 2 e 3
+### 4. Paginacao reutilizavel ✅ CONCLUIDO
+- descricao: `PaginationParams`, `PageMeta`, `PaginationMetaBuilder`
+- entregue em: 2026-05-29 — `app/core/pagination.py`
 
-### 5. Fortalecer stores por dominio
-- descricao: reduzir logica nas views e centralizar estado/erro/loading
-- motivo: frontend mais previsivel
-- dificuldade: media
-- impacto: alto
-- dependencias: itens 2 e 3
-- ordem recomendada: em seguida
+### 5. Fortalecer stores por dominio ✅ CONCLUIDO
+- descricao: stores para contas, categorias, orcamentos, metas, delegacoes; views sem api.get direto
+- entregue em: 2026-05-29 — `src/stores/*.ts`
 
 ### 6. Criar `TransacaoService`
 - descricao: primeira service layer real
@@ -572,16 +598,17 @@ frontend/src/
 
 ### Sequencia pratica
 
-1. fechar `auth-sessao-inatividade`
-2. padronizar resposta e erro da API
-3. adaptar frontend para novos contratos
-4. fortalecer stores por dominio
-5. criar `TransacaoService`
+1. ~~fechar `auth-sessao-inatividade`~~ ✅
+2. ~~padronizar resposta da API~~ ✅
+3. ~~adaptar frontend para novos contratos~~ ✅
+4. ~~fortalecer stores por dominio~~ ✅
+5. **→ criar `TransacaoService`** ← proximo passo
 6. criar repositories + contracts
 7. adicionar testes unitarios de service
 8. extrair subservicos menores
-9. atacar melhorias adjacentes de produto (`Google OAuth`, feedbacks DaisyUI)
-10. so depois avaliar async
+9. padronizar erros com RFC 7807
+10. melhorias adjacentes de produto (Google OAuth, feedbacks DaisyUI)
+11. so depois avaliar async
 
 ## 12. Decisao recomendada para o branch atual
 
