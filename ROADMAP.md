@@ -16,6 +16,21 @@ Atualizado: maio 2026
 - [x] DRE mensal com exportação CSV e PDF
 - [x] Delegação de acesso: convite, aceite, revogação, impersonação via `X-Act-As-User`
 - [x] Duplicar transação
+- [x] Busca global (`GET /busca?q=`) — transações e contas, debounce 300ms no frontend
+- [x] Importação de extratos: OFX, XLSX, CNAB (upload com detecção automática de formato)
+- [x] Export CSV de transações com filtros
+- [x] Export PDF de fatura do cartão
+
+### Segurança e qualidade
+- [x] Rate limiting em endpoints de autenticação (slowapi)
+- [x] Recuperação de senha via e-mail (`/auth/forgot-password` + `/auth/reset-password`)
+- [x] Sessão por inatividade configurável (`SESSION_INACTIVITY_MINUTES` no `.env`)
+- [x] Erros padronizados no formato RFC 7807
+- [x] Envelope de resposta padronizado (`PagedResponse[T]`) em todos os endpoints de listagem
+- [x] Paginação reutilizável (`PaginationParams`, `PaginationMetaBuilder`)
+- [x] Ruff linting ativo no backend
+- [x] CI/CD GitHub Actions (backend + frontend lint/unit + Playwright E2E)
+- [x] Testes E2E Playwright (auth, transações, fatura)
 
 ### Frontend / Design
 - [x] Redesign completo: tema DaisyUI customizado (Forest `#1F5C3A`), Geist + Geist Mono
@@ -26,23 +41,22 @@ Atualizado: maio 2026
 - [x] Glossário PT-BR centralizado (`LABELS` em `strings.ts`)
 - [x] Tema ApexCharts consistente com o design system
 - [x] Tabela de transações responsiva com colunas progressivas (sm/md/lg)
-- [x] Hi-fi das telas Contas, Metas e Orçamentos: cabeçalho inline, KPI strip, toolbar de filtros, EmptyState, ConfirmModal
-- [x] Lighthouse acessibilidade ≥ 95 (Home 95 · Login 96)
+- [x] Hi-fi das telas Contas, Metas e Orçamentos
+- [x] `storage.ts` — único ponto de acesso ao `localStorage`
+- [x] `apiError.ts` — helper `extractApiError(err)` para erros Axios
+- [x] Stores Pinia por domínio: auth, contas, categorias, orcamentos, metas, delegacoes, transacoes
 
-### Backend / Qualidade
-- [x] Validação `dia_fechamento ≠ dia_vencimento` no cartão (backend + frontend)
-- [x] Validador de parcelamento movido para `TransacaoCreate` (corrige 500 na listagem)
-- [x] Suite de testes cobrindo auth, contas, fatura, DRE, filtros, parcelamento, metas, orçamentos
-- [x] Testes com datas relativas (não quebram com o tempo)
+### Arquitetura
+- [x] Service layer parcial: `TransacaoService`, `ContaService`, `CategoriaService`, `DelegacaoService`, `MetaService`, `OrcamentoService`
+- [x] Services auxiliares: `DizimoService`, `ParcelamentoService`, `ImportacaoService`
+- [x] Repositories concretos: `TransacaoRepository`, `ContaRepository`, `CategoriaRepository`, `DelegacaoRepository`, `MetaRepository`, `OrcamentoRepository`
+- [x] Contratos de interface (`Protocol`): `app/contracts/`
+- [x] Domain layer: `app/domain/cartao_fatura.py`, `app/domain/transacao.py`
+- [x] Testes unitários de service com fakes: `tests/unit/` (7 suites)
 
 ---
 
 ## Próximo — Produto
-
-### Sessão por inatividade
-Expirar sessão automaticamente após período configurável no `.env`.
-Segurança básica para uso em dispositivos compartilhados.
-- Dificuldade: média · Impacto: alto · Dependências: nenhuma
 
 ### Dark mode
 Tokens de CSS já preparados. Falta: switch de tema na UI, ajuste dos componentes para dark, persistência da preferência.
@@ -54,66 +68,46 @@ Placeholder de EmptyState já existe.
 - Dificuldade: média · Impacto: alto
 
 ### Login com Google / OAuth
-Autenticação social integrada ao fluxo JWT atual.
-- Dificuldade: média · Impacto: médio-alto · Dependências: nenhuma estrutural
+Autenticação social integrada ao fluxo JWT atual. Model `User` já tem campos `google_id` e `google_email`.
+- Dificuldade: média · Impacto: médio-alto
 
----
+### SMTP para recuperação de senha
+Integração completa — por ora o token é logado em nível INFO (`[DEV]`). `send_password_reset_email` já existe em `app/services/email.py`.
+- Dificuldade: baixa · Impacto: alto
 
-## Próximo — Qualidade técnica
-
-### Contratos de API padronizados
-`SuccessResponse`, `PaginatedResponse`, `PaginationMeta` no backend.
-Erros no formato RFC 7807 (`problem+json`).
-Adapter no cliente HTTP do frontend.
-- Dificuldade: média · Impacto: alto
-
-### Paginação nas listagens
-`PaginationParams` e `Page` reutilizáveis.
-Frontend com scroll infinito ou paginação explícita nas telas de transações e relatórios.
-- Dificuldade: baixa-média · Dependência: contratos de API
-
-### Stores por domínio (frontend)
-Reduzir lógica nas views, centralizar estado/erro/loading por domínio (transações, contas, metas).
-- Dificuldade: média · Impacto: alto
+### Substituição de alert()/confirm() nativos
+Backlog técnico: trocar os remanescentes por `<ConfirmModal>` ou toast inline.
+- Dificuldade: baixa · Impacto: médio (UX)
 
 ---
 
 ## Médio prazo — Arquitetura
 
-### Service layer
-Separar orquestração de negócio da persistência.
-Começar por `TransacaoService` (módulo mais crítico e com mais efeitos colaterais).
-- Dificuldade: alta · Impacto: muito alto
+### Completar service layer
+Endpoints que ainda usam `crud_*` diretamente devem migrar para services. Prioridade: `crud_transacao.py` (maior acumulação de regras).
+- Dificuldade: média · Impacto: alto
 - Referência: `docs/Plano_Evolucao_Arquitetural_Financas_Project.md` § Fase 2
 
-### Repositories explícitos
-Mover queries SQLAlchemy para camada dedicada.
-Services dependendo de interfaces (`Protocol`).
-- Dificuldade: alta · Dependência: `TransacaoService`
+### Testes unitários de service — cobertura completa
+Expandir `tests/unit/` para cobrir todos os branches críticos dos services existentes.
+- Dificuldade: média · Impacto: muito alto
 
-### Testes unitários de service
-Testar regras de negócio sem banco usando fakes de repositories.
-- Dificuldade: média · Impacto: muito alto · Dependência: repositories + Protocol
-
-### Subserviços de domínio
-Extrair de `crud_transacao.py`: `SaldoService`, política de orçamento, atualização de metas, regras de dízimo, política de cartão.
-- Dificuldade: média-alta · Dependência: service layer estabilizada
+### Reduzir lógica residual em views
+CRUD direto (POST/PUT/DELETE) e estado de edição em `transacoes`, `contas`, `metas` ainda vivem nas views. Candidatos a migrar para stores ou composables.
+- Dificuldade: média · Impacto: alto
 
 ---
 
 ## Longo prazo
 
 ### Observabilidade
-Logs estruturados, correlation ID, health checks mais ricos.
+Logs estruturados, correlation ID, health checks mais ricos com status do banco.
 - Dificuldade: média · Sem dependência forte
 
 ### Migração async (avaliação)
 Revisar se há ganho real por módulo antes de migrar.
-Só faz sentido após a arquitetura estar desacoplada.
+Só faz sentido após a service layer estar estabilizada.
 - Dificuldade: alta · Dependência: service layer + repositories
-
-### ~~Hi-fi das telas restantes~~ ✅ Concluído
-Todas as telas principais foram redesenhadas: Dashboard, Home, Login, Transações, Contas, Metas, Orçamentos.
 
 ---
 
@@ -121,3 +115,4 @@ Todas as telas principais foram redesenhadas: Dashboard, Home, Login, Transaçõ
 
 - Plano arquitetural detalhado: `docs/Plano_Evolucao_Arquitetural_Financas_Project.md`
 - Handoff do redesign (fases 0–9): `frontend/handoff/tasks.md`
+- Plano de refatoração smart-audit: `docs/plano-refatoracao-smart-audit.md`

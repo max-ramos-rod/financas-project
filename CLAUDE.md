@@ -36,12 +36,23 @@
 - Evite tocar em `nginx/` ou `docker-compose.yml` em tarefas puramente funcionais.
 
 ## Arquitetura atual que deve ser respeitada
-- Backend atual e modular por endpoint, com forte uso de `crud_*`.
-- `app/core/` contem infra transversal: `pagination.py` (PaginationParams, PageMeta, PaginationMetaBuilder), `responses.py` (PagedResponse, ResponseEnvelope), `errors.py` (handlers RFC 7807), `limiter.py` (rate limiting slowapi) e `repositories.py` (SQLAlchemyRepository — reservado para futura service layer).
+
+### Backend
+- Padrao predominante: `api -> service -> repository -> db` para dominios migrados; `api -> crud_* -> db` para endpoints residuais.
+- `app/core/` contem infra transversal: `pagination.py` (PaginationParams, PageMeta, PaginationMetaBuilder), `responses.py` (PagedResponse, ResponseEnvelope), `errors.py` (handlers RFC 7807), `limiter.py` (rate limiting slowapi), `repositories.py` (SQLAlchemyRepository base — flush, nao commit).
+- `app/contracts/` — Protocol interfaces (CategoriaRepositoryProtocol, ContaRepositoryProtocol, etc.); definem o contrato entre services e repositories.
+- `app/repositories/` — implementacoes concretas dos contratos (CategoriaRepository, ContaRepository, etc.).
+- `app/services/` — orchestracao de negocio por dominio (TransacaoService, ContaService, CategoriaService, MetaService, OrcamentoService, DelegacaoService, DizimoService, ParcelamentoService); `importacao/` para upload de extratos.
+- `app/domain/` — regras de dominio puras: `cartao_fatura.py` (ciclos e faturas) e `transacao.py` (impacto_no_saldo, recalcular_meta, recalcular_orcamento_mes).
 - Todas as rotas de listagem retornam envelope padrao `{ data: [...], meta: { page, page_size, total, total_pages, has_next } }`. Sem excecoes ativas.
-- Frontend e organizado por dominio em `views/`, com `services/api.ts` centralizando HTTP.
+- `app/crud/` ainda existe como legado — nao acrescentar logica nova; migrar para services quando mexer.
+
+### Frontend
+- Organizado por dominio em `views/`, com `services/api.ts` centralizando HTTP.
 - Chamadas de listagem de recursos nunca devem ser feitas diretamente nas views; todo estado de lista vive em stores Pinia (`src/stores/`).
 - Stores cobrem: `auth`, `contas`, `categorias`, `orcamentos`, `metas`, `delegacoes`, `transacoes`.
+- `src/services/storage.ts` — unico ponto de acesso ao `localStorage`. Nunca usar `localStorage.*` diretamente.
+- `src/services/apiError.ts` — `extractApiError(err, fallback?)` para extrair mensagem legivel de erros Axios.
 - Delegacao de acesso existe e usa `X-Act-As-User`; nao remover esse fluxo por acidente.
 - Existe logica de cartao/fatura, dizimo automatico, parcelamento, metas e orcamentos; essas regras sao sensiveis.
 

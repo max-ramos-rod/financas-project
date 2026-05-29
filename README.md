@@ -90,7 +90,7 @@ O `docker-compose.yml` sobe PostgreSQL 17, backend (Gunicorn + Uvicorn workers) 
 ## Testes
 
 ```bash
-# Backend — suite completa (pytest + SQLite em memória)
+# Backend — suite de integração (pytest + SQLite em memória) + unitários (sem banco)
 cd backend
 .\venv\Scripts\python.exe -m pytest -q
 
@@ -109,7 +109,7 @@ npm run test:e2e
 
 Pipeline GitHub Actions em `.github/workflows/ci.yml`, disparado em push e pull request para `main`:
 
-- **backend** — `pytest -q` com SQLite em memória
+- **backend** — ruff check + `pytest -q` contra PostgreSQL 17 (service container)
 - **frontend** — `vue-tsc --noEmit` + `vitest run`
 - **e2e** — Playwright (Chromium), sobe o dev server via `webServer` no config
 
@@ -122,18 +122,20 @@ Pipeline GitHub Actions em `.github/workflows/ci.yml`, disparado em push e pull 
 | Rate limiting | Endpoints de auth protegidos com slowapi. Desabilitado automaticamente em testes. |
 | `storage.ts` | Único ponto de acesso ao `localStorage`. Nunca usar `localStorage.*` diretamente. |
 | `apiError.ts` | Helper `extractApiError(err)` para extrair mensagem de erros Axios (suporta Pydantic, string e objeto). |
-| Stores Pinia | `useContasStore` e `useCategoriasStore` com deduplicação de fetch — chamadas concorrentes são mescladas. |
-| `app/domain/` | Regras de negócio transversais extraídas de `crud_*`. Referência: `domain/cartao_fatura.py`. |
+| Stores Pinia | Todas as stores de listagem com deduplicação de fetch (`fetchPromise`) — chamadas concorrentes são mescladas. |
+| `app/domain/` | Regras de negócio puras sem IO: `cartao_fatura.py` (ciclos/faturas) e `transacao.py` (saldo, meta, orçamento). |
+| Service layer | `app/services/` orquestra negócio; `app/repositories/` concentra acesso ao banco; `app/contracts/` define os contratos (`Protocol`). |
 
 ## Documentação
 
 - `INSTALACAO.md` — instalação detalhada com troubleshooting e deploy Docker
-- `ESTRUTURA.md` — mapa completo de arquivos
+- `ESTRUTURA.md` — mapa completo de arquivos (backend, frontend, rotas)
+- `ROADMAP.md` — features e melhorias planejadas + histórico de concluídos
 - `backend/README.md` — comandos e configuração do backend
-- `backend/README_TESTES.md` — como rodar e entender a suite de testes
+- `backend/README_TESTES.md` — como rodar e entender a suite de testes (integração + unitários)
 - `backend/SEED_CATEGORIAS.md` — seed das 44 categorias padrão
-- `ROADMAP.md` — features e melhorias planejadas
-- `docs/Plano_Evolucao_Arquitetural_Financas_Project.md` — plano arquitetural detalhado
+- `docs/Plano_Evolucao_Arquitetural_Financas_Project.md` — plano arquitetural detalhado (fases 0–6)
+- `docs/plano-refatoracao-smart-audit.md` — rastreamento dos 12 itens portados do smart-audit
 
 ## Licença
 

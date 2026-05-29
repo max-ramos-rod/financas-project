@@ -13,22 +13,29 @@ Ultima atualizacao: 2026-05-29
 | Fase 0 | CI/CD GitHub Actions (3 jobs: backend, frontend, E2E) | Concluido |
 | Fase 0 | E2E Playwright (auth, transacoes, fatura) | Concluido |
 | Fase 0 | Busca full-text (`GET /busca`) | Concluido |
+| Fase 0 | Importacao de extratos (OFX/XLSX/CNAB) | Concluido |
 | Fase 0 | substituicao de alert/confirm | Em andamento |
 | Fase 0 | SMTP para recuperacao de senha | Pendente |
 | **Fase 1** | **Envelope padronizado de resposta** | **Concluido** |
 | **Fase 1** | **Paginacao reutilizavel** | **Concluido** |
 | **Fase 1** | **Erros RFC 7807** | **Concluido** |
 | **Fase 1** | **Fortalecer stores por dominio** | **Concluido** |
-| Fase 2 | Service layer (TransacaoService) | Pendente |
-| Fase 3 | Repositories explicitos | Pendente |
-| Fase 4 | Testes unitarios de service | Pendente |
+| **Fase 2** | **TransacaoService** | **Concluido** |
+| **Fase 2** | **ContaService** | **Concluido** |
+| **Fase 2** | **CategoriaService, MetaService, OrcamentoService, DelegacaoService** | **Concluido** |
+| **Fase 2** | **Services auxiliares (Dizimo, Parcelamento, Importacao)** | **Concluido** |
+| **Fase 3** | **Repositories concretos (6 dominios)** | **Concluido** |
+| **Fase 3** | **Contratos Protocol (`app/contracts/`)** | **Concluido** |
+| **Fase 4** | **Testes unitarios (tests/unit/ — 7 suites com FakeRepository)** | **Concluido** |
+| Fase 5 | Completar migracao endpoints para services (crud_* residual) | Em andamento |
+| Fase 6 | Observabilidade, logs estruturados, correlation id | Pendente |
 
 ### O que foi entregue na Fase 1 (2026-05-29)
 
 **Backend:**
 - `app/core/pagination.py` — `PaginationParams`, `PageMeta`, `PaginationMetaBuilder`
 - `app/core/responses.py` — `ResponseEnvelope[T]`, `PaginatedResponseEnvelope[T]`, alias `PagedResponse`
-- `app/core/repositories.py` — `SQLAlchemyRepository[ModelT]` (infra para futura service layer)
+- `app/core/repositories.py` — `SQLAlchemyRepository[ModelT]` (base generica; mutation methods usam flush, nao commit)
 - Todos os endpoints de listagem padronizados em `PagedResponse`: contas, categorias, orcamentos, transacoes, metas
 - Removidos: `app/schemas/pagination.py` e `app/crud/base.py` (descontinuados)
 - `app/crud/crud_meta.py` reescrito sem CRUDBase, alinhado ao padrao dos demais CRUDs
@@ -39,9 +46,29 @@ Ultima atualizacao: 2026-05-29
 - `types/pagination.ts` atualizado com `has_next: boolean`
 - Todas as views migradas: ListaCategoriasView, ListaContasView, FaturaCartaoView, ImportacaoView, ListaMetasView, ListaOrcamentosView, NovaTransacaoView, Dashboard/IndexView, Delegacoes/ConvitesView, Navbar
 
+### O que foi entregue nas Fases 2, 3 e 4 (2026-05-29)
+
+**Fase 2 — Service layer:**
+- `app/services/transacao.py` — `TransacaoService` (criar, atualizar, excluir; orquestra dizimo, parcelamento, saldo, meta, orcamento)
+- `app/services/conta.py` — `ContaService`
+- `app/services/categoria.py` — `CategoriaService`
+- `app/services/meta.py` — `MetaService`
+- `app/services/orcamento.py` — `OrcamentoService`
+- `app/services/delegacao.py` — `DelegacaoService`
+- `app/services/dizimo.py` — `criar_transacao_dizimo`
+- `app/services/parcelamento.py` — `criar_parcelamento`
+- `app/services/importacao/` — parser de extratos OFX/XLSX/CNAB com deteccao automatica
+
+**Fase 3 — Repositories e contratos:**
+- `app/contracts/` — Protocol interfaces para todos os 6 repositorios de dominio
+- `app/repositories/` — implementacoes concretas: `TransacaoRepository`, `ContaRepository`, `CategoriaRepository`, `MetaRepository`, `OrcamentoRepository`, `DelegacaoRepository`
+
+**Fase 4 — Testes unitarios:**
+- `tests/unit/` — 7 suites com FakeRepository (sem banco): `test_service_transacao.py`, `test_service_conta.py`, `test_service_categoria.py`, `test_service_meta.py`, `test_service_orcamento.py`, `test_service_delegacao.py`, `test_domain_transacao.py`
+
 ### Proximo passo recomendado
 
-`feat/transacao-service` — criar `TransacaoService` como primeira service layer real, usando `SQLAlchemyRepository` como camada de persistencia. Ver Fase 2 abaixo.
+Fase 5: completar migracao dos endpoints que ainda chamam `crud_*` diretamente para usar os services. Prioridade: `crud_transacao.py` (maior acumulacao de logica residual).
 
 ## 1. Objetivo
 
@@ -100,13 +127,13 @@ Resumo:
 - ✅ envelope de resposta — resolvido: `app/core/responses.py` (`PagedResponse[T]`)
 - ✅ paginacao — resolvido: `app/core/pagination.py` (`PaginationParams`, `PageMeta`, `PaginationMetaBuilder`)
 - ✅ erros — resolvido: `app/core/errors.py` (RFC 7807 — `http_exception_handler`, `validation_exception_handler`, `unhandled_exception_handler`)
-- ❌ contratos entre camadas — pendente (Fase 3 — `Protocol` para repositories)
+- ✅ contratos entre camadas — resolvido: `app/contracts/` (Protocol interfaces para todos os repositorios)
 
 5. O frontend estava com espaco para melhorar em:
-- ✅ stores mais fortes por dominio — resolvido: contas, categorias, orcamentos, metas, delegacoes (6 stores no total com auth)
+- ✅ stores mais fortes por dominio — resolvido: contas, categorias, orcamentos, metas, delegacoes, transacoes (7 stores com auth)
 - ✅ padronizacao de consumo da API — resolvido: nenhuma view faz `api.get` direto para listagem de recursos
+- ✅ `stores/transacoes.ts` — criado; Dashboard usa store para fetch em bloco (page_size=500)
 - ⚠️ menos logica em views — parcialmente resolvido: fetches de listagem migrados para stores; CRUD direto (POST/PUT/DELETE) e logica de estado em edicao/criacao (transacoes, contas, metas) ainda vivem nas views
-- ⚠️ transacoes sem store — Dashboard ainda faz `api.get('/transacoes', {page_size: 500})` diretamente; candidato a `stores/transacoes.ts` futuramente
 
 ### 3.2 Forcas atuais
 
@@ -216,9 +243,10 @@ Conclusao:
 
 ### Estado atual (2026-05-29)
 
-`api -> crud_* -> db`
+`api -> service -> repository -> db`  (para os dominios migrados)
+`api -> crud_* -> db`  (para os endpoints ainda nao migrados)
 
-com infra pronta em `app/core/`: envelope de resposta padronizado, paginacao reutilizavel, `SQLAlchemyRepository` aguardando service layer.
+A arquitetura alvo esta parcialmente implementada. Services e repositories existem para todos os dominios; endpoints residuais ainda chamam `crud_*` diretamente e sao candidatos a migracao na Fase 5.
 
 ### Estado alvo incremental
 

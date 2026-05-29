@@ -16,17 +16,21 @@
 - `src/services/api.ts` cliente HTTP central com interceptors
 - `src/router/index.ts` rotas e guards
 - `src/stores/` estado global — cobrem todos os dominios de listagem:
-  - `auth.ts` — usuario autenticado, token
+  - `auth.ts` — usuario autenticado, token, expiracao de sessao por inatividade
   - `contas.ts` — lista de contas; `fetchPromise` dedup
   - `categorias.ts` — lista de categorias; `fetchPromise` dedup
   - `orcamentos.ts` — lista de orcamentos; aceita `{ mes, ano }` como params opcionais
   - `metas.ts` — lista de metas; `fetchPromise` dedup
   - `delegacoes.ts` — convites enviados/recebidos, actAsOptions, pendingInviteCount
   - `transacoes.ts` — fetch em bloco para o Dashboard (page_size=500); NAO cobre ListaTransacoesView (usa `transacoesFetch.ts` com filtros e paginacao proprios)
-- `src/types/index.ts` contratos principais; `src/types/pagination.ts` — `PageMeta` com `has_next`
+- `src/types/` contratos TypeScript — divididos por dominio:
+  - `index.ts` — re-exporta todos; `pagination.ts` — `PageMeta` com `has_next`
+  - Dominios: `auth.ts`, `categorias.ts`, `contas.ts`, `delegacao.ts`, `fatura.ts`, `importacao.ts`, `metas.ts`, `orcamentos.ts`, `relatorios.ts`, `transacoes.ts`
 - `src/utils/date.ts` normalizacao e formatacao de datas
+- `src/utils/financeiro.ts` helpers de calculo financeiro
+- `src/composables/useTransacoesFiltros.ts` logica de filtros de transacoes com debounce
 - `e2e/` testes Playwright (auth, transacoes, fatura)
-- `e2e/fixtures.ts` fixture `authed` — injecta token no localStorage e mocka `/auth/me`
+- `e2e/fixtures.ts` fixture `authed` — injeta token no localStorage e mocka `/auth/me`
 
 ## Padrões de UI e estado
 - Reaproveite padroes visuais entre telas antes de criar uma terceira variacao.
@@ -87,7 +91,7 @@ Use este padrao sempre que multiplos componentes puderem chamar o mesmo fetch si
 
 ## DaisyUI e design system atual
 - Preferir componentes DaisyUI para `btn`, `card`, `modal`, `alert`, `tabs`, `badge`, `dropdown`, `footer`.
-- Evitar `alert()` e `confirm()` nativos; isso ja esta identificado como backlog tecnico/UX.
+- Evitar `alert()` e `confirm()` nativos; substituir por `<ConfirmModal>` (em `src/components/ui/`).
 - Manter consistencia com o visual atual do produto em vez de introduzir outro micro-design-system local.
 
 ## Regras importantes de implementacao
@@ -102,7 +106,7 @@ Use este padrao sempre que multiplos componentes puderem chamar o mesmo fetch si
 - Testes unitarios:
   - `npm run test`
 - Testes E2E (Playwright):
-  - `npm run test:e2e` (inicia dev server automaticamente)
+  - `npm run test:e2e` (inicia dev server automaticamente via `webServer` em `playwright.config.ts`)
   - `npm run test:e2e:ui` (modo interativo)
 
 ## Playwright — boas praticas
@@ -112,14 +116,20 @@ Use este padrao sempre que multiplos componentes puderem chamar o mesmo fetch si
 - Evitar `getByText()` sem `.first()` quando o texto pode aparecer em multiplos elementos (ex: nome em tabela e header).
 
 ## Serviços utilitários
-- `src/services/storage.ts` — **única fonte de acesso ao localStorage**. Nunca usar `localStorage.*` diretamente. Métodos disponíveis:
+- `src/services/storage.ts` — **unica fonte de acesso ao localStorage**. Nunca usar `localStorage.*` diretamente. Metodos disponíveis:
   - **Token:** `getToken()`, `setToken(v)`, `removeToken()`
-  - **Expiração:** `getTokenExpiresAt()`, `setTokenExpiresAt(v)`, `removeTokenExpiresAt()`
-  - **Sessão:** `getSessionTimeout()`, `setSessionTimeout(v)`, `getLastActivity()`, `setLastActivity(v)`
-  - **Delegação:** `getActAsUser()`, `removeActAsUser()`
-  - **Importação:** `getImportHistory()`, `setImportHistory(v)`
-  - **Limpar:** `clearSession()` — remove token, expiração, timeout, atividade e act-as
-- `src/services/apiError.ts` — helper `extractApiError(err, fallback?)` para extrair mensagem legível de erros Axios (suporta `detail` string, array Pydantic e objeto com `msg`). Usar em todos os `catch` que exibem erro ao usuário.
+  - **Expiracao:** `getTokenExpiresAt()`, `setTokenExpiresAt(v)`, `removeTokenExpiresAt()`
+  - **Sessao:** `getSessionTimeout()`, `setSessionTimeout(v)`, `getLastActivity()`, `setLastActivity(v)`
+  - **Delegacao:** `getActAsUser()`, `removeActAsUser()`
+  - **Importacao:** `getImportHistory()`, `setImportHistory(v)`
+  - **Limpar:** `clearSession()` — remove token, expiracao, timeout, atividade e act-as
+- `src/services/apiError.ts` — helper `extractApiError(err, fallback?)` para extrair mensagem legivel de erros Axios (suporta `detail` string, array Pydantic e objeto com `msg`). Usar em todos os `catch` que exibem erro ao usuario.
+
+## Componentes reutilizaveis
+- `src/components/layout/` — BrandMark, Lockup, Navbar, Footer
+- `src/components/ui/` — ConfirmModal (4 severidades), EmptyState (4 variantes)
+- `src/components/charts/` — FluxoFinanceiroChart, DespesasCategoriaChart, OrcamentoComparativoChart
+- `src/components/Transacoes/` — TransacoesFiltroBarra (toolbar de filtros), TransacoesLista (tabela extraida)
 
 ## O que evitar
 - Nao fazer chamadas `api.get` diretas para listagem quando existe store do dominio.
