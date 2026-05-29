@@ -2,14 +2,16 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.orm import Session
 
 from app.api.deps import AccessContext, get_access_context
-from app.crud.crud_transacao import criar_transacao
 from app.db.session import get_db
 from app.models import Conta, StatusLiquidacao, TipoConta, TipoTransacao
 from app.schemas.importacao import ImportacaoErro, ImportacaoResult
 from app.schemas.transacao import TransacaoCreate
 from app.services.importacao.detector import detectar_e_parsear
+from app.services.transacao import TransacaoService
 
 router = APIRouter()
+
+_service = TransacaoService()
 
 MAX_FILE_BYTES = 5 * 1024 * 1024  # 5 MB
 
@@ -77,7 +79,7 @@ async def importar_transacoes(
                 recorrente=False,
                 observacoes=t.observacoes,
             )
-            criar_transacao(db, tc, ctx.effective_user.id)
+            _service.criar(db, tc, ctx.effective_user.id)
             importadas += 1
         except Exception as exc:
             try:

@@ -11,13 +11,12 @@ from .crud_delegacao import (
     list_delegacoes_sent,
     revoke_delegacao,
 )
-from .crud_transacao import atualizar_transacao, criar_transacao, deletar_transacao, get_transacao, get_transacoes
+from .crud_transacao import get_transacao, get_transacoes
 from .crud_user import create_user, get_user_by_email
 
 __all__ = [
     get_categorias, get_contas, get_conta, get_transacoes, get_transacao,
-    criar_transacao, atualizar_transacao, deletar_transacao, get_user_by_email,
-    create_user, get_active_delegacao, get_delegacao_by_id, invite_delegacao,
-    get_delegacao_by_token, is_invite_expired, list_delegacoes_sent,
-    list_delegacoes_received, accept_delegacao, revoke_delegacao
+    get_user_by_email, create_user, get_active_delegacao, get_delegacao_by_id,
+    invite_delegacao, get_delegacao_by_token, is_invite_expired,
+    list_delegacoes_sent, list_delegacoes_received, accept_delegacao, revoke_delegacao
 ]

@@ -21,8 +21,11 @@ from app.schemas.transacao import (
     TransacaoResponse,
     TransacaoUpdate,
 )
+from app.services.transacao import TransacaoService
 
 router = APIRouter()
+
+_service = TransacaoService()
 
 
 def _parse_valor_ref(valor_ref: str | None) -> float | None:
@@ -373,7 +376,7 @@ def criar_transacao(
                 detail=f"Data da transação deve estar entre {fatura_periodo_inicio.isoformat()} e {fatura_periodo_fim.isoformat()}.",
             )
     try:
-        nova_transacao = crud.criar_transacao(db, transacao, access_ctx.effective_user.id)
+        nova_transacao = _service.criar(db, transacao, access_ctx.effective_user.id)
         return nova_transacao
     except ValueError as e:
         raise HTTPException(
@@ -390,7 +393,7 @@ def duplicar_transacao(
 ):
     """Duplica uma transacao individual usando data e vencimento atuais."""
     try:
-        nova_transacao = crud.duplicar_transacao(db, transacao_id, access_ctx.effective_user.id)
+        nova_transacao = _service.duplicar(db, transacao_id, access_ctx.effective_user.id)
 
         if not nova_transacao:
             raise HTTPException(
@@ -430,7 +433,7 @@ def atualizar_transacao(
                 detail=f"Data da transação deve estar entre {fatura_periodo_inicio.isoformat()} e {fatura_periodo_fim.isoformat()}.",
             )
     try:
-        transacao_atualizada = crud.atualizar_transacao(
+        transacao_atualizada = _service.atualizar(
             db, transacao_id, access_ctx.effective_user.id, transacao
         )
 
@@ -463,7 +466,7 @@ def deletar_transacao(
     - O saldo da conta é recalculado
     """
     try:
-        sucesso = crud.deletar_transacao(db, transacao_id, access_ctx.effective_user.id)
+        sucesso = _service.deletar(db, transacao_id, access_ctx.effective_user.id)
 
         if not sucesso:
             raise HTTPException(
