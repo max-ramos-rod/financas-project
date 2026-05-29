@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import Lockup from '@/components/Lockup.vue'
 
@@ -8,7 +9,8 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const mensagemSucesso = computed(() => route.query.mensagem === 'senha_redefinida' ? 'Senha redefinida com sucesso. Faça login.' : '')
-const { login, loading, error } = authStore
+const { login } = authStore
+const { loading, error } = storeToRefs(authStore)
 
 const email = ref('')
 const password = ref('')

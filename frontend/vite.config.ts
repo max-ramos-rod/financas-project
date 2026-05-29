@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
@@ -15,6 +16,9 @@ export default defineConfig({
     allowedHosts: [
       "financas.igrejabatistafe.com.br"
     ]    
+  },
+  test: {
+    exclude: ['node_modules/**', 'e2e/**'],
   },
   build: {
     rollupOptions: {
