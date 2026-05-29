@@ -1,8 +1,8 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
-import Lockup from '@/components/Lockup.vue'
+import Lockup from '@/components/layout/Lockup.vue'
 import { extractApiError } from '@/services/apiError'
 
 const router = useRouter()

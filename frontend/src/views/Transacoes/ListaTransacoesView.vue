@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
@@ -12,7 +12,7 @@ import { useCategoriasStore } from '@/stores/categorias'
 import { TransacoesLoadControl } from './transacoesLoadControl'
 import { buscarTransacoesFiltradas } from './transacoesFetch'
 import { LABELS } from '@/utils/strings'
-import ConfirmModal from '@/components/ConfirmModal.vue'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import TransacoesFiltroBarra from '@/components/Transacoes/TransacoesFiltroBarra.vue'
 import TransacoesLista from '@/components/Transacoes/TransacoesLista.vue'
 

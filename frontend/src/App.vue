@@ -2,9 +2,9 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
-import Navbar from './components/Navbar.vue'
+import Navbar from './components/layout/Navbar.vue'
 import { useAuthStore } from '@/stores/auth'
-import Footer from './components/Footer.vue'
+import Footer from './components/layout/Footer.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()

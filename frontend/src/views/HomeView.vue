@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import Lockup from '@/components/Lockup.vue'
+﻿<script setup lang="ts">
+import Lockup from '@/components/layout/Lockup.vue'
 </script>
 
 <template>

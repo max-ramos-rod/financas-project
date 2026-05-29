@@ -1,11 +1,11 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Conta, FaturaResumo } from '@/types'
 import { formatDateBR, formatDateForInput } from '@/utils/date'
 import { formatarMoeda } from '@/utils/financeiro'
-import ConfirmModal from '@/components/ConfirmModal.vue'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import { Pencil } from '@lucide/vue'
 
 const route = useRoute()

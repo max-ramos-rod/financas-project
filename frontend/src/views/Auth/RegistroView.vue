@@ -1,9 +1,9 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import Lockup from '@/components/Lockup.vue'
+import Lockup from '@/components/layout/Lockup.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

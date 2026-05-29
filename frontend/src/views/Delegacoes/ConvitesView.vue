@@ -1,10 +1,10 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import api from '@/services/api'
 import type { Delegacao } from '@/types'
 import { labelStatusDelegacao, corStatusDelegacao } from '@/utils/strings'
-import EmptyState from '@/components/EmptyState.vue'
-import ConfirmModal from '@/components/ConfirmModal.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import { Users } from '@lucide/vue'
 
 const loading = ref(false)

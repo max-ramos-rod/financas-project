@@ -1,12 +1,12 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Orcamento } from '@/types'
 import { useCategoriasStore } from '@/stores/categorias'
-import ConfirmModal from '@/components/ConfirmModal.vue'
-import EmptyState from '@/components/EmptyState.vue'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import { LayoutList } from '@lucide/vue'
 
 const router = useRouter()

@@ -8,7 +8,7 @@ import { valorEfetivo as valorEfetivoTransacao, formatarMoeda } from '@/utils/fi
 import { LABELS } from '@/utils/strings'
 import { useContasStore } from '@/stores/contas'
 import { useCategoriasStore } from '@/stores/categorias'
-import EmptyState from '@/components/EmptyState.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import { Calendar, TrendingDown } from '@lucide/vue'
 
 import FluxoFinanceiroChart from '@/components/charts/FluxoFinanceiroChart.vue'

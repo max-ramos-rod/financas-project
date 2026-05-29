@@ -1,8 +1,8 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import api from '@/services/api'
 import type { Categoria } from '@/types'
-import ConfirmModal from '@/components/ConfirmModal.vue'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 
 const loading = ref(true)
 const salvando = ref(false)

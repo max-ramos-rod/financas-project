@@ -1,9 +1,9 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import type { Conta, Categoria, Transacao } from '@/types'
 import { formatDateBR } from '@/utils/date'
 import { valorEfetivo, formatarMoeda } from '@/utils/financeiro'
 import { LABELS } from '@/utils/strings'
-import EmptyState from '@/components/EmptyState.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import { List, Filter } from '@lucide/vue'
 
 interface Props {

@@ -1,10 +1,10 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Meta } from '@/types'
-import ConfirmModal from '@/components/ConfirmModal.vue'
-import EmptyState from '@/components/EmptyState.vue'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import { Target } from '@lucide/vue'
 
 const router = useRouter()

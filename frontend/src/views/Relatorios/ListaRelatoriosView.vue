@@ -1,8 +1,8 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import api from '@/services/api'
 import type { DREMensal } from '@/types'
-import EmptyState from '@/components/EmptyState.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import { RefreshCw } from '@lucide/vue'
 
 const loading = ref(false)

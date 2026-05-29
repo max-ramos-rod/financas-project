@@ -1,12 +1,12 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import type { Conta } from '@/types'
 import { formatDateBR } from '@/utils/date'
 import { LABELS, labelTipoConta } from '@/utils/strings'
-import ConfirmModal from '@/components/ConfirmModal.vue'
-import EmptyState from '@/components/EmptyState.vue'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import { Landmark } from '@lucide/vue'
 
 const router = useRouter()
