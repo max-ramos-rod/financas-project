@@ -1,3 +1,4 @@
+import csv
 import io
 from datetime import date
 
@@ -564,5 +565,43 @@ def exportar_fatura_pdf(
     return StreamingResponse(
         buf,
         media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{conta_id}/faturas/{competencia_ano}/{competencia_mes}/csv")
+def exportar_fatura_csv(
+    conta_id: int,
+    competencia_ano: int,
+    competencia_mes: int,
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context),
+):
+    resumo = _obter_resumo_fatura_ciclo_ou_erro(
+        db,
+        conta_id=conta_id,
+        competencia_ano=competencia_ano,
+        competencia_mes=competencia_mes,
+        access_ctx=access_ctx,
+    )
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["data", "descricao", "tipo", "valor", "status_liquidacao", "data_vencimento"])
+    for item in resumo.itens:
+        writer.writerow([
+            item.data.isoformat() if item.data else "",
+            item.descricao or "",
+            item.tipo.value if hasattr(item.tipo, "value") else (item.tipo or ""),
+            f"{valor_efetivo_transacao(item):.2f}",
+            item.status_liquidacao.value if hasattr(item.status_liquidacao, "value") else (item.status_liquidacao or ""),
+            item.data_vencimento.isoformat() if item.data_vencimento else "",
+        ])
+
+    buf.seek(0)
+    filename = f"fatura_{conta_id}_{competencia_ano}_{competencia_mes:02d}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

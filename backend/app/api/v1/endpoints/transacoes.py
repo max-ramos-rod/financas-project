@@ -218,14 +218,55 @@ def listar_transacoes_visao_financeira(
     categoria_normalizada = None if sem_categoria else categoria_id
     valor_ref_num = _parse_valor_ref(valor_ref)
 
-    transacoes, _ = _service.listar(
+    itens = _construir_itens_visao_financeira(
         db=db,
         user_id=access_ctx.effective_user.id,
         tipo=tipo,
         status_liquidacao=status_liquidacao,
-        fixa=fixa_bool,
+        fixa_bool=fixa_bool,
         conta_id=conta_id,
         categoria_id=categoria_normalizada,
+        sem_categoria=sem_categoria,
+        mes=mes,
+        ano=ano,
+        busca=busca,
+        valor_modo=valor_modo,
+        valor_ref_num=valor_ref_num,
+        orcamento=orcamento,
+    )
+    total = len(itens)
+    params = PaginationParams(page=page, page_size=page_size)
+    skip = (page - 1) * page_size
+    return PagedResponse(
+        data=itens[skip: skip + page_size],
+        meta=PaginationMetaBuilder.build(total, params),
+    )
+
+
+def _construir_itens_visao_financeira(
+    db: Session,
+    user_id: int,
+    tipo: TipoTransacao | None,
+    status_liquidacao: StatusLiquidacao | None,
+    fixa_bool: bool | None,
+    conta_id: int | None,
+    categoria_id: int | None,
+    sem_categoria: bool,
+    mes: int | None,
+    ano: int | None,
+    busca: str | None,
+    valor_modo: str | None,
+    valor_ref_num: float | None,
+    orcamento: str | None,
+) -> list[TransacaoFinanceiraResponse]:
+    transacoes, _ = _service.listar(
+        db=db,
+        user_id=user_id,
+        tipo=tipo,
+        status_liquidacao=status_liquidacao,
+        fixa=fixa_bool,
+        conta_id=conta_id,
+        categoria_id=categoria_id,
         sem_categoria=sem_categoria,
         mes=mes,
         ano=ano,
@@ -238,7 +279,7 @@ def listar_transacoes_visao_financeira(
     contas_cartao_ids = {
         conta.id
         for conta in db.query(Conta).filter(
-            Conta.user_id == access_ctx.effective_user.id,
+            Conta.user_id == user_id,
             Conta.tipo == TipoConta.CARTAO_CREDITO,
         ).all()
     }
@@ -257,7 +298,7 @@ def listar_transacoes_visao_financeira(
         ano_ref = ano or hoje.year
         meses_ref = [mes] if mes is not None else list(range(1, 13))
         contas_cartao = db.query(Conta).filter(
-            Conta.user_id == access_ctx.effective_user.id,
+            Conta.user_id == user_id,
             Conta.tipo == TipoConta.CARTAO_CREDITO,
         ).all()
 
@@ -278,7 +319,7 @@ def listar_transacoes_visao_financeira(
                     try:
                         resumo = obter_resumo_fatura_por_competencia(
                             db,
-                            user_id=access_ctx.effective_user.id,
+                            user_id=user_id,
                             conta=conta,
                             competencia_ano=competencia_ano,
                             competencia_mes=competencia_mes,
@@ -304,12 +345,80 @@ def listar_transacoes_visao_financeira(
         )
 
     itens.sort(key=lambda item: (item.data, item.id), reverse=True)
-    total = len(itens)
-    params = PaginationParams(page=page, page_size=page_size)
-    skip = (page - 1) * page_size
-    return PagedResponse(
-        data=itens[skip: skip + page_size],
-        meta=PaginationMetaBuilder.build(total, params),
+    return itens
+
+
+@router.get("/export")
+def exportar_csv(
+    tipo: TipoTransacao | None = Query(default=None),
+    status_liquidacao: StatusLiquidacao | None = Query(default=None),
+    fixa: str | None = Query(default=None, pattern="^(fixas|nao_fixas)$"),
+    conta_id: int | None = None,
+    categoria_id: int | None = None,
+    mes: int | None = Query(default=None, ge=1, le=12),
+    ano: int | None = Query(default=None, ge=2000, le=2100),
+    busca: str | None = None,
+    valor_modo: str | None = Query(default=None, pattern="^(igual|gte|lte)$"),
+    valor_ref: str | None = None,
+    orcamento: str | None = Query(default=None, pattern="^(fora|dentro)$"),
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context),
+):
+    fixa_bool = None
+    if fixa == "fixas":
+        fixa_bool = True
+    elif fixa == "nao_fixas":
+        fixa_bool = False
+
+    sem_categoria = categoria_id == -1
+    categoria_normalizada = None if sem_categoria else categoria_id
+    valor_ref_num = _parse_valor_ref(valor_ref)
+
+    itens = _construir_itens_visao_financeira(
+        db=db,
+        user_id=access_ctx.effective_user.id,
+        tipo=tipo,
+        status_liquidacao=status_liquidacao,
+        fixa_bool=fixa_bool,
+        conta_id=conta_id,
+        categoria_id=categoria_normalizada,
+        sem_categoria=sem_categoria,
+        mes=mes,
+        ano=ano,
+        busca=busca,
+        valor_modo=valor_modo,
+        valor_ref_num=valor_ref_num,
+        orcamento=orcamento,
+    )
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["data", "descricao", "tipo", "valor", "status_liquidacao", "conta_id", "categoria_id", "fixa", "item_tipo"])
+    for item in itens:
+        writer.writerow([
+            item.data.isoformat() if item.data else "",
+            item.descricao or "",
+            item.tipo.value if item.tipo else "",
+            f"{valor_efetivo_transacao(item):.2f}",
+            item.status_liquidacao.value if item.status_liquidacao else "",
+            item.conta_id or "",
+            item.categoria_id or "",
+            "sim" if item.fixa else ("nao" if item.item_tipo == "transacao" else ""),
+            item.item_tipo,
+        ])
+
+    buf.seek(0)
+    filename = "transacoes"
+    if ano:
+        filename += f"_{ano}"
+        if mes:
+            filename += f"_{mes:02d}"
+    filename += ".csv"
+
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -479,71 +588,3 @@ def deletar_transacao(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-
-
-@router.get("/export")
-def exportar_csv(
-    tipo: TipoTransacao | None = Query(default=None),
-    status_liquidacao: StatusLiquidacao | None = Query(default=None),
-    fixa: str | None = Query(default=None, pattern="^(fixas|nao_fixas)$"),
-    conta_id: int | None = None,
-    categoria_id: int | None = None,
-    mes: int | None = Query(default=None, ge=1, le=12),
-    ano: int | None = Query(default=None, ge=2000, le=2100),
-    busca: str | None = None,
-    db: Session = Depends(get_db),
-    access_ctx: AccessContext = Depends(get_access_context),
-):
-    fixa_bool = None
-    if fixa == "fixas":
-        fixa_bool = True
-    elif fixa == "nao_fixas":
-        fixa_bool = False
-
-    sem_categoria = categoria_id == -1
-    categoria_normalizada = None if sem_categoria else categoria_id
-
-    transacoes, _ = _service.listar(
-        db=db,
-        user_id=access_ctx.effective_user.id,
-        tipo=tipo,
-        status_liquidacao=status_liquidacao,
-        fixa=fixa_bool,
-        conta_id=conta_id,
-        categoria_id=categoria_normalizada,
-        sem_categoria=sem_categoria,
-        mes=mes,
-        ano=ano,
-        busca=busca,
-    )
-
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(["id", "data", "descricao", "tipo", "valor", "status_liquidacao", "conta_id", "categoria_id", "fixa", "observacoes"])
-    for t in transacoes:
-        writer.writerow([
-            t.id,
-            t.data.isoformat() if t.data else "",
-            t.descricao or "",
-            t.tipo.value if t.tipo else "",
-            t.valor,
-            t.status_liquidacao.value if t.status_liquidacao else "",
-            t.conta_id or "",
-            t.categoria_id or "",
-            "sim" if t.fixa else "nao",
-            (t.observacoes or "").replace("\n", " "),
-        ])
-
-    buf.seek(0)
-    filename = "transacoes"
-    if ano:
-        filename += f"_{ano}"
-        if mes:
-            filename += f"_{mes:02d}"
-    filename += ".csv"
-
-    return StreamingResponse(
-        iter([buf.getvalue()]),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
