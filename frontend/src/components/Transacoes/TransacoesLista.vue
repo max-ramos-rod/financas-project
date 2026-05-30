@@ -104,7 +104,7 @@ const statusColor = (t: Transacao) => {
               <th class="font-medium w-[120px] hidden lg:table-cell">Categoria</th>
               <th class="font-medium w-[110px] hidden md:table-cell">Status</th>
               <th class="font-medium text-right w-[130px] pr-5">Valor</th>
-              <th class="w-[110px] hidden lg:table-cell"></th>
+              <th class="w-[110px] hidden md:table-cell"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-base-200">
@@ -178,7 +178,7 @@ const statusColor = (t: Transacao) => {
                 </span>
               </td>
 
-              <td class="pr-3 hidden lg:table-cell">
+              <td class="pr-3 hidden md:table-cell">
                 <div class="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     v-if="isFaturaCartao(t)"
@@ -216,7 +216,7 @@ const statusColor = (t: Transacao) => {
       </div>
 
       <!-- MOBILE — tiles verticais (< sm) -->
-      <div class="sm:hidden divide-y divide-base-200">
+      <div class="sm:hidden divide-y divide-base-200 overflow-x-hidden">
         <div
           v-for="t in transacoes"
           :key="`m-${t.id}`"
@@ -253,8 +253,8 @@ const statusColor = (t: Transacao) => {
             </span>
           </div>
 
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-xs text-base-content/40 truncate">
+          <div class="flex items-center justify-between gap-2 overflow-hidden">
+            <span class="text-xs text-base-content/40 truncate min-w-0 flex-1">
               {{ getContaNome(t.conta_id, contas) }}
               <template v-if="!isFaturaCartao(t)"> · {{ getCategoriaNome(t.categoria_id, categorias) }}</template>
             </span>

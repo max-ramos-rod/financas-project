@@ -261,6 +261,26 @@ const exportarPdf = async () => {
   }
 }
 
+const exportandoCsv = ref(false)
+const exportarCsv = async () => {
+  if (!faturaSelecionada.value) return
+  exportandoCsv.value = true
+  try {
+    const { competencia_ano: ano, competencia_mes: mes } = faturaSelecionada.value
+    const res = await api.get(`/contas/${contaId}/faturas/${ano}/${mes}/csv`, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'text/csv' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `fatura_${contaId}_${ano}_${String(mes).padStart(2, '0')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err: any) {
+    error.value = err?.response?.data?.detail || 'Erro ao gerar CSV.'
+  } finally {
+    exportandoCsv.value = false
+  }
+}
+
 onMounted(carregar)
 </script>
 
@@ -290,6 +310,14 @@ onMounted(carregar)
         <div class="flex gap-2">
           <button class="btn btn-ghost btn-sm sm:btn-md" @click="router.push('/contas')">
             ← Contas
+          </button>
+          <button
+            class="btn btn-ghost btn-sm sm:btn-md whitespace-nowrap"
+            :disabled="!faturaSelecionada || exportandoCsv"
+            @click="exportarCsv"
+          >
+            <span v-if="exportandoCsv" class="loading loading-spinner loading-xs"></span>
+            <span v-else>↓ CSV</span>
           </button>
           <button
             class="btn btn-ghost btn-sm sm:btn-md whitespace-nowrap"
