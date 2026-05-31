@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
@@ -8,7 +8,7 @@ import { useContasStore } from '@/stores/contas'
 import { formatDateBR, formatDateForInput } from '@/utils/date'
 import { formatarMoeda } from '@/utils/financeiro'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
-import { Pencil } from '@lucide/vue'
+import { Pencil, Trash2, X } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,10 +34,58 @@ const observacaoCiclo = ref('')
 type Aba = 'ajuste' | 'pagamento'
 const abaAtiva = ref<Aba>('ajuste')
 
-// Modal de exclusão
+// Modal de exclusão unitária
 const modalExcluirAberta = ref(false)
 const transacaoParaExcluir = ref<{ id: number; descricao: string; valor: number } | null>(null)
 const excluindo = ref(false)
+
+// Seleção múltipla
+const selectedIds = ref<Set<number>>(new Set())
+
+const isSelected = (id: number) => selectedIds.value.has(id)
+
+const toggleSelect = (id: number) => {
+  const s = new Set(selectedIds.value)
+  if (s.has(id)) s.delete(id)
+  else s.add(id)
+  selectedIds.value = s
+}
+
+const selectAll = () => {
+  if (!faturaSelecionada.value) return
+  selectedIds.value = new Set(faturaSelecionada.value.itens.map((i) => i.transacao_id))
+}
+
+const clearSelection = () => {
+  selectedIds.value = new Set()
+}
+
+const allSelected = computed(() => {
+  if (!faturaSelecionada.value || faturaSelecionada.value.itens.length === 0) return false
+  return faturaSelecionada.value.itens.every((i) => selectedIds.value.has(i.transacao_id))
+})
+
+const someSelected = computed(() => selectedIds.value.size > 0)
+
+// Bulk delete
+const bulkParaDeletar = ref<number[]>([])
+const showBulkDeleteModal = ref(false)
+
+const iniciarBulkExcluir = () => {
+  bulkParaDeletar.value = [...selectedIds.value]
+  showBulkDeleteModal.value = true
+}
+
+const confirmarBulkExcluir = async () => {
+  if (!bulkParaDeletar.value.length) return
+  try {
+    await api.delete('/transacoes/bulk', { data: { ids: bulkParaDeletar.value } })
+    clearSelection()
+    await carregarFaturaSelecionada(true)
+  } catch (err: any) {
+    error.value = err?.response?.data?.detail || 'Erro ao excluir transações.'
+  }
+}
 
 const contasPagamento = computed(() =>
   contas.value.filter((c) => c.ativa && c.tipo !== 'cartao_credito' && c.id !== contaId)
@@ -136,6 +184,7 @@ const carregarFaturaSelecionada = async (manterMensagem = false) => {
     error.value = ''
     success.value = ''
   }
+  clearSelection()
   carregandoFatura.value = true
   try {
     const { ano, mes } = parseCiclo(cicloSelecionado.value)
@@ -570,7 +619,16 @@ onMounted(carregar)
                 <table class="table table-sm w-full">
                   <thead>
                     <tr class="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-base-content/40 border-b border-base-200">
-                      <th class="font-medium pl-0">Descrição</th>
+                      <th class="w-8 pl-0">
+                        <input
+                          type="checkbox"
+                          class="checkbox checkbox-xs"
+                          :checked="allSelected"
+                          :indeterminate="someSelected && !allSelected"
+                          @change="allSelected ? clearSelection() : selectAll()"
+                        />
+                      </th>
+                      <th class="font-medium">Descrição</th>
                       <th class="font-medium">Data</th>
                       <th class="font-medium">Vencimento</th>
                       <th class="font-medium">Status</th>
@@ -582,9 +640,18 @@ onMounted(carregar)
                     <tr
                       v-for="item in faturaSelecionada.itens"
                       :key="item.transacao_id"
-                      class="hover:bg-base-50"
+                      class="transition-colors"
+                      :class="isSelected(item.transacao_id) ? 'bg-base-200/30' : 'hover:bg-base-50'"
                     >
-                      <td class="pl-0 font-medium text-sm max-w-[220px] truncate">
+                      <td class="pl-0 w-8">
+                        <input
+                          type="checkbox"
+                          class="checkbox checkbox-xs"
+                          :checked="isSelected(item.transacao_id)"
+                          @change="toggleSelect(item.transacao_id)"
+                        />
+                      </td>
+                      <td class="font-medium text-sm max-w-[220px] truncate">
                         {{ item.descricao }}
                         <span v-if="item.tipo === 'entrada'" class="ml-1.5 badge badge-xs badge-success">crédito</span>
                       </td>
@@ -626,8 +693,15 @@ onMounted(carregar)
                 <div
                   v-for="item in faturaSelecionada.itens"
                   :key="item.transacao_id"
-                  class="py-3 flex items-start justify-between gap-3"
+                  class="py-3 flex items-start gap-3 transition-colors"
+                  :class="isSelected(item.transacao_id) ? 'bg-base-200/30' : ''"
                 >
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-xs mt-1 shrink-0"
+                    :checked="isSelected(item.transacao_id)"
+                    @change="toggleSelect(item.transacao_id)"
+                  />
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium truncate">
                       {{ item.descricao }}
@@ -688,4 +762,44 @@ onMounted(carregar)
     @confirm="confirmarExclusao"
     @cancel="transacaoParaExcluir = null"
   />
+
+  <ConfirmModal
+    v-model:open="showBulkDeleteModal"
+    severity="warn"
+    :title="`Excluir ${bulkParaDeletar.length} lançamento${bulkParaDeletar.length === 1 ? '' : 's'}?`"
+    description="Esta ação não pode ser desfeita."
+    confirm-label="Excluir tudo"
+    cancel-label="Cancelar"
+    @confirm="confirmarBulkExcluir"
+  />
+
+  <!-- Barra de ações em massa -->
+  <Teleport to="body">
+    <Transition
+      enter-active-class="transition-all duration-200"
+      enter-from-class="opacity-0 translate-y-4"
+      leave-active-class="transition-all duration-150"
+      leave-to-class="opacity-0 translate-y-4"
+    >
+      <div
+        v-if="someSelected"
+        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-base-300 rounded-full shadow-xl px-4 py-2.5 border border-base-200 whitespace-nowrap"
+      >
+        <span class="text-sm font-medium px-1">
+          {{ selectedIds.size }} {{ selectedIds.size === 1 ? 'selecionado' : 'selecionados' }}
+        </span>
+        <div class="w-px h-5 bg-base-content/20 shrink-0"></div>
+        <button
+          class="btn btn-ghost btn-sm gap-1.5 text-error"
+          @click="iniciarBulkExcluir"
+        >
+          <Trash2 :size="15" />
+          Excluir
+        </button>
+        <button class="btn btn-ghost btn-sm btn-circle" @click="clearSelection()">
+          <X :size="15" />
+        </button>
+      </div>
+    </Transition>
+  </Teleport>
 </template>

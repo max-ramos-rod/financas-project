@@ -91,6 +91,7 @@ const fetchApoio = async () => {
 }
 
 const fetchTransacoes = async () => {
+  listaRef.value?.clearSelection()
   const resultado = await buscarTransacoesFiltradas(api, { ...filtros.value }, paginaAtual.value, PAGE_SIZE)
   transacoes.value = resultado.data
   totalItens.value = resultado.meta.total
@@ -138,7 +139,7 @@ const exportarCsv = async () => {
     const a = document.createElement('a')
     a.href = url
     a.download =
-      `transacoes_${f.ano || ''}_${f.mes ? String(f.mes).padStart(2, '0') : ''}.csv`
+      `transacoes_${f.ano || ''}_${f.mes ? String(f.mes).padStart(2, '0') : ''}`
         .replace(/__+/g, '_')
         .replace(/_$/, '') + '.csv'
     a.click()
@@ -174,6 +175,10 @@ const showDeleteModal = ref(false)
 const transacaoALiquidar = ref<Transacao | null>(null)
 const showLiquidarModal = ref(false)
 
+const listaRef = ref<InstanceType<typeof TransacoesLista> | null>(null)
+const bulkParaDeletar = ref<number[]>([])
+const showBulkDeleteModal = ref(false)
+
 const iniciarDelecao = (t: Transacao) => {
   transacaoADeletar.value = t
   showDeleteModal.value = true
@@ -203,6 +208,24 @@ const confirmarLiquidar = async () => {
     status_liquidacao: 'liquidado',
     data_liquidacao: formatDateForInput(new Date()),
   })
+  await fetchTransacoes()
+}
+
+const iniciarBulkExcluir = (ids: number[]) => {
+  bulkParaDeletar.value = ids
+  showBulkDeleteModal.value = true
+}
+
+const confirmarBulkExcluir = async () => {
+  if (!bulkParaDeletar.value.length) return
+  await api.delete('/transacoes/bulk', { data: { ids: bulkParaDeletar.value } })
+  listaRef.value?.clearSelection()
+  await fetchTransacoes()
+}
+
+const handleBulkLiquidar = async (ids: number[]) => {
+  await api.post('/transacoes/bulk/liquidar', { ids })
+  listaRef.value?.clearSelection()
   await fetchTransacoes()
 }
 
@@ -332,6 +355,7 @@ onMounted(async () => {
 
       <!-- Transaction list -->
       <TransacoesLista
+        ref="listaRef"
         :transacoes="transacoesFiltradas"
         :contas="contas"
         :categorias="categorias"
@@ -344,6 +368,8 @@ onMounted(async () => {
         @iniciar-liquidacao="iniciarLiquidacao"
         @iniciar-delecao="iniciarDelecao"
         @abrir-fatura-cartao="abrirFaturaCartao"
+        @bulk-excluir="iniciarBulkExcluir"
+        @bulk-liquidar="handleBulkLiquidar"
       />
 
       <!-- Pagination -->
@@ -383,6 +409,16 @@ onMounted(async () => {
     confirm-label="Excluir"
     cancel-label="Cancelar"
     @confirm="confirmarDeletar"
+  />
+
+  <ConfirmModal
+    v-model:open="showBulkDeleteModal"
+    severity="warn"
+    :title="`Excluir ${bulkParaDeletar.length} transaç${bulkParaDeletar.length === 1 ? 'ão' : 'ões'}?`"
+    description="Esta ação não pode ser desfeita."
+    confirm-label="Excluir tudo"
+    cancel-label="Cancelar"
+    @confirm="confirmarBulkExcluir"
   />
 
   <ConfirmModal
