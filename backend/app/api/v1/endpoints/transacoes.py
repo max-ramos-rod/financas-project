@@ -6,6 +6,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import AccessContext, get_access_context
@@ -420,6 +421,63 @@ def exportar_csv(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+class _BulkIdsRequest(BaseModel):
+    ids: list[int]
+
+
+@router.delete("/bulk", status_code=status.HTTP_200_OK)
+def excluir_em_massa(
+    body: _BulkIdsRequest,
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context),
+):
+    excluidas = 0
+    erros = 0
+    for tid in body.ids:
+        try:
+            sucesso = _service.deletar(db, tid, access_ctx.effective_user.id)
+            if sucesso:
+                excluidas += 1
+        except Exception:
+            erros += 1
+    return {"excluidas": excluidas, "erros": erros}
+
+
+@router.post("/bulk/liquidar", status_code=status.HTTP_200_OK)
+def liquidar_em_massa(
+    body: _BulkIdsRequest,
+    db: Session = Depends(get_db),
+    access_ctx: AccessContext = Depends(get_access_context),
+):
+    liquidadas = 0
+    ignoradas = 0
+    for tid in body.ids:
+        t = _service.buscar(db, tid, access_ctx.effective_user.id)
+        if not t:
+            ignoradas += 1
+            continue
+        s = t.status_liquidacao or StatusLiquidacao.LIQUIDADO
+        if s == StatusLiquidacao.LIQUIDADO:
+            ignoradas += 1
+            continue
+        conta = db.query(Conta).filter(Conta.id == t.conta_id).first()
+        if conta and conta.tipo == TipoConta.CARTAO_CREDITO:
+            ignoradas += 1
+            continue
+        try:
+            _service.atualizar(
+                db, tid, access_ctx.effective_user.id,
+                TransacaoUpdate(
+                    status_liquidacao=StatusLiquidacao.LIQUIDADO,
+                    data_liquidacao=date.today(),
+                ),
+            )
+            liquidadas += 1
+        except Exception:
+            ignoradas += 1
+    return {"liquidadas": liquidadas, "ignoradas": ignoradas}
 
 
 @router.get("/{transacao_id}", response_model=TransacaoResponse)
