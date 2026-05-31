@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import type { Conta, Categoria, Transacao } from '@/types'
 import { formatDateBR } from '@/utils/date'
 import { valorEfetivo, formatarMoeda } from '@/utils/financeiro'
@@ -93,135 +93,14 @@ const statusColor = (t: Transacao) => {
 
     <template v-else>
 
-      <!-- DESKTOP — tabela compacta (≥ sm) -->
-      <div class="hidden sm:block overflow-x-auto">
-        <table class="table table-sm w-full">
-          <thead>
-            <tr class="text-[10px] font-mono uppercase tracking-widest text-base-content/40 border-b border-base-200">
-              <th class="font-medium w-[72px] pl-5">Data</th>
-              <th class="font-medium">Descrição</th>
-              <th class="font-medium w-[140px] hidden lg:table-cell">Conta</th>
-              <th class="font-medium w-[120px] hidden lg:table-cell">Categoria</th>
-              <th class="font-medium w-[110px] hidden md:table-cell">Status</th>
-              <th class="font-medium text-right w-[130px] pr-5">Valor</th>
-              <th class="w-[110px] hidden md:table-cell"></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-base-200">
-            <tr
-              v-for="t in transacoes"
-              :key="t.id"
-              class="group hover:bg-base-50 transition-colors"
-            >
-              <td class="pl-5">
-                <span class="font-mono text-[12px] tabular-nums text-base-content/50">
-                  {{ formatarData(t.data) }}
-                </span>
-              </td>
-
-              <td class="py-3">
-                <div class="flex items-center gap-2 min-w-0">
-                  <span
-                    :class="[
-                      'shrink-0 w-1.5 h-1.5 rounded-full',
-                      isFaturaCartao(t) ? 'bg-warning' :
-                      t.tipo === 'entrada' ? 'bg-success' : 'bg-error'
-                    ]"
-                  ></span>
-                  <span class="font-medium text-sm truncate">{{ t.descricao }}</span>
-                  <span
-                    v-if="t.parcelado && t.parcela_atual && t.total_parcelas"
-                    class="font-mono text-[10px] text-base-content/40 shrink-0"
-                  >
-                    {{ t.parcela_atual }}/{{ t.total_parcelas }}
-                  </span>
-                </div>
-                <span class="block text-xs text-base-content/40 mt-0.5 lg:hidden">
-                  {{ getContaNome(t.conta_id, contas) }}
-                </span>
-              </td>
-
-              <td class="hidden lg:table-cell">
-                <span class="text-sm text-base-content/60 truncate block">
-                  {{ isFaturaCartao(t)
-                    ? `${getContaNome(t.conta_id, contas)} · ${t.fatura_total_itens || 0} itens`
-                    : getContaNome(t.conta_id, contas) }}
-                </span>
-              </td>
-
-              <td class="hidden lg:table-cell">
-                <span class="text-sm text-base-content/60 truncate block">
-                  {{ isFaturaCartao(t) ? '—' : getCategoriaNome(t.categoria_id, categorias) }}
-                </span>
-              </td>
-
-              <td class="hidden md:table-cell">
-                <span
-                  :class="['flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide', statusColor(t)]"
-                >
-                  <span class="w-1.5 h-1.5 rounded-full bg-current shrink-0"></span>
-                  {{ statusLabel(t, contas) }}
-                </span>
-              </td>
-
-              <td class="text-right pr-5">
-                <span
-                  :class="[
-                    'font-semibold text-sm tabular-nums whitespace-nowrap',
-                    t.tipo === 'entrada' ? 'text-success' : 'text-base-content'
-                  ]"
-                >
-                  {{ t.tipo === 'entrada' ? '+ ' : '− ' }}{{ formatarMoeda(valorEfetivo(t)).replace('R$ ', '') }}
-                </span>
-                <span :class="['block text-[10px] font-mono mt-0.5 md:hidden', statusColor(t)]">
-                  {{ statusLabel(t, contas) }}
-                </span>
-              </td>
-
-              <td class="pr-3 hidden md:table-cell">
-                <div class="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    v-if="isFaturaCartao(t)"
-                    class="btn btn-ghost btn-xs text-primary"
-                    @click="emit('abrir-fatura-cartao', t)"
-                  >Fatura</button>
-
-                  <template v-else>
-                    <button class="btn btn-ghost btn-xs" @click="emit('editar-transacao', t.id)">
-                      Editar
-                    </button>
-                    <button
-                      class="btn btn-ghost btn-xs"
-                      :disabled="duplicandoId === t.id"
-                      @click="emit('duplicar-transacao', t.id)"
-                    >
-                      <span v-if="duplicandoId === t.id" class="loading loading-spinner loading-xs"></span>
-                      <span v-else>Copiar</span>
-                    </button>
-                    <button
-                      v-if="(t.status_liquidacao || 'liquidado') !== 'liquidado' && !isContaCartaoCredito(t.conta_id, contas)"
-                      class="btn btn-ghost btn-xs text-success"
-                      @click="emit('iniciar-liquidacao', t)"
-                    >OK</button>
-                    <button
-                      class="btn btn-ghost btn-xs text-error"
-                      @click="emit('iniciar-delecao', t)"
-                    >×</button>
-                  </template>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- MOBILE — tiles verticais (< sm) -->
-      <div class="sm:hidden divide-y divide-base-200 overflow-x-hidden">
+      <!-- TILES — 3 linhas (< lg, 0–1023px) -->
+      <div class="lg:hidden divide-y divide-base-200 overflow-x-hidden">
         <div
           v-for="t in transacoes"
           :key="`m-${t.id}`"
           class="px-4 py-3 active:bg-base-200 transition-colors"
         >
+          <!-- Linha 1: Data | Status -->
           <div class="flex items-center justify-between mb-1">
             <span class="font-mono text-[11px] tabular-nums text-base-content/40">
               {{ formatarData(t.data) }}
@@ -232,6 +111,7 @@ const statusColor = (t: Transacao) => {
             </span>
           </div>
 
+          <!-- Linha 2: Dot + Descrição + Parcela | Valor -->
           <div class="flex items-start justify-between gap-3 mb-1">
             <div class="min-w-0 flex-1 flex items-center gap-1.5">
               <span
@@ -242,6 +122,12 @@ const statusColor = (t: Transacao) => {
                 ]"
               ></span>
               <span class="font-medium text-sm truncate">{{ t.descricao }}</span>
+              <span
+                v-if="t.parcelado && t.parcela_atual && t.total_parcelas"
+                class="font-mono text-[10px] text-base-content/40 shrink-0"
+              >
+                {{ t.parcela_atual }}/{{ t.total_parcelas }}
+              </span>
             </div>
             <span
               :class="[
@@ -249,10 +135,11 @@ const statusColor = (t: Transacao) => {
                 t.tipo === 'entrada' ? 'text-success' : 'text-base-content'
               ]"
             >
-              {{ t.tipo === 'entrada' ? '+' : '−' }} {{ formatarMoeda(valorEfetivo(t)).replace('R$ ', '') }}
+              {{ t.tipo === 'entrada' ? '+' : '−' }} {{ formatarMoeda(valorEfetivo(t)).replace('R$ ', '') }}
             </span>
           </div>
 
+          <!-- Linha 3: Conta · Categoria | Botões -->
           <div class="flex items-center justify-between gap-2 overflow-hidden">
             <span class="text-xs text-base-content/40 truncate min-w-0 flex-1">
               {{ getContaNome(t.conta_id, contas) }}
@@ -281,6 +168,99 @@ const statusColor = (t: Transacao) => {
         </div>
       </div>
 
+      <!-- DESKTOP — 2 linhas por item, sem scroll horizontal (≥ lg, 1024px+) -->
+      <div class="hidden lg:block">
+        <!-- Cabeçalho -->
+        <div class="px-5 py-2 border-b border-base-200">
+          <div class="flex items-center gap-3 text-[10px] font-mono uppercase tracking-widest text-base-content/40">
+            <span class="shrink-0 w-[68px]">Data</span>
+            <span class="flex-1">Descrição</span>
+            <span class="shrink-0">Valor</span>
+          </div>
+        </div>
+
+        <!-- Linhas -->
+        <div class="divide-y divide-base-200">
+          <div
+            v-for="t in transacoes"
+            :key="t.id"
+            class="group px-5 py-3 hover:bg-base-50 transition-colors"
+          >
+            <!-- Linha 1: Data · Descrição + Parcela · Valor -->
+            <div class="flex items-center gap-3">
+              <span class="font-mono text-[12px] tabular-nums text-base-content/50 shrink-0 w-[68px]">
+                {{ formatarData(t.data) }}
+              </span>
+              <div class="flex items-center gap-2 flex-1 min-w-0">
+                <span
+                  :class="[
+                    'shrink-0 w-1.5 h-1.5 rounded-full',
+                    isFaturaCartao(t) ? 'bg-warning' :
+                    t.tipo === 'entrada' ? 'bg-success' : 'bg-error'
+                  ]"
+                ></span>
+                <span class="font-medium text-sm truncate">{{ t.descricao }}</span>
+                <span
+                  v-if="t.parcelado && t.parcela_atual && t.total_parcelas"
+                  class="font-mono text-[10px] text-base-content/40 shrink-0"
+                >
+                  {{ t.parcela_atual }}/{{ t.total_parcelas }}
+                </span>
+              </div>
+              <span
+                :class="[
+                  'font-semibold text-sm tabular-nums whitespace-nowrap shrink-0',
+                  t.tipo === 'entrada' ? 'text-success' : 'text-base-content'
+                ]"
+              >
+                {{ t.tipo === 'entrada' ? '+ ' : '− ' }}{{ formatarMoeda(valorEfetivo(t)).replace('R$ ', '') }}
+              </span>
+            </div>
+
+            <!-- Linha 2: Conta · Categoria · Status · Botões (hover) -->
+            <!-- pl-20 = 80px alinha sob o dot da linha 1 (68px data + 12px gap) -->
+            <div class="flex items-center gap-3 mt-1 pl-20">
+              <span class="text-xs text-base-content/40 flex-1 min-w-0 truncate">
+                {{ isFaturaCartao(t)
+                  ? `${getContaNome(t.conta_id, contas)} · ${t.fatura_total_itens || 0} itens`
+                  : `${getContaNome(t.conta_id, contas)} · ${getCategoriaNome(t.categoria_id, categorias)}` }}
+              </span>
+              <span :class="['flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide shrink-0', statusColor(t)]">
+                <span class="w-1 h-1 rounded-full bg-current shrink-0"></span>
+                {{ statusLabel(t, contas) }}
+              </span>
+              <div class="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  v-if="isFaturaCartao(t)"
+                  class="btn btn-ghost btn-xs text-primary"
+                  @click="emit('abrir-fatura-cartao', t)"
+                >Fatura</button>
+                <template v-else>
+                  <button class="btn btn-ghost btn-xs" @click="emit('editar-transacao', t.id)">Editar</button>
+                  <button
+                    class="btn btn-ghost btn-xs"
+                    :disabled="duplicandoId === t.id"
+                    @click="emit('duplicar-transacao', t.id)"
+                  >
+                    <span v-if="duplicandoId === t.id" class="loading loading-spinner loading-xs"></span>
+                    <span v-else>Copiar</span>
+                  </button>
+                  <button
+                    v-if="(t.status_liquidacao || 'liquidado') !== 'liquidado' && !isContaCartaoCredito(t.conta_id, contas)"
+                    class="btn btn-ghost btn-xs text-success"
+                    @click="emit('iniciar-liquidacao', t)"
+                  >OK</button>
+                  <button
+                    class="btn btn-ghost btn-xs text-error"
+                    @click="emit('iniciar-delecao', t)"
+                  >×</button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Rodapé da lista -->
       <div class="px-5 py-3 border-t border-base-200 flex justify-between items-center">
         <span class="font-mono text-[11px] text-base-content/40">
@@ -288,7 +268,7 @@ const statusColor = (t: Transacao) => {
         </span>
         <button
           v-if="temFiltrosAtivos"
-          class="btn btn-ghost btn-xs text-error sm:hidden"
+          class="btn btn-ghost btn-xs text-error lg:hidden"
           @click="emit('limpar-filtros')"
         >
           Limpar filtros
